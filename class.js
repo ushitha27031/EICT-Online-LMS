@@ -101,6 +101,28 @@ let PAYMENTS = [];
 let curSeason = null, curEp = null, markTimer = null;
 let filter = 'all', listMode = false;
 
+/* While a registration is in flight this holds the promise for it.
+   createUserWithEmailAndPassword signs the student in the instant the Auth
+   account exists — before their students/{uid} document has been written.
+   The auth guard below waits on this, otherwise it reads an account that is
+   not there yet and throws the new student back out to the sign-in screen. */
+let registering = null;
+
+/* A button that says what it is doing. Registration writes an Auth account
+   and then a document, which on a phone on mobile data is not instant. */
+function busy(sel, on, label) {
+  const b = $(sel);
+  if (!b) return;
+  b.disabled = on;
+  if (on) {
+    b.dataset.was = b.innerHTML;
+    b.innerHTML = `<span class="spin"></span>${label ? esc(label) : ''}`;
+  } else if (b.dataset.was) {
+    b.innerHTML = b.dataset.was;
+    delete b.dataset.was;
+  }
+}
+
 const unlocked  = () => (P?.unlocked || []).map(Number);
 const isOpen    = (n) => unlocked().includes(Number(n));
 const watched   = () => new Set(P?.watched || []);
@@ -150,6 +172,16 @@ const stamp = (uid) => {
   localStorage.setItem(STAMP_UID, uid);
 };
 const clearStamp = () => { localStorage.removeItem(STAMP_AT); localStorage.removeItem(STAMP_UID); };
+
+/* Put the clock down before the sign-in call, while the uid is still unknown.
+   Firebase fires onAuthStateChanged the instant it accepts the password, and
+   a listener that finds no stamp treats the session as already expired and
+   signs the person straight back out. stamp() replaces this with the real
+   uid a moment later. */
+const stampPending = () => {
+  localStorage.setItem(STAMP_AT, String(Date.now()));
+  localStorage.setItem(STAMP_UID, '');
+};
 
 function remaining(uid) {
   const at = Number(localStorage.getItem(STAMP_AT) || 0);
@@ -833,77 +865,237 @@ const AUTH_MSG = {
 
 function wireGate() {
   const swap = (toReg) => {
-    $('#paneIn').hidden = toReg; $('#paneReg').hidden = !toReg;
-    $('#gMsg').removeAttribute('data-kind'); $('#gMsg2').removeAttribute('data-kind');
+    $('#paneIn').hidden = toReg;
+    $('#paneReg').hidden = !toReg;
+    $('#gMsg').removeAttribute('data-kind');
+    $('#gMsg2').removeAttribute('data-kind');
   };
   $('#toReg').onclick = () => swap(true);
   $('#toIn').onclick  = () => swap(false);
 
-  const err = (box, e) => {
-    const el = $(box);
-    el.textContent = AUTH_MSG[e.code] || e.message || 'Something went wrong.';
-    el.dataset.kind = 'bad';
+  const say = (sel, text, kind) => {
+    const el = $(sel);
+    el.textContent = text;
+    el.dataset.kind = kind;
   };
 
+  /* ---------------------------------------------------------- sign in -- */
+
   $('#doIn').onclick = async () => {
-    const em = $('#inEmail').value.trim(), pw = $('#inPass').value;
-    if (!em || !pw) { $('#gMsg').textContent = 'Fill in both boxes.'; $('#gMsg').dataset.kind = 'bad'; return; }
-    $('#doIn').disabled = true;
+    const em = $('#inEmail').value.trim().toLowerCase();
+    const pw = $('#inPass').value;
+    if (!em || !pw) return say('#gMsg', 'Fill in both boxes.', 'bad');
+
+    $('#gMsg').removeAttribute('data-kind');
+    busy('#doIn', true, 'Signing in…');
+
+    // The stamp goes down BEFORE the sign-in call. The auth listener fires
+    // the moment Firebase accepts the password, and if it finds no stamp it
+    // treats the session as expired and throws the person straight back out.
+    stampPending();
+
     try {
       await FB.setPersistence(FB.auth, FB.browserLocalPersistence);
       const c = await FB.signInWithEmailAndPassword(FB.auth, em, pw);
       stamp(c.user.uid);
-    } catch (e) { err('#gMsg', e); }
-    $('#doIn').disabled = false;
+    } catch (e) {
+      clearStamp();
+      busy('#doIn', false);
+      say('#gMsg', AUTH_MSG[e.code] || e.message || 'Could not sign in.', 'bad');
+    }
   };
   $('#inPass').addEventListener('keydown', e => { if (e.key === 'Enter') $('#doIn').click(); });
 
+  /* ---------------------------------------------------- forgot password -- */
+
   $('#toReset').onclick = async () => {
     const em = $('#inEmail').value.trim();
-    if (!em) { $('#gMsg').textContent = 'Type your email above first.'; $('#gMsg').dataset.kind = 'info'; return; }
+    if (!em) return say('#gMsg', 'Type your email in the box above first.', 'info');
     try {
       await FB.sendPasswordResetEmail(FB.auth, em);
-      $('#gMsg').textContent = 'Check your email for a link to set a new password.';
-      $('#gMsg').dataset.kind = 'ok';
-    } catch (e) { err('#gMsg', e); }
+      say('#gMsg', 'Check your email for a link to set a new password.', 'ok');
+    } catch (e) {
+      say('#gMsg', AUTH_MSG[e.code] || e.message || 'Could not send the email.', 'bad');
+    }
   };
+
+  /* --------------------------------------------------------- register -- */
 
   $('#doReg').onclick = async () => {
     const v = (id) => $(id).value.trim();
-    if (!v('#rName') || !v('#rWa') || !v('#rEmail') || !$('#rPass').value) {
-      $('#gMsg2').textContent = 'Name, WhatsApp, email and password are all needed.';
-      $('#gMsg2').dataset.kind = 'bad'; return;
-    }
-    $('#doReg').disabled = true;
+    const pw = $('#rPass').value;
+
+    if (!v('#rName') || !v('#rWa') || !v('#rEmail') || !pw)
+      return say('#gMsg2', 'Name, WhatsApp, email and password are all needed.', 'bad');
+    if (pw.length < 6)
+      return say('#gMsg2', 'Your password needs at least 6 characters.', 'bad');
+
+    $('#gMsg2').removeAttribute('data-kind');
+    busy('#doReg', true, 'Sending…');
+    stampPending();
+
+    // Everything that must finish before the auth listener is allowed to look
+    // at the account goes inside this one promise. Creating the login signs
+    // the student in immediately, so without this the listener reads a
+    // students/{uid} document that has not been written yet, finds nothing,
+    // and bounces them back to the sign-in screen — which looks exactly like
+    // "registration is not working".
+    registering = (async () => {
+      const cred = await FB.createUserWithEmailAndPassword(
+        FB.auth, v('#rEmail').toLowerCase(), pw);
+
+      try {
+        // The shape here is fixed by firestore.rules: a new account is always
+        // a pending student, with no number and nothing unlocked. It cannot
+        // approve itself. `email` is taken from the token rather than the
+        // form because Firebase lowercases it, and the rule compares the two.
+        await FB.setDoc(FB.doc(FB.db, 'students', cred.user.uid), {
+          role: 'student',
+          status: 'pending',
+          studentNo: null,
+          name: v('#rName'),
+          whatsapp: v('#rWa'),
+          school: v('#rSchool'),
+          address: v('#rAddr'),
+          email: cred.user.email,
+          batch: BATCH,
+          track: null,
+          unlocked: [],
+          watched: [],
+          paidLive: false,
+          at: FB.serverTimestamp()
+        });
+      } catch (err) {
+        // The login was created but the record was refused. Delete the login
+        // again, or that email is taken forever with nothing attached to it
+        // and the student can neither register nor sign in.
+        try { await cred.user.delete(); } catch (_) {}
+        throw err;
+      }
+
+      stamp(cred.user.uid);
+      return cred.user;
+    })();
+
     try {
-      const c = await FB.createUserWithEmailAndPassword(FB.auth, v('#rEmail'), $('#rPass').value);
-      // Shape fixed by the rules: a new account is always a pending student
-      // with no number and nothing unlocked. It cannot let itself in.
-      await FB.setDoc(FB.doc(FB.db, 'students', c.user.uid), {
+      const user = await registering;
+      P = {
+        uid: user.uid, name: v('#rName'), whatsapp: v('#rWa'),
+        school: v('#rSchool'), address: v('#rAddr'), email: user.email,
+        batch: BATCH, role: 'student', status: 'pending', studentNo: null
+      };
+      busy('#doReg', false);
+      registeredPopup(v('#rName'));
+    } catch (e) {
+      console.error('[class] registration failed', e);
+      clearStamp();
+      busy('#doReg', false);
+      say('#gMsg2', regError(e), 'bad');
+    } finally {
+      registering = null;
+    }
+  };
+}
+
+/* These are the failures most likely to be hit on a real phone, so each one
+   says what to actually do about it rather than printing a Firebase code. */
+function regError(e) {
+  const code = e.code || '';
+  if (code === 'auth/operation-not-allowed')
+    return 'Registration is switched off in Firebase. Sir needs to turn on ' +
+           'Email/Password under Authentication → Sign-in method.';
+  if (code === 'permission-denied' || code === 'PERMISSION_DENIED')
+    return 'The class database refused the registration. Sir needs to publish ' +
+           'the Firestore rules.';
+  if (code === 'auth/email-already-in-use')
+    return 'That email already has an account. Try signing in instead, or use ' +
+           'Forgot your password.';
+  if (code === 'unavailable')
+    return 'No connection to the class database. Check your internet and try again.';
+  return AUTH_MSG[code] || e.message || 'Something went wrong. Please try again.';
+}
+
+function registeredPopup(name) {
+  sheet(`
+    <div style="text-align:center">
+      <div class="hold__ring" style="border-color:var(--live);color:var(--live)">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"
+          style="width:26px;height:26px"><path d="M20 6 9 17l-5-5"/></svg>
+      </div>
+      <h3>Registration sent</h3>
+      <p style="color:var(--dim);margin:0 0 6px">
+        Thank you, ${esc(String(name).split(' ')[0])}. Sir checks every
+        registration by hand, usually within a day.</p>
+      <p style="color:var(--dim);margin:0 0 20px">
+        Your student number appears here as soon as it is approved, and the
+        class opens with it.</p>
+      <button class="btn btn--gold btn--wide" id="okReg">Got it</button>
+    </div>`);
+  $('#okReg').onclick = () => { closeSheet(); showHold('pending'); };
+}
+
+/* A login with no class record. This happens if a registration was cut off
+   between creating the account and writing the document — a dropped
+   connection at exactly the wrong moment. Rather than looping them back to
+   the sign-in screen forever, let them finish the part that is missing. */
+function finishRegistration(user) {
+  document.body.classList.remove('checking');
+  document.body.classList.add('blocked');
+  $('#hold').hidden = true;
+  $('#gate').hidden = false;
+  $('#paneIn').hidden = true;
+  $('#paneReg').hidden = false;
+  $('#rEmail').value = user.email || '';
+  $('#rEmail').readOnly = true;
+  $('#rPass').closest('label').hidden = true;
+  say2('Your login was made but your details did not save. Fill them in once ' +
+       'more and it will be finished.');
+
+  $('#doReg').onclick = async () => {
+    const v = (id) => $(id).value.trim();
+    if (!v('#rName') || !v('#rWa'))
+      return say2('Name and WhatsApp are needed.', 'bad');
+
+    busy('#doReg', true, 'Finishing…');
+    try {
+      await FB.setDoc(FB.doc(FB.db, 'students', user.uid), {
         role: 'student', status: 'pending', studentNo: null,
         name: v('#rName'), whatsapp: v('#rWa'), school: v('#rSchool'),
-        address: v('#rAddr'), email: v('#rEmail'),
+        address: v('#rAddr'), email: user.email,
         batch: BATCH, track: null, unlocked: [], watched: [], paidLive: false,
         at: FB.serverTimestamp()
       });
-      stamp(c.user.uid);
-    } catch (e) { err('#gMsg2', e); $('#doReg').disabled = false; }
+      stamp(user.uid);
+      busy('#doReg', false);
+      registeredPopup(v('#rName'));
+    } catch (e) {
+      busy('#doReg', false);
+      say2(regError(e), 'bad');
+    }
   };
+
+  function say2(text, kind = 'info') {
+    const el = $('#gMsg2');
+    el.textContent = text;
+    el.dataset.kind = kind;
+  }
 }
 
 async function loadMine(uid) {
   const [acc, pay, live, pub] = await Promise.all([
     FB.getDocs(FB.query(FB.collection(FB.db, 'access'), FB.where('uid', '==', uid))),
     FB.getDocs(FB.query(FB.collection(FB.db, 'payments'), FB.where('uid', '==', uid))),
-    // The link is readable only if this account paid for the current month,
-    // so a permission error here is the normal, expected answer for someone
-    // who has not paid. It must not stop the rest of the page loading.
+    // The join link is readable only by an account that paid for this month,
+    // so a permission error here is the normal answer for someone who has
+    // not paid. It must not stop the rest of the page loading.
     FB.getDoc(FB.doc(FB.db, 'settings', 'live')).catch(() => null),
     FB.getDoc(FB.doc(FB.db, 'settings', 'public')).catch(() => null)
   ]);
+
   ACCESS = new Set(); acc.forEach(d => ACCESS.add(d.data().month));
   PAYMENTS = []; pay.forEach(d => PAYMENTS.push({ id: d.id, ...d.data() }));
   PAYMENTS.sort((a, b) => (b.at?.seconds || 0) - (a.at?.seconds || 0));
+
   if (live && live.exists()) {
     const L = live.data();
     if (L.open && L.month === thisMonth()) LIVE_URL = L.url || '';
@@ -911,13 +1103,15 @@ async function loadMine(uid) {
   if (pub && pub.exists()) {
     const B = pub.data();
     if (B.bank) BANK_TEXT = B.bank;
-    window.COURSE = Object.assign({}, window.COURSE, { live: Object.assign({}, window.COURSE?.live, B) });
+    window.COURSE = Object.assign({}, window.COURSE,
+      { live: Object.assign({}, window.COURSE?.live, B) });
   }
 }
 
 function enter() {
   document.body.classList.remove('checking', 'blocked');
-  $('#gate').hidden = true; $('#hold').hidden = true;
+  $('#gate').hidden = true;
+  $('#hold').hidden = true;
   paintTop();
   fillSeasonPicker();
   $('#pMonth').value = thisMonth();
@@ -926,20 +1120,24 @@ function enter() {
   renderRec();
   renderPayHistory();
 
-  if (!DEMO) {
-    const tick = () => {
-      const left = remaining(ME.uid);
-      if (left <= 0) signOutNow('Your day is up. Sign in again to carry on.');
-      if (!$('#v-me').hidden) $('#acSession').textContent = leftText(left);
-    };
-    setInterval(tick, 60000);
-    document.addEventListener('visibilitychange', () => {
-      if (document.visibilityState === 'visible') tick();
-    });
-    window.addEventListener('focus', tick);
-    window.addEventListener('storage', e => { if (e.key === STAMP_AT && e.newValue === null) location.reload(); });
-  }
+  if (DEMO) return;
+
+  const tick = () => {
+    const left = remaining(ME.uid);
+    if (left <= 0) return signOutNow('Your day is up. Sign in again to carry on.');
+    if (!$('#v-me').hidden) $('#acSession').textContent = leftText(left);
+  };
+  setInterval(tick, 60000);
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'visible') tick();
+  });
+  window.addEventListener('focus', tick);
+  window.addEventListener('storage', e => {
+    if (e.key === STAMP_AT && e.newValue === null) location.reload();
+  });
 }
+
+/* ================================================================= boot */
 
 (async () => {
   FB = await bootFirebase();
@@ -963,33 +1161,38 @@ function enter() {
     if (!user) return showGate(carried || null, carried ? 'info' : 'bad');
     ME = user;
 
+    // Wait for a registration that is still writing. Without this the read
+    // below lands before the document exists.
+    if (registering) {
+      try { await registering; } catch (_) { return; }   // the form reports it
+    }
+
     if (remaining(user.uid) <= 0) {
-      clearStamp(); await FB.signOut(FB.auth);
+      clearStamp();
+      await FB.signOut(FB.auth);
       return showGate('Your day is up. Sign in again to carry on.', 'info');
     }
 
-    // Read the account before anything is shown. If this fails we sign out
-    // rather than inventing a profile — that guess is what used to let
-    // people straight into the class.
+    // Read the account before showing anything. A failed read signs out
+    // rather than guessing a profile — that guess is what used to drop people
+    // straight into the class with no restrictions.
     let snap;
     try {
       snap = await FB.getDoc(FB.doc(FB.db, 'students', user.uid));
     } catch (err) {
       console.error('[class] profile read failed', err);
-      clearStamp(); await FB.signOut(FB.auth);
+      clearStamp();
+      await FB.signOut(FB.auth);
       return showGate('We could not open your account. Try again in a moment.');
     }
 
-    if (!snap.exists()) {
-      clearStamp(); await FB.signOut(FB.auth);
-      return showGate('No class account for this login. Register first.');
-    }
+    if (!snap.exists()) return finishRegistration(user);
 
     P = { uid: user.uid, ...snap.data() };
 
     if (P.role === 'teacher') { location.href = 'Admin.html'; return; }
-    if (P.status === 'pending')   return showHold('pending');
-    if (P.status !== 'active')    return showHold('blocked');
+    if (P.status === 'pending') return showHold('pending');
+    if (P.status !== 'active')  return showHold('blocked');
 
     try {
       await loadMine(user.uid);
