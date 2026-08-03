@@ -22,7 +22,7 @@
 /* Shown in the corner of the sign-in card so you can tell at a glance which
    version a student is actually running. If this does not match what you just
    uploaded, their browser is still on a cached copy. */
-const VERSION = '1.4.0';
+const VERSION = '1.4.1';
 
 const SESSION_MAX_MS = 24 * 60 * 60 * 1000;
 const STAMP_AT  = 'eict.sessionAt';
@@ -939,21 +939,51 @@ async function papersLib() {
   return PP;
 }
 
+/* Papers, sittings and bookings are extras: if the rules for them have not
+   been published yet the class must still open. A student locked out of their
+   recordings because a collection they have never used is missing would be a
+   far worse fault than a Papers tab that is briefly empty. */
+let PAPERS_OK = true;
+
 async function loadPapers(uid) {
+  const soft = (label) => (err) => {
+    console.warn(`[class] ${label} unavailable:`, err.code || err.message);
+    if (label === 'papers') PAPERS_OK = false;
+    return null;
+  };
+
   const [subs, slots, books] = await Promise.all([
-    FB.getDocs(FB.query(FB.collection(FB.db, 'papers'), FB.where('uid', '==', uid))),
-    FB.getDocs(FB.collection(FB.db, 'slots')).catch(() => null),
-    FB.getDocs(FB.query(FB.collection(FB.db, 'bookings'), FB.where('uid', '==', uid))).catch(() => null)
+    FB.getDocs(FB.query(FB.collection(FB.db, 'papers'), FB.where('uid', '==', uid))).catch(soft('papers')),
+    FB.getDocs(FB.collection(FB.db, 'slots')).catch(soft('slots')),
+    FB.getDocs(FB.query(FB.collection(FB.db, 'bookings'), FB.where('uid', '==', uid))).catch(soft('bookings'))
   ]);
-  PAPERS = {}; subs.forEach(d => { const v = d.data(); PAPERS[v.key] = { id: d.id, ...v }; });
+
+  PAPERS = {}; subs && subs.forEach(d => { const v = d.data(); PAPERS[v.key] = { id: d.id, ...v }; });
   SLOTS = []; slots && slots.forEach(d => SLOTS.push({ id: d.id, ...d.data() }));
   BOOKINGS = {}; books && books.forEach(d => { const v = d.data(); BOOKINGS[`term-${v.term}`] = { id: d.id, ...v }; });
 }
 
 async function renderPapers() {
-  const L = await papersLib();
+  let L;
+  try { L = await papersLib(); }
+  catch (err) { PAPERS_OK = false; L = null; }
+  if (!L) {
+    setHt('#papersBody', `<div class="card"><div class="empty">
+      <b>Papers are not switched on yet</b>
+      <p>Sir is still setting this part up. Your recordings are unaffected —
+         check back in a day or two.</p></div></div>`);
+    return;
+  }
   const paid = unlocked().sort((a, b) => a - b);
   const box = $('#papersBody');
+
+  if (!PAPERS_OK) {
+    box.innerHTML = `<div class="card"><div class="empty">
+      <b>Papers are not switched on yet</b>
+      <p>Sir is still setting this part up. Your recordings are unaffected —
+         check back in a day or two.</p></div></div>`;
+    return;
+  }
 
   if (!paid.length) {
     box.innerHTML = `<div class="card"><div class="empty">
@@ -1052,7 +1082,8 @@ const fmtSlot = (b) => {
 /* ------------------------------------------------------- booking a slot */
 
 async function bookSheet(termN) {
-  const L = await papersLib();
+  const L = await papersLib().catch(() => null);
+  if (!L) return toast('Term tests are not ready yet', 'bad');
   const t = L.TERMS.find(x => x.n === termN);
   const free = L.bookableSlots(SLOTS.filter(s => Number(s.term) === termN));
 
@@ -1094,7 +1125,8 @@ async function bookSheet(termN) {
 }
 
 async function bookSlot(slotId, termN) {
-  const L = await papersLib();
+  const L = await papersLib().catch(() => null);
+  if (!L) return;
   const slot = SLOTS.find(s => s.id === slotId);
   if (!slot) return;
   const k = L.PAPER_KINDS[slot.kind] || { label: slot.kind };
@@ -1147,7 +1179,8 @@ function postingSheet(slot, k, termN) {
 let checkSeq = 0;
 
 async function submitSheet(key) {
-  const L = await papersLib();
+  const L = await papersLib().catch(() => null);
+  if (!L) return toast('Sending papers is not ready yet', 'bad');
   const isTerm = key.startsWith('term-');
   const n = Number(key.split('-')[1]);
   const title = isTerm
@@ -1819,8 +1852,10 @@ function finishRegistration(user) {
 
 async function loadMine(uid) {
   const [acc, pay, live, pub] = await Promise.all([
-    FB.getDocs(FB.query(FB.collection(FB.db, 'access'), FB.where('uid', '==', uid))),
-    FB.getDocs(FB.query(FB.collection(FB.db, 'payments'), FB.where('uid', '==', uid))),
+    FB.getDocs(FB.query(FB.collection(FB.db, 'access'), FB.where('uid', '==', uid)))
+      .catch(() => { throw new Error('access'); }),
+    FB.getDocs(FB.query(FB.collection(FB.db, 'payments'), FB.where('uid', '==', uid)))
+      .catch(() => { throw new Error('payments'); }),
     // The join link is readable only by an account that paid for this month,
     // so a permission error here is the normal answer for someone who has
     // not paid. It must not stop the rest of the page loading.
@@ -1828,8 +1863,18 @@ async function loadMine(uid) {
     FB.getDoc(FB.doc(FB.db, 'settings', 'public')).catch(() => null)
   ]);
 
-  GATE = await papersLib();
-  await loadPapers(uid);
+  try {
+    GATE = await papersLib();
+    await loadPapers(uid);
+    // If the papers collection cannot be read we do not know which papers are
+    // in, so gating on it would lock students out of units they have paid for.
+    // Falling back to "paid means open" is the safe way to be wrong.
+    if (!PAPERS_OK) GATE = null;
+  } catch (err) {
+    console.warn('[class] papers layer unavailable:', err.code || err.message);
+    PAPERS_OK = false;
+    GATE = null;
+  }
   ACCESS = new Set(); acc.forEach(d => ACCESS.add(d.data().month));
   PAYMENTS = []; pay.forEach(d => PAYMENTS.push({ id: d.id, ...d.data() }));
   PAYMENTS.sort((a, b) => (b.at?.seconds || 0) - (a.at?.seconds || 0));
@@ -2111,7 +2156,8 @@ function enter() {
     seedDemo();
     ME = { uid: 'demo' };
     showIntro();
-    papersLib().then(L => { GATE = L; renderRec(); });
+    papersLib().then(L => { GATE = L; renderRec(); })
+      .catch(err => { console.warn('[class] papers.js missing', err.message); PAPERS_OK = false; });
     enter();
     toast('Sample mode — not connected to the class database');
     return;
@@ -2178,9 +2224,10 @@ async function handleAuth(user, carried) {
     } catch (err) {
       console.error('[class] load failed', err);
       busy('#doIn', false);
-      return showGate('Signed in, but your class could not load: ' +
-        (err.code || err.message) + '. If this keeps happening, tell sir the ' +
-        'Firestore rules may need publishing.');
+      const which = ['access', 'payments'].includes(err.message) ? err.message : null;
+      return showGate('Signed in, but your class could not load' +
+        (which ? ` — the ${which} rules are refusing to be read` : '') +
+        '. Tell sir the Firestore rules need publishing.');
     }
     busy('#doIn', false);
     enter();
