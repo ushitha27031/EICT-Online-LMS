@@ -906,3 +906,33 @@ body:not(.auth-pending):not(.auth-denied) .boot { display: none; }
   line-height: 1.6;
   color: var(--text-3);
 }
+
+/* ==========================================================================
+   Motion — restrained on purpose. This is a working tool used every day,
+   so nothing here delays an action; it only softens arrival and confirms.
+   ========================================================================== */
+
+.view:not([hidden]) { animation: viewIn .26s cubic-bezier(.2,.8,.3,1) both; }
+@keyframes viewIn { from { opacity: 0; transform: translateY(6px); } }
+
+.slip  { animation: slipIn .3s cubic-bezier(.2,.8,.3,1) both; }
+@keyframes slipIn { from { opacity: 0; transform: translateY(8px); } }
+
+.rec   { animation: recIn .3s cubic-bezier(.2,.8,.3,1) both; }
+@keyframes recIn { from { opacity: 0; transform: translateY(9px); } }
+
+.table tbody tr { animation: rowIn .22s cubic-bezier(.2,.8,.3,1) both; }
+@keyframes rowIn { from { opacity: 0; } }
+
+/* a queue count that has just changed should catch the eye once */
+.navbtn__count { transition: transform .2s cubic-bezier(.2,1.4,.4,1); }
+.navbtn__count.bump { transform: scale(1.28); }
+
+/* the refresh icon turns while it is working */
+#refreshBtn.spinning svg { animation: turn .8s linear infinite; }
+@keyframes turn { to { transform: rotate(360deg); } }
+
+@media (prefers-reduced-motion: reduce) {
+  .view:not([hidden]), .slip, .rec, .table tbody tr,
+  #refreshBtn.spinning svg { animation: none !important; }
+}
