@@ -464,3 +464,162 @@ body.checking .shell,body.blocked .shell{display:none}
 @media (prefers-reduced-motion:reduce){
   *,*::before,*::after{animation-duration:.01ms!important;transition-duration:.01ms!important}
 }
+
+/* ==========================================================================
+   Motion
+   Three places only: while waiting, at the moment something is confirmed,
+   and when access opens. Everything is short, and everything switches off
+   under prefers-reduced-motion at the end of this file.
+   ========================================================================== */
+
+/* ---------------------------------------------------- first paint ------- */
+
+.boot-splash{
+  position:fixed;inset:0;z-index:120;display:grid;place-items:center;
+  background:var(--ink);transition:opacity .45s ease,visibility .45s;
+}
+.boot-splash.gone{opacity:0;visibility:hidden;pointer-events:none}
+.boot-splash__in{text-align:center}
+.boot-splash__mark{
+  font-family:var(--d);font-size:38px;font-weight:700;letter-spacing:-.02em;
+  color:var(--gold);animation:markIn .7s cubic-bezier(.2,.8,.3,1) both;
+}
+.boot-splash__sub{
+  font-family:var(--m);font-size:10.5px;letter-spacing:.24em;text-transform:uppercase;
+  color:var(--dimmer);margin-top:8px;animation:markIn .7s .12s cubic-bezier(.2,.8,.3,1) both;
+}
+.boot-splash__track{
+  width:132px;height:2px;border-radius:2px;background:rgba(142,164,255,.14);
+  margin:22px auto 0;overflow:hidden;
+}
+.boot-splash__track i{
+  display:block;height:100%;width:40%;border-radius:2px;background:var(--gold);
+  animation:slide 1.05s ease-in-out infinite;
+}
+@keyframes markIn{from{opacity:0;transform:translateY(9px)}}
+@keyframes slide{
+  0%{transform:translateX(-100%)}
+  100%{transform:translateX(330%)}
+}
+
+/* content easing in behind the splash */
+.view:not([hidden]){animation:viewIn .34s cubic-bezier(.2,.8,.3,1) both}
+@keyframes viewIn{from{opacity:0;transform:translateY(7px)}}
+
+/* ------------------------------------------------------- busy buttons --- */
+
+.btn .spin{width:15px;height:15px;border-width:2px;margin-right:2px}
+.btn[disabled] .spin{opacity:1}
+
+/* a bar that creeps across the button while something is in flight, so a
+   slow connection still looks like progress rather than a frozen page */
+.btn.working{position:relative;overflow:hidden}
+.btn.working::after{
+  content:'';position:absolute;left:0;bottom:0;height:2px;width:100%;
+  background:rgba(255,255,255,.55);
+  transform-origin:left;animation:creep 9s cubic-bezier(.1,.8,.2,1) forwards;
+}
+@keyframes creep{
+  0%{transform:scaleX(0)}
+  40%{transform:scaleX(.62)}
+  75%{transform:scaleX(.86)}
+  100%{transform:scaleX(.97)}
+}
+
+/* --------------------------------------------------------- confirming --- */
+
+/* the tick that draws itself */
+.tick-ring{
+  width:74px;height:74px;border-radius:50%;margin:0 auto 20px;
+  display:grid;place-items:center;
+  border:2px solid var(--live);
+  animation:ringPop .42s cubic-bezier(.2,1.5,.4,1) both;
+}
+.tick-ring svg{width:32px;height:32px;color:var(--live)}
+.tick-ring path{
+  stroke-dasharray:32;stroke-dashoffset:32;
+  animation:draw .42s .22s cubic-bezier(.4,0,.2,1) forwards;
+}
+@keyframes ringPop{
+  from{transform:scale(.55);opacity:0}
+  60%{transform:scale(1.06)}
+  to{transform:scale(1);opacity:1}
+}
+@keyframes draw{to{stroke-dashoffset:0}}
+
+/* a ring that pulses outward once, behind the tick */
+.tick-ring::before{
+  content:'';position:absolute;width:74px;height:74px;border-radius:50%;
+  border:2px solid var(--live);
+  animation:halo 1.1s .3s cubic-bezier(.2,.8,.3,1) forwards;
+}
+@keyframes halo{
+  from{transform:scale(1);opacity:.6}
+  to{transform:scale(1.85);opacity:0}
+}
+
+.sheet__box{position:relative}
+
+/* the sheet itself lands rather than appears */
+@keyframes up{
+  from{transform:translateY(34px);opacity:0}
+  to{transform:translateY(0);opacity:1}
+}
+
+/* --------------------------------------------------- access unlocking --- */
+
+/* when a unit or a month opens, the thing that changed should say so */
+@keyframes openGlow{
+  0%{box-shadow:0 0 0 0 rgba(53,224,143,.5)}
+  100%{box-shadow:0 0 0 16px rgba(53,224,143,0)}
+}
+.just-opened{animation:openGlow 1.1s ease-out 2}
+
+/* syllabus segments fill in sequence on the recordings tab, left to right,
+   so the bar reads as progress being drawn rather than a static picture */
+.syl__seg .syl__fill{animation:fillUp .6s cubic-bezier(.2,.8,.3,1) both}
+@keyframes fillUp{from{height:0!important}}
+
+.sn-card{animation:cardIn .34s cubic-bezier(.2,.8,.3,1) both}
+@keyframes cardIn{from{opacity:0;transform:translateY(8px)}}
+
+.ep{animation:epIn .26s cubic-bezier(.2,.8,.3,1) both}
+@keyframes epIn{from{opacity:0;transform:translateX(-5px)}}
+
+/* --------------------------------------------------------- feedback ----- */
+
+.toast{animation:toastIn .28s cubic-bezier(.2,1.3,.4,1) both}
+@keyframes toastIn{from{opacity:0;transform:translateY(14px) scale(.97)}}
+
+.gate__msg[data-kind]{animation:msgIn .24s cubic-bezier(.2,.8,.3,1) both}
+@keyframes msgIn{from{opacity:0;transform:translateY(-5px)}}
+
+/* an error worth noticing gets one small shake, not a flash */
+.shake{animation:shake .34s cubic-bezier(.36,.07,.19,.97) both}
+@keyframes shake{
+  10%,90%{transform:translateX(-2px)}
+  20%,80%{transform:translateX(3px)}
+  30%,50%,70%{transform:translateX(-4px)}
+  40%,60%{transform:translateX(4px)}
+}
+
+/* the slip preview settling in once it has been shrunk */
+.drop img{animation:slipIn .38s cubic-bezier(.2,.8,.3,1) both}
+@keyframes slipIn{from{opacity:0;transform:scale(.95)}}
+
+/* waiting-for-approval screen: a slow breath, not a spinner. Nothing is
+   loading, so a spinner would be a lie — they are waiting on a person. */
+.hold__ring{animation:breathe 2.8s ease-in-out infinite}
+@keyframes breathe{
+  0%,100%{transform:scale(1);opacity:.85}
+  50%{transform:scale(1.06);opacity:1}
+}
+
+@media (prefers-reduced-motion:reduce){
+  .boot-splash__track i,.hold__ring,.tick-ring,.tick-ring::before,
+  .tick-ring path,.btn.working::after,.syl__seg .syl__fill,
+  .sn-card,.ep,.view:not([hidden]),.toast,.just-opened,.drop img{
+    animation:none!important;
+  }
+  .tick-ring path{stroke-dashoffset:0}
+}
