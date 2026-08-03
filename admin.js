@@ -13,7 +13,7 @@
 
 /* Shown in the sidebar. If this does not match what you just uploaded, your
    browser is still running a cached copy — hard refresh with Ctrl+Shift+R. */
-const VERSION = '1.1.1';
+const VERSION = '1.3.0';
 
 const SESSION_MAX_MS = 24 * 60 * 60 * 1000;   // one day, hard cap
 const STAMP_AT  = 'eict.sessionAt';
@@ -265,6 +265,15 @@ async function loadAll() {
   DB.access   = []; acc.forEach(d => DB.access.push(d.id));
   if (live && live.exists()) DB.live = { ...DB.live, ...live.data() };
 
+  const [paperDocs, slotDocs, bookDocs] = await Promise.all([
+    f.getDocs(f.query(f.collection(f.db, 'papers'), f.orderBy('at', 'desc'), f.limit(300))).catch(() => null),
+    f.getDocs(f.collection(f.db, 'slots')).catch(() => null),
+    f.getDocs(f.collection(f.db, 'bookings')).catch(() => null)
+  ]);
+  PAPERS = []; paperDocs && paperDocs.forEach(d => PAPERS.push({ id: d.id, ...d.data() }));
+  SLOTS = [];  slotDocs && slotDocs.forEach(d => SLOTS.push({ id: d.id, ...d.data() }));
+  BOOKINGS = []; bookDocs && bookDocs.forEach(d => BOOKINGS.push({ id: d.id, ...d.data() }));
+
   const seasonDocs = await f.getDocs(f.collection(f.db, 'seasons'));
   DB.seasons = {};
   seasonDocs.forEach(d => { DB.seasons[d.data().season] = d.data().episodes || {}; });
@@ -469,6 +478,185 @@ function note(text) {
   DB.activity = DB.activity.slice(0, 12);
 }
 
+
+/* ====================================================== answer papers ===
+   Papers live in the students' own Drives; this is only the index. Every row
+   opens the file in a new tab, so nothing has to be downloaded or filed.
+   ====================================================================== */
+
+let PAPERS = [], SLOTS = [], BOOKINGS = [];
+
+const TERMS = [
+  { n: 1, units: [1, 2],      name: 'Term test 1' },
+  { n: 2, units: [3, 4],      name: 'Term test 2' },
+  { n: 3, units: [5, 6],      name: 'Term test 3' },
+  { n: 4, units: [7, 8],      name: 'Term test 4' },
+  { n: 5, units: [9, 10, 11], name: 'Term test 5' },
+  { n: 6, units: [12, 13],    name: 'Term test 6' }
+];
+const KINDS = { mcq: 'MCQ paper', essay: 'Structured and essay' };
+
+const pendingPapers = () => PAPERS.filter(p => p.status === 'submitted');
+
+function paperTitle(p) {
+  return p.kind === 'term'
+    ? (TERMS.find(t => t.n === p.n) || {}).name || `Term test ${p.n}`
+    : `Unit ${pad(p.n)} paper`;
+}
+
+async function reviewPaper(id, decision, feedback, marks) {
+  const p = PAPERS.find(x => x.id === id);
+  if (!p) return;
+  const patch = {
+    status: decision, feedback: feedback || '', marks: marks || null,
+    reviewedAt: new Date()
+  };
+  if (!DEMO) {
+    await FB.updateDoc(FB.doc(FB.db, 'papers', id), {
+      ...patch, reviewedAt: FB.serverTimestamp(), reviewedBy: FB.auth.currentUser.uid
+    });
+  }
+  Object.assign(p, patch);
+  note(decision === 'accepted'
+    ? `Marked ${p.name}'s ${paperTitle(p).toLowerCase()}`
+    : `Sent back ${p.name}'s ${paperTitle(p).toLowerCase()}`);
+  toast(decision === 'accepted' ? 'Marked' : 'Sent back to the student',
+        decision === 'accepted' ? 'ok' : 'bad');
+  renderPapers();
+  renderCounts();
+}
+
+function renderPapers() {
+  const want = $('#paperSeen')?.value ?? 'submitted';
+  const kind = $('#paperKind')?.value || '';
+  const list = PAPERS.filter(p =>
+    (!want || p.status === want) && (!kind || p.kind === kind));
+
+  const box = $('#paperList');
+  if (!list.length) {
+    box.innerHTML = `<div class="empty">
+      <b>${want === 'submitted' ? 'Nothing to mark' : 'Nothing here'}</b>
+      <p>${want === 'submitted'
+        ? 'Every paper has been marked or sent back.'
+        : 'Change the filters above to see more.'}</p></div>`;
+    return;
+  }
+
+  box.innerHTML = `<table class="table">
+    <thead><tr><th>Student no</th><th>Name</th><th>Paper</th><th>Sent</th><th></th></tr></thead>
+    <tbody>${list.map(p => `
+      <tr>
+        <td data-label="Student no">${snChip(p.studentNo)}</td>
+        <td data-label="Name"><div class="who"><b>${esc(p.name)}</b>
+          <small>${esc((studentOf(p.uid) || {}).school || '')}</small></div></td>
+        <td data-label="Paper">
+          ${esc(paperTitle(p))}
+          ${p.driveKind === 'folder'
+            ? '<br><small style="color:var(--warn)">a folder, not one file</small>' : ''}
+        </td>
+        <td data-label="Sent" class="num" style="color:var(--text-3)">${ago(p.at)}</td>
+        <td class="actions">
+          <a class="btn btn--sm" href="${esc(p.driveUrl)}" target="_blank" rel="noopener">Open</a>
+          ${p.status === 'submitted'
+            ? `<button class="btn btn--sm btn--ok" data-mark="${p.id}">Mark</button>`
+            : p.status === 'accepted'
+              ? `<span class="pill pill--ok">${esc(p.marks || 'Marked')}</span>`
+              : '<span class="pill pill--bad">Sent back</span>'}
+        </td>
+      </tr>`).join('')}</tbody></table>`;
+}
+
+function markSheet(id) {
+  const p = PAPERS.find(x => x.id === id);
+  if (!p) return;
+  openModal(`${paperTitle(p)} — ${p.name}`, `
+    <p class="hint" style="margin:0 0 16px">
+      Open the paper in the other tab, then put the marks in here. Sending it
+      back locks the next unit again until they redo it.</p>
+    <div class="form">
+      <label><span>Marks</span>
+        <input id="mkMarks" placeholder="72/100" value="${esc(p.marks || '')}"></label>
+      <label><span>What to tell them</span>
+        <textarea id="mkNote" placeholder="Good work. Look again at question 4.">${esc(p.feedback || '')}</textarea></label>
+    </div>
+  `, `
+    <button class="btn btn--bad" data-redo="${p.id}">Send back to redo</button>
+    <button class="btn btn--ok" data-accept="${p.id}">Save marks</button>
+    <button class="btn" data-close>Cancel</button>`);
+}
+
+/* ------------------------------------------------------------ sittings */
+
+function slotSheet() {
+  const upcoming = SLOTS
+    .slice()
+    .sort((a, b) => new Date(a.at) - new Date(b.at));
+
+  openModal('Term test sittings', `
+    <p class="hint" style="margin:0 0 16px">
+      Students can only pick a sitting that is more than a week away, because
+      the paper goes to them by post. Put them up early.</p>
+
+    <div class="form" style="background:#FBFAF7;border:1px solid var(--line-2);
+         border-radius:8px;padding:14px;margin-bottom:18px">
+      <div class="form__row">
+        <label><span>Term test</span>
+          <select id="slTerm">${TERMS.map(t =>
+            `<option value="${t.n}">${t.name} — units ${t.units.map(u => pad(u)).join(', ')}</option>`).join('')}</select></label>
+        <label><span>Paper</span>
+          <select id="slKind">
+            <option value="mcq">MCQ — 2 hours</option>
+            <option value="essay">Structured and essay — 3 hours</option>
+          </select></label>
+      </div>
+      <div class="form__row">
+        <label><span>Date and time</span><input id="slAt" type="datetime-local"></label>
+        <label><span>How many students</span><input id="slCap" type="number" value="30" min="1"></label>
+      </div>
+      <button class="btn btn--primary" data-add-slot="1" style="justify-self:start">Add this sitting</button>
+    </div>
+
+    ${upcoming.length ? `<table class="table" style="border:1px solid var(--line-2);border-radius:6px">
+      <thead><tr><th>When</th><th>Test</th><th>Paper</th><th>Booked</th><th></th></tr></thead>
+      <tbody>${upcoming.map(s => {
+        const d = new Date(s.at);
+        const past = d < new Date();
+        return `<tr style="${past ? 'opacity:.5' : ''}">
+          <td class="num">${d.toLocaleDateString('en', { day:'numeric', month:'short' })},
+            ${d.toLocaleTimeString('en', { hour:'numeric', minute:'2-digit' })}</td>
+          <td>T${s.term}</td>
+          <td>${esc(KINDS[s.kind] || s.kind)}</td>
+          <td class="num">${s.taken || 0} of ${s.capacity || 0}</td>
+          <td class="right"><button class="btn btn--sm btn--bad" data-del-slot="${s.id}">Remove</button></td>
+        </tr>`;
+      }).join('')}</tbody></table>`
+      : '<p style="color:var(--text-3);font-size:13px">No sittings yet.</p>'}
+  `, '<button class="btn" data-close>Done</button>', true);
+}
+
+async function addSlot() {
+  const at = $('#slAt').value;
+  if (!at) return toast('Pick a date and time', 'bad');
+  const rec = {
+    term: Number($('#slTerm').value), kind: $('#slKind').value,
+    at: new Date(at).toISOString(), capacity: Number($('#slCap').value || 30), taken: 0
+  };
+  if (!DEMO) {
+    const ref = await FB.addDoc(FB.collection(FB.db, 'slots'), rec);
+    rec.id = ref.id;
+  } else rec.id = 's' + Date.now();
+  SLOTS.push(rec);
+  toast('Sitting added');
+  slotSheet();
+}
+
+async function delSlot(id) {
+  if (!DEMO) await FB.deleteDoc(FB.doc(FB.db, 'slots', id));
+  SLOTS = SLOTS.filter(s => s.id !== id);
+  toast('Sitting removed', 'bad');
+  slotSheet();
+}
+
 /* ============================================================== rendering
    ====================================================================== */
 
@@ -504,6 +692,7 @@ function renderAll() {
   renderFree();
   renderLive();
   renderRecorded();
+  renderPapers();
 }
 
 /* ------------------------------------------------------------- counters */
@@ -523,6 +712,7 @@ function renderCounts() {
     }
   };
   put('#cReg', r); put('#cPay', p); put('#cFree', f);
+  put('#cPaper', pendingPapers().length);
 
   const q = (sel, n, card) => {
     const el = $(sel); if (el) el.textContent = n;
@@ -922,7 +1112,7 @@ function renderRecorded() {
 
   box.innerHTML = list.map(s => {
     const eps = DB.seasons[s.n] || {};
-    const done = Object.keys(eps).length;
+    const done = Object.values(eps).filter(x => epParts(x).v).length;
     const total = s.episodes.length;
     const ready = done === total;
     const openTo = DB.students.filter(st => (st.unlocked || []).map(Number).includes(s.n)).length;
@@ -1025,6 +1215,14 @@ function studentModal(id) {
   `);
 }
 
+/* A season's episodes may be stored either as a plain id string (the old
+   format) or as { v: id, m: minutes }. Read both, always write the new one. */
+function epParts(raw) {
+  if (typeof raw === 'string') return { v: raw, m: '' };
+  if (raw && typeof raw === 'object') return { v: raw.v || '', m: raw.m || '' };
+  return { v: '', m: '' };
+}
+
 function seasonEditor(n) {
   const s = SEASONS.find(x => x.n === n);
   const have = DB.seasons[n] || {};
@@ -1033,17 +1231,27 @@ function seasonEditor(n) {
       Paste the YouTube id only, not the whole address. In
       <code style="font-family:var(--f-mono)">youtu.be/dQw4w9WgXcQ</code> the id is
       <code style="font-family:var(--f-mono)">dQw4w9WgXcQ</code>.
+      The length is what students see in the list — leave it blank and the
+      suggested length is used.
     </p>
     <table class="table" style="border:1px solid var(--line-2);border-radius:6px">
-      <thead><tr><th style="width:46px">Ep</th><th>Title</th><th style="width:180px">YouTube id</th></tr></thead>
-      <tbody>${s.episodes.map(e => `<tr>
-        <td class="num" style="color:var(--accent)">${pad(e.n)}</td>
-        <td style="font-size:13px">${esc(e.title)}<br>
-          <small style="color:var(--text-3)">${e.mins} min</small></td>
-        <td><input data-vid="${e.n}" value="${esc(have[String(e.n)] || '')}"
-          placeholder="dQw4w9WgXcQ"
-          style="width:100%;border:1px solid var(--line);border-radius:5px;padding:6px 8px;font-family:var(--f-mono);font-size:12px"></td>
-      </tr>`).join('')}</tbody>
+      <thead><tr>
+        <th style="width:42px">Ep</th><th>Title</th>
+        <th style="width:158px">YouTube id</th>
+        <th style="width:78px">Minutes</th>
+      </tr></thead>
+      <tbody>${s.episodes.map(e => {
+        const { v, m } = epParts(have[String(e.n)]);
+        return `<tr>
+          <td class="num" style="color:var(--accent)">${pad(e.n)}</td>
+          <td style="font-size:13px">${esc(e.title)}</td>
+          <td><input data-vid="${e.n}" value="${esc(v)}" placeholder="dQw4w9WgXcQ"
+            style="width:100%;border:1px solid var(--line);border-radius:5px;padding:6px 8px;font-family:var(--f-mono);font-size:12px"></td>
+          <td><input data-min="${e.n}" type="number" min="1" max="600"
+            value="${esc(m)}" placeholder="${e.mins}"
+            style="width:100%;border:1px solid var(--line);border-radius:5px;padding:6px 8px;font-family:var(--f-mono);font-size:12px"></td>
+        </tr>`;
+      }).join('')}</tbody>
     </table>
   `, `<button class="btn" data-close>Cancel</button>
       <button class="btn btn--primary" data-save-season="${n}">Save season ${pad(n)}</button>`, true);
@@ -1082,6 +1290,7 @@ function switchView(v) {
     students: ['Students', ''],
     payments: ['Payment slips', 'check the slip, then open the month'],
     free: ['Free class requests', 'asked for by student number'],
+    papers: ['Answer papers', 'opens in the student\'s own Drive'],
     live: ['Live class', ''],
     recorded: ['Recorded library', '13 seasons']
   };
@@ -1096,7 +1305,8 @@ document.addEventListener('click', async (e) => {
     '[data-reject-pay],[data-reopen],[data-free-ok],[data-free-no],[data-season-edit],' +
     '[data-season-open],[data-save-season],[data-zoom],[data-close],[data-suspend],' +
     '[data-unsuspend],[data-give],[data-revoke],[data-toggle-season],[data-drop-slip],' +
-    '[data-manual-pay],[data-save-manual]');
+    '[data-manual-pay],[data-save-manual],[data-mark],[data-accept],[data-redo],' +
+    '[data-add-slot],[data-del-slot]');
   if (!t) return;
   const d = t.dataset;
 
@@ -1126,6 +1336,16 @@ document.addEventListener('click', async (e) => {
     return;
   }
 
+  if (d.mark)   return markSheet(d.mark);
+  if (d.accept) { closeModal(); return reviewPaper(d.accept, 'accepted', $('#mkNote')?.value, $('#mkMarks')?.value); }
+  if (d.redo)   {
+    const fb = $('#mkNote')?.value.trim();
+    if (!fb && !confirm('Send it back without telling them what to fix?')) return;
+    closeModal(); return reviewPaper(d.redo, 'redo', fb, null);
+  }
+  if ('addSlot' in d) return addSlot();
+  if (d.delSlot) return delSlot(d.delSlot);
+
   if (d.freeOk)   return reviewFree(d.freeOk, 'approved');
   if (d.freeNo)   return reviewFree(d.freeNo, 'declined');
 
@@ -1154,7 +1374,13 @@ document.addEventListener('click', async (e) => {
   if (d.seasonOpen) return seasonAudience(Number(d.seasonOpen));
   if (d.saveSeason) {
     const eps = {};
-    $$('[data-vid]').forEach(i => { const v = i.value.trim(); if (v) eps[i.dataset.vid] = v; });
+    $$('[data-vid]').forEach(i => {
+      const v = i.value.trim();
+      if (!v) return;
+      const mEl = $(`[data-min="${i.dataset.vid}"]`);
+      const m = mEl ? Number(mEl.value) : 0;
+      eps[i.dataset.vid] = m > 0 ? { v, m } : { v };
+    });
     await saveSeasonVideos(Number(d.saveSeason), eps);
     return closeModal();
   }
@@ -1195,6 +1421,9 @@ document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeModal
   $(s)?.addEventListener('input', renderStudents));
 ['#paySeen', '#payMonth', '#payKind'].forEach(s =>
   $(s)?.addEventListener('input', renderPayments));
+['#paperSeen', '#paperKind'].forEach(s =>
+  $(s)?.addEventListener('input', renderPapers));
+$('#slotBtn')?.addEventListener('click', slotSheet);
 ['#recSearch', '#recFilter'].forEach(s =>
   $(s)?.addEventListener('input', renderRecorded));
 

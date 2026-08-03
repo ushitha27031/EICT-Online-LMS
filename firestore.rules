@@ -85,8 +85,8 @@ service cloud.firestore {
                         && request.resource.data.diff(resource.data)
                              .affectedKeys()
                              .hasOnly(['name','whatsapp','school','address',
-                                       'photoURL','track','watched',
-                                       'lastSeenAt','updatedAt']));
+                                       'photoURL','track','watched','progress',
+                                       'theme','lastSeenAt','updatedAt']));
 
       allow delete: if isTeacher();
     }
@@ -162,6 +162,55 @@ service cloud.firestore {
                     && request.resource.data.status == 'pending';
 
       allow update, delete: if isTeacher();
+    }
+
+    /* -------------------------------------------------------------- papers */
+
+    // Answer papers. The file itself stays in the student's own Drive; this
+    // holds only the link and the marking. Document id is {uid}_{key}, which
+    // makes a second submission for the same paper overwrite the first rather
+    // than piling up.
+    match /papers/{id} {
+
+      allow read: if isTeacher()
+                  || (signedIn() && resource.data.uid == request.auth.uid);
+
+      // A student may send and resend their own paper, but never mark it.
+      // status, marks and feedback are sir's alone.
+      allow create: if isActiveStudent()
+                    && request.resource.data.uid == request.auth.uid
+                    && id == request.auth.uid + '_' + request.resource.data.key
+                    && request.resource.data.status == 'submitted'
+                    && request.resource.data.marks == null
+                    && request.resource.data.driveId is string
+                    && request.resource.data.driveId.size() < 200;
+
+      allow update: if isTeacher()
+                    || (signedIn() && resource.data.uid == request.auth.uid
+                        && request.resource.data.status == 'submitted'
+                        && request.resource.data.uid == request.auth.uid
+                        && request.resource.data.marks == null);
+
+      allow delete: if isTeacher();
+    }
+
+    /* --------------------------------------------------------------- slots */
+
+    // Term test sittings. Every student needs to see what is on offer, so
+    // read is open to the class; only sir creates them.
+    match /slots/{id} {
+      allow read:  if isTeacher() || isActiveStudent();
+      allow write: if isTeacher();
+    }
+
+    /* ------------------------------------------------------------ bookings */
+
+    match /bookings/{id} {
+      allow read:   if isTeacher() || (signedIn() && resource.data.uid == request.auth.uid);
+      allow create, update: if isActiveStudent()
+                    && request.resource.data.uid == request.auth.uid
+                    && id == request.auth.uid + '_term-' + string(request.resource.data.term);
+      allow delete: if isTeacher();
     }
 
     /* ------------------------------------------------------------- seasons */

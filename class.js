@@ -22,7 +22,7 @@
 /* Shown in the corner of the sign-in card so you can tell at a glance which
    version a student is actually running. If this does not match what you just
    uploaded, their browser is still on a cached copy. */
-const VERSION = '1.1.1';
+const VERSION = '1.3.0';
 
 const SESSION_MAX_MS = 24 * 60 * 60 * 1000;
 const STAMP_AT  = 'eict.sessionAt';
@@ -80,6 +80,35 @@ const ago = (ts) => {
   if (s < 86400) return `${Math.floor(s/3600)} hours ago`;
   return t.toLocaleDateString('en', { day:'numeric', month:'short' });
 };
+
+/* ---------------------------------------------------------------- theme */
+/* Saved on the device immediately so it survives a reload, and onto the
+   account when signed in so it follows them to a phone. */
+const THEME_KEY = 'eict.theme';
+
+function applyTheme(t) {
+  document.documentElement.dataset.theme = t === 'light' ? 'light' : 'dark';
+  localStorage.setItem(THEME_KEY, t);
+  const m = document.querySelector('meta[name=theme-color]');
+  if (m) m.content = t === 'light' ? '#F4F1E8' : '#070B1C';
+}
+
+function initTheme() {
+  const saved = localStorage.getItem(THEME_KEY);
+  const wants = saved || (window.matchMedia &&
+    window.matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark');
+  applyTheme(wants);
+}
+initTheme();
+
+function toggleTheme() {
+  const next = document.documentElement.dataset.theme === 'light' ? 'dark' : 'light';
+  applyTheme(next);
+  if (!DEMO && ME && P) {
+    P.theme = next;
+    FB.updateDoc(FB.doc(FB.db, 'students', ME.uid), { theme: next }).catch(() => {});
+  }
+}
 
 function toast(msg, kind = 'ok') {
   const el = document.createElement('div');
@@ -139,7 +168,18 @@ function shake(sel) {
 }
 
 const unlocked  = () => (P?.unlocked || []).map(Number);
-const isOpen    = (n) => unlocked().includes(Number(n));
+
+/* Paid for is not the same as open. A unit opens only when the paper for the
+   previous one is in, and any term test due in between. GATE is filled by
+   papers.js once it has loaded; before that, paid is the best we know. */
+let GATE = null;
+const isPaid    = (n) => unlocked().includes(Number(n));
+const isOpen    = (n) => {
+  if (!GATE) return isPaid(n);
+  const st = GATE.unitState(Number(n), unlocked(), PAPERS);
+  return st.open;
+};
+const blockOn   = (n) => GATE ? GATE.unitState(Number(n), unlocked(), PAPERS).blockedBy : null;
 const watched   = () => new Set(P?.watched || []);
 const hasMonth  = (m) => ACCESS.has(m);
 
@@ -171,6 +211,20 @@ function seedDemo() {
     at: new Date(Date.now() - 40 * 86400000)
   };
   ACCESS = new Set([thisMonth()]);
+  PAPERS = {
+    'unit-1': { key:'unit-1', kind:'unit', n:1, status:'accepted', marks:'72/100',
+                feedback:'Good work. Watch the units in question 4.',
+                driveId:'demo1', driveUrl:'#', at:new Date(Date.now()-9*86400000) }
+  };
+  SLOTS = [
+    { id:'s1', term:1, kind:'mcq',   at:new Date(Date.now()+10*86400000).toISOString(), capacity:30, taken:11 },
+    { id:'s2', term:1, kind:'essay', at:new Date(Date.now()+12*86400000).toISOString(), capacity:30, taken:4 },
+    { id:'s3', term:1, kind:'mcq',   at:new Date(Date.now()+3*86400000).toISOString(),  capacity:30, taken:2 }
+  ];
+  PROG = {
+    '1-1': { seen: '1'.repeat(240), furthest: 2400, dur: 2400, done: true },
+    '2-1': { seen: '1'.repeat(120) + '0'.repeat(60), furthest: 1500, dur: 2200, done: false }
+  };
   PAYMENTS = [
     { id:'d1', month:thisMonth(), amount:2000, status:'verified', purpose:'live',
       at:new Date(Date.now() - 6*86400000) },
@@ -374,6 +428,7 @@ function askFree() {
 /* ========================================================= recorded view */
 
 function renderRec() {
+  renderHero();
   renderSyllabus();
   renderResume();
   renderSeasons();
@@ -386,6 +441,44 @@ function seasonStats(s) {
   const W = watched();
   const done = s.episodes.filter(e => W.has(`${s.n}-${e.n}`)).length;
   return { done, total: s.episodes.length, pct: Math.round(done / s.episodes.length * 100) };
+}
+
+/* The ring, and the three numbers underneath it. Episodes and hours are what
+   a student actually feels; percentage alone is abstract. */
+function renderHero() {
+  const open = SEASONS.filter(s => isOpen(s.n));
+  const totalEps = open.reduce((a, s) => a + s.episodes.length, 0);
+  const doneEps  = open.reduce((a, s) => a + seasonStats(s).done, 0);
+  const units    = open.filter(s => seasonStats(s).pct === 100).length;
+
+  let secs = 0;
+  Object.values(PROG).forEach(p => { secs += Math.min(p.furthest || 0, p.dur || 0); });
+  const hrs = secs / 3600;
+
+  const pct = totalEps ? Math.round(doneEps / totalEps * 100) : 0;
+  const C = 289;                                   // 2 * pi * 46
+  const arc = $('#heroArc');
+  if (arc) arc.style.strokeDashoffset = String(C - (C * pct / 100));
+  $('#heroPct').textContent = pct + '%';
+  $('#statEps').textContent = doneEps;
+  $('#statHrs').textContent = hrs >= 10 ? Math.round(hrs) : hrs.toFixed(1);
+  $('#statUnits').textContent = units;
+
+  const first = (P.name || '').split(' ')[0] || 'there';
+  const t = $('#heroTitle'), say = $('#heroSay');
+  if (!open.length) {
+    t.textContent = 'Nothing open yet';
+    say.textContent = 'Send a slip for a unit and its episodes appear here.';
+  } else if (pct === 100) {
+    t.textContent = 'Every unit finished';
+    say.textContent = 'Go back over anything that felt shaky before the paper.';
+  } else if (doneEps === 0) {
+    t.textContent = `Ready when you are, ${first}`;
+    say.textContent = `${totalEps} episodes waiting across ${open.length} unit${open.length === 1 ? '' : 's'}.`;
+  } else {
+    t.textContent = `Keep going, ${first}`;
+    say.textContent = `${totalEps - doneEps} episode${totalEps - doneEps === 1 ? '' : 's'} left of the ${open.length} unit${open.length === 1 ? '' : 's'} open to you.`;
+  }
 }
 
 function renderSyllabus() {
@@ -415,18 +508,48 @@ function renderSyllabus() {
 
 /* ---- continue watching ---- */
 
+/* What to offer next. Walks forward from the last thing watched, but never
+   into a unit that is gated behind a paper — otherwise the button vanishes
+   the moment a paper falls due, which reads as the site being broken. */
 function lastWatched() {
   const list = P?.watched || [];
-  if (!list.length) return null;
+
+  // Anything part-watched in an open unit wins: they were mid-episode.
+  const partial = Object.entries(PROG)
+    .filter(([k, v]) => !v.done && v.furthest > 30 && v.dur)
+    .sort((a, b) => (b[1].furthest || 0) - (a[1].furthest || 0))[0];
+  if (partial) {
+    const [sn, en] = partial[0].split('-').map(Number);
+    const s = SEASONS.find(x => x.n === sn);
+    const e = s?.episodes.find(x => x.n === en);
+    if (s && e && isOpen(sn)) return { s, e, fresh: false, resume: true };
+  }
+
+  if (!list.length) {
+    // Nothing watched yet: offer the first episode of the first open unit.
+    const s = SEASONS.find(x => isOpen(x.n));
+    return s ? { s, e: s.episodes[0], fresh: true } : null;
+  }
+
   const key = list[list.length - 1];
   const [sn, en] = key.split('-').map(Number);
   const s = SEASONS.find(x => x.n === sn);
   if (!s) return null;
-  const next = s.episodes.find(e => e.n === en + 1);
-  if (next) return { s, e: next, fresh: true };
-  const nextSeason = SEASONS.find(x => x.n === sn + 1 && isOpen(x.n));
-  if (nextSeason) return { s: nextSeason, e: nextSeason.episodes[0], fresh: true };
-  return { s, e: s.episodes.find(e => e.n === en), fresh: false };
+
+  if (isOpen(sn)) {
+    const next = s.episodes.find(e => e.n === en + 1);
+    if (next) return { s, e: next, fresh: true };
+  }
+
+  // Finished that unit. Find the next open one with something left in it.
+  const onward = SEASONS.find(x => x.n > sn && isOpen(x.n) && seasonStats(x).done < x.episodes.length);
+  if (onward) {
+    const e = onward.episodes.find(ep => !watched().has(`${onward.n}-${ep.n}`)) || onward.episodes[0];
+    return { s: onward, e, fresh: true };
+  }
+
+  if (isOpen(sn)) return { s, e: s.episodes.find(e => e.n === en), fresh: false };
+  return null;
 }
 
 function renderResume() {
@@ -467,8 +590,9 @@ function renderSeasons() {
 
   $('#seasons').innerHTML = list.map(s => {
     const open = isOpen(s.n);
+    const waiting = !open && isPaid(s.n);
     const { done, total, pct } = seasonStats(s);
-    return `<button class="sn-card ${open ? '' : 'locked'} ${pct === 100 ? 'done' : ''} ${curSeason === s.n ? 'on' : ''}"
+    return `<button class="sn-card ${open ? '' : 'locked'} ${waiting ? 'waiting' : ''} ${pct === 100 ? 'done' : ''} ${curSeason === s.n ? 'on' : ''}"
       data-season="${s.n}">
       <span class="sn-card__n">${pad(s.n)}</span>
       <span class="sn-card__k">Unit</span>
@@ -476,7 +600,7 @@ function renderSeasons() {
       <span class="sn-card__f">
         <span>${total} episodes</span>
         <span style="color:${open ? 'var(--dim)' : 'var(--gold)'}">
-          ${open ? `${done}/${total}` : `Rs. ${FEE_SEASON.toLocaleString()}`}</span>
+          ${open ? `${done}/${total}` : waiting ? 'paper due' : `Rs. ${FEE_SEASON.toLocaleString()}`}</span>
       </span>
       ${open ? `<span class="sn-card__bar"><i style="width:${pct}%"></i></span>` : ''}
     </button>`;
@@ -496,6 +620,22 @@ function renderEps() {
   if (!s) return;
 
   if (!isOpen(s.n)) {
+    const b = blockOn(s.n);
+    if (b) {
+      // Paid for, but waiting on a paper. Say which one, and offer the way out.
+      const what = b.kind === 'term'
+        ? (GATE.TERMS.find(t => t.n === b.n) || {}).name
+        : `the unit ${pad(b.n)} paper`;
+      box.innerHTML = `<div class="shut">
+        <p class="eyebrow" style="justify-content:center">Unit ${pad(s.n)} · waiting</p>
+        <h3>${esc(s.title)}</h3>
+        <p>You have paid for this unit. It opens as soon as ${esc(what)} is in —
+           that is how the order is kept, so nothing is skipped.</p>
+        <button class="btn btn--gold" data-submit="${b.kind}-${b.n}">
+          Send ${b.kind === 'term' ? 'the term test paper' : 'that paper'}</button>
+      </div>`;
+      return;
+    }
     box.innerHTML = `<div class="shut">
       <p class="eyebrow" style="justify-content:center">Unit ${pad(s.n)} · locked</p>
       <h3>${esc(s.title)}</h3>
@@ -518,10 +658,17 @@ function renderEps() {
       <span class="mono" style="font-size:12px;color:var(--dimmer)">${done} of ${total} watched</span>
     </div>
     ${s.episodes.map(e => {
-      const dn = W.has(`${s.n}-${e.n}`);
-      return `<button class="ep ${dn ? 'done' : ''}" data-ep="${s.n}-${e.n}">
+      const k = `${s.n}-${e.n}`;
+      const dn = W.has(k);
+      const pr = PROG[k];
+      const pct = dn ? 100 : (pr && pr.dur ? Math.min(99, Math.round(pr.furthest / pr.dur * 100)) : 0);
+      return `<button class="ep ${dn ? 'done' : ''} ${pct && !dn ? 'part' : ''}" data-ep="${k}">
         <span class="ep__n">${pad(e.n)}</span>
-        <span class="ep__t"><b>${esc(e.title)}</b><small>${e.mins} min${dn ? ' · watched' : ''}</small></span>
+        <span class="ep__t">
+          <b>${esc(e.title)}</b>
+          <small>${e.mins} min${dn ? ' · watched' : pct ? ` · ${pct}% done` : ''}</small>
+          ${pct && !dn ? `<span class="ep__bar"><i style="width:${pct}%"></i></span>` : ''}
+        </span>
         <span class="ep__tick"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M20 6 9 17l-5-5"/></svg></span>
       </button>`;
     }).join('')}`;
@@ -529,31 +676,68 @@ function renderEps() {
 
 /* ---- player ---- */
 
+/* Progress for every episode this student has opened, keyed "3-2".
+   Loaded with the profile and written back as it changes. */
+let PROG = {};
+let W = null;              // the watch module, imported the first time it is needed
+let ytPlayer = null, stopTrack = null, saveTimer = null;
+
+const progOf = (k) => PROG[k] || (PROG[k] = { seen: '', furthest: 0, dur: 0, done: false });
+
+/* Writing on every tick would be thousands of writes a lesson, so changes are
+   held and flushed at most every fifteen seconds, plus once on closing. */
+function queueSave() {
+  clearTimeout(saveTimer);
+  saveTimer = setTimeout(flushProgress, 15000);
+}
+
+async function flushProgress() {
+  clearTimeout(saveTimer);
+  if (DEMO || !ME) return;
+  try {
+    await FB.updateDoc(FB.doc(FB.db, 'students', ME.uid), {
+      progress: PROG,
+      watched: Object.keys(PROG).filter(k => PROG[k].done)
+    });
+  } catch (err) {
+    console.warn('[class] progress not saved', err.code || err.message);
+  }
+}
+window.addEventListener('pagehide', flushProgress);
+
 async function openEpisode(sn, en) {
   const s = SEASONS.find(x => x.n === sn);
   const ep = s?.episodes.find(e => e.n === en);
   if (!s || !ep) return;
   curEp = [sn, en];
+  const key = `${sn}-${en}`;
 
   $('#plTitle').textContent = ep.title;
-  $('#plSub').textContent = `Unit ${pad(sn)} · episode ${pad(en)} · ${ep.mins} min`;
-  $('#stage').innerHTML = `<div class="spin"></div>`;
+  $('#plSub').textContent = `Unit ${pad(sn)} · episode ${pad(en)}`;
+  $('#stage').innerHTML = `<div class="stage__wait"><div class="spin"></div></div>`;
   $('#player').hidden = false;
   document.body.classList.add('locked');
+  paintProgress(progOf(key));
 
   // The video id is fetched only now, and the rules decide whether this
   // account may have it. A locked unit simply returns nothing.
-  let vid = null;
-  if (DEMO) {
-    vid = null;
-  } else {
+  let vid = null, mins = ep.mins;
+  if (!DEMO) {
     try {
       const d = await FB.getDoc(FB.doc(FB.db, 'seasons', `${BATCH}-${sn}`));
-      if (d.exists()) vid = (d.data().episodes || {})[String(en)] || null;
+      if (d.exists()) {
+        const raw = (d.data().episodes || {})[String(en)];
+        // Older seasons stored just the id as a string. Newer ones store
+        // { v: id, m: minutes } so sir can correct the length per episode.
+        if (typeof raw === 'string') vid = raw || null;
+        else if (raw && typeof raw === 'object') { vid = raw.v || null; mins = raw.m || mins; }
+      }
     } catch (err) {
       console.warn('[class] locked or unavailable:', err.code || err.message);
     }
   }
+
+  $('#plSub').textContent = `Unit ${pad(sn)} · episode ${pad(en)} · ${mins} min`;
 
   if (!vid) {
     $('#stage').innerHTML = `<div class="empty" style="padding:30px">
@@ -563,17 +747,42 @@ async function openEpisode(sn, en) {
     return;
   }
 
-  $('#stage').innerHTML =
-    `<iframe src="https://www.youtube-nocookie.com/embed/${encodeURIComponent(vid)}?rel=0&modestbranding=1&iv_load_policy=3&playsinline=1&autoplay=1"
-      title="${esc(ep.title)}" allow="autoplay; encrypted-media; picture-in-picture; fullscreen"
-      allowfullscreen></iframe><div class="mark" id="wm"></div>`;
+  try {
+    W = W || await import('./watch.js?v=' + VERSION);
+    const YT = await W.loadAPI();
+    startPlayer(YT, vid, key, ep);
+  } catch (err) {
+    console.warn('[class] player failed, falling back', err.message);
+    // Without the API there is no way to measure anything, so play it plainly
+    // and let them mark it by hand rather than blocking the lesson.
+    $('#stage').innerHTML =
+      `<iframe src="https://www.youtube-nocookie.com/embed/${encodeURIComponent(vid)}?rel=0&modestbranding=1&playsinline=1&autoplay=1"
+        title="${esc(ep.title)}" allow="autoplay; encrypted-media; picture-in-picture; fullscreen"
+        allowfullscreen></iframe>${markupWatermark()}`;
+    placeWatermark();
+    $('#plDone').disabled = false;
+    $('#plDone').textContent = 'Mark as watched';
+  }
 
-  // Name across the picture, moved every so often. Not unbreakable, but it
-  // makes a re-shared recording traceable.
+  if (!DEMO) {
+    FB.addDoc(FB.collection(FB.db, 'views'), {
+      uid: ME.uid, name: P.name || '', studentNo: P.studentNo || '',
+      ep: key, batch: BATCH, at: FB.serverTimestamp()
+    }).catch(() => {});
+  }
+}
+
+function markupWatermark() {
+  return `<div class="mark" id="wm"></div>`;
+}
+
+/* Name across the picture, moved every so often. Not unbreakable, but it
+   makes a re-shared recording traceable back to one account. */
+function placeWatermark() {
   const wm = $('#wm');
+  if (!wm) return;
   const tag = `${P.studentNo || ''} · ${P.name || ''}`;
   const place = () => {
-    if (!wm) return;
     wm.textContent = tag;
     wm.style.left = (6 + Math.random() * 56) + '%';
     wm.style.top  = (8 + Math.random() * 74) + '%';
@@ -581,36 +790,112 @@ async function openEpisode(sn, en) {
   place();
   clearInterval(markTimer);
   markTimer = setInterval(place, 18000);
+}
 
+function startPlayer(YT, vid, key, ep) {
+  const prog = progOf(key);
+  $('#stage').innerHTML = `<div id="ytbox"></div>${markupWatermark()}`;
+  placeWatermark();
   $('#stage').oncontextmenu = e => e.preventDefault();
 
-  if (!DEMO) {
-    FB.addDoc(FB.collection(FB.db, 'views'), {
-      uid: ME.uid, name: P.name || '', studentNo: P.studentNo || '',
-      ep: `${sn}-${en}`, batch: BATCH, at: FB.serverTimestamp()
-    }).catch(() => {});
-  }
+  ytPlayer = new YT.Player('ytbox', {
+    videoId: vid,
+    playerVars: {
+      rel: 0, modestbranding: 1, iv_load_policy: 3, playsinline: 1,
+      autoplay: 1, cc_load_policy: 0
+    },
+    events: {
+      onReady: (e) => {
+        // Pick up where they stopped, but not so close to the end that they
+        // land past the finish line.
+        const d = e.target.getDuration();
+        if (prog.furthest > 30 && prog.furthest < d - 20) {
+          e.target.seekTo(prog.furthest, true);
+          toast(`Carrying on from ${fmtClock(prog.furthest)}`);
+        }
+        e.target.playVideo();
+
+        stopTrack && stopTrack();
+        stopTrack = W.track(e.target, prog, (p, a) => {
+          paintProgress(p);
+          if (a.done && !p.savedDone) {
+            p.savedDone = true;
+            episodeFinished(key);
+          } else queueSave();
+        });
+      },
+      onStateChange: (e) => {
+        if (e.data === YT.PlayerState.ENDED) { flushProgress(); paintProgress(prog); }
+      }
+    }
+  });
+}
+
+const fmtClock = (sec) => {
+  const m = Math.floor(sec / 60), s = Math.floor(sec % 60);
+  return `${m}:${String(s).padStart(2, '0')}`;
+};
+
+/* The bar under the video. Two layers on purpose: the pale one is how far
+   they have reached, the solid one is how much was really watched. Seeing
+   them apart is what makes the rule obvious without explaining it. */
+function paintProgress(p) {
+  if (!W) { $('#plMeter').hidden = true; return; }
+  const a = W.assess(p);
+  $('#plMeter').hidden = false;
+  $('#plReach').style.width = a.pct + '%';
+  $('#plSeen').style.width = Math.min(a.pct, a.coveredPct) + '%';
+
+  const r = W.why(p);
+  $('#plState').textContent = r.text;
+  $('#plState').dataset.ok = r.ok ? '1' : '0';
+
+  const btn = $('#plDone');
+  btn.disabled = !r.ok;
+  btn.textContent = r.ok ? 'Finished — close' : 'Keep watching';
+}
+
+/* Shown the moment the tracker decides an episode is genuinely done. It is
+   deliberately brief and does not block: they are mid-lesson. */
+function celebrateEpisode(sn, en) {
+  const s = SEASONS.find(x => x.n === sn);
+  const st = s ? seasonStats(s) : null;
+  const whole = st && st.done === st.total;
+
+  const el = document.createElement('div');
+  el.className = 'pop-done';
+  el.innerHTML = whole
+    ? `<b>Unit ${pad(sn)} complete</b><span>All ${st.total} episodes watched</span>`
+    : `<b>Episode ${pad(en)} done</b><span>${st ? st.total - st.done : 0} left in this unit</span>`;
+  document.body.append(el);
+  setTimeout(() => el.remove(), 2200);
+}
+
+async function episodeFinished(key) {
+  const [sn, en] = key.split('-').map(Number);
+  if (!(P.watched || []).includes(key)) P.watched = [...(P.watched || []), key];
+  await flushProgress();
+  renderRec();
+  celebrateEpisode(sn, en);
 }
 
 function closePlayer() {
+  stopTrack && stopTrack(); stopTrack = null;
+  try { ytPlayer && ytPlayer.destroy(); } catch (_) {}
+  ytPlayer = null;
+  flushProgress();
   $('#player').hidden = true;
   $('#stage').innerHTML = '';
   clearInterval(markTimer);
   document.body.classList.remove('locked');
+  renderRec();
 }
 
-async function markWatched() {
-  if (!curEp) return;
-  const key = curEp.join('-');
-  if ((P.watched || []).includes(key)) { closePlayer(); return; }
-  P.watched = [...(P.watched || []), key];
-  if (!DEMO) {
-    try { await FB.updateDoc(FB.doc(FB.db, 'students', ME.uid), { watched: FB.arrayUnion(key) }); }
-    catch (_) {}
-  }
-  renderRec();
+/* The button only closes now. Completion is decided by the tracker, never by
+   pressing a button, which is the whole point. */
+function doneButton() {
+  if (!curEp) return closePlayer();
   closePlayer();
-  toast('Marked as watched');
 }
 
 function stepEpisode(dir) {
@@ -626,6 +911,386 @@ function stepEpisode(dir) {
     return openEpisode(other.n, e.n);
   }
   toast(dir > 0 ? 'That was the last one open to you' : 'This is the first episode');
+}
+
+
+/* ========================================================== papers view
+   Season papers come with the tute in the post. Term tests are booked ahead,
+   because the paper has to reach the house first.
+   ====================================================================== */
+
+let PAPERS = {};        // "unit-3" / "term-1" -> submission
+let SLOTS  = [];        // sittings offered by sir
+let BOOKINGS = {};      // "term-1" -> booking
+let PP = null;          // papers.js, loaded on first use
+
+async function papersLib() {
+  PP = PP || await import('./papers.js?v=' + VERSION);
+  return PP;
+}
+
+async function loadPapers(uid) {
+  const [subs, slots, books] = await Promise.all([
+    FB.getDocs(FB.query(FB.collection(FB.db, 'papers'), FB.where('uid', '==', uid))),
+    FB.getDocs(FB.collection(FB.db, 'slots')).catch(() => null),
+    FB.getDocs(FB.query(FB.collection(FB.db, 'bookings'), FB.where('uid', '==', uid))).catch(() => null)
+  ]);
+  PAPERS = {}; subs.forEach(d => { const v = d.data(); PAPERS[v.key] = { id: d.id, ...v }; });
+  SLOTS = []; slots && slots.forEach(d => SLOTS.push({ id: d.id, ...d.data() }));
+  BOOKINGS = {}; books && books.forEach(d => { const v = d.data(); BOOKINGS[`term-${v.term}`] = { id: d.id, ...v }; });
+}
+
+async function renderPapers() {
+  const L = await papersLib();
+  const paid = unlocked().sort((a, b) => a - b);
+  const box = $('#papersBody');
+
+  if (!paid.length) {
+    box.innerHTML = `<div class="card"><div class="empty">
+      <b>No papers yet</b>
+      <p>Papers arrive with the tutes once a unit is open. Send a slip for a
+      unit and it starts here.</p></div></div>`;
+    return;
+  }
+
+  const terms = L.visibleTerms(paid, PAPERS);
+  const dueUnits = paid.filter(u => !L.isIn(PAPERS, 'unit', u));
+  $('#paperDot').hidden = !dueUnits.length && !terms.some(t => t.ready && !t.done && t.blocking);
+
+  box.innerHTML = `
+    <div class="card">
+      <div class="card__h">
+        <div>
+          <h2>Unit papers</h2>
+          <p>Each unit's paper comes with its tute. Do it on paper, photograph
+             or scan it, put it in your Drive, and give the link here. The next
+             unit opens once it is in.</p>
+        </div>
+      </div>
+      ${paid.map(u => unitPaperRow(L, u)).join('')}
+    </div>
+
+    ${terms.length ? `
+      <div class="card">
+        <div class="card__h">
+          <div>
+            <h2>Term tests</h2>
+            <p>Six through the syllabus. Book a sitting at least a week ahead —
+               the paper is posted to you.</p>
+          </div>
+        </div>
+        ${terms.map(t => termRow(L, t)).join('')}
+      </div>` : ''}`;
+}
+
+function paperStatusTag(p) {
+  if (!p) return '<span class="tag tag--off">Not sent</span>';
+  if (p.status === 'redo')     return '<span class="tag tag--bad">Do it again</span>';
+  if (p.status === 'accepted') return `<span class="tag tag--live">Marked${p.marks != null ? ` · ${p.marks}` : ''}</span>`;
+  return '<span class="tag tag--gold">With sir</span>';
+}
+
+function unitPaperRow(L, u) {
+  const s = SEASONS.find(x => x.n === u);
+  const p = PAPERS[`unit-${u}`];
+  const st = L.unitState(u, unlocked(), PAPERS);
+  return `
+    <div class="paper-row">
+      <div class="paper-row__n">${pad(u)}</div>
+      <div class="paper-row__t">
+        <b>${esc(s ? s.title : 'Unit ' + pad(u))}</b>
+        <small>${p ? `Sent ${ago(p.at)}` : 'Comes with the tute for this unit'}</small>
+        ${p && p.status === 'redo' && p.feedback
+          ? `<span class="paper-row__note">${esc(p.feedback)}</span>` : ''}
+        ${p && p.status === 'accepted' && p.feedback
+          ? `<span class="paper-row__ok">${esc(p.feedback)}</span>` : ''}
+      </div>
+      ${paperStatusTag(p)}
+      <button class="btn btn--sm ${p && p.status !== 'redo' ? '' : 'btn--gold'}"
+        data-submit="unit-${u}">${p && p.status !== 'redo' ? 'Change' : 'Send paper'}</button>
+    </div>`;
+}
+
+function termRow(L, t) {
+  const p = t.paper;
+  const b = BOOKINGS[`term-${t.n}`];
+  const locked = !t.ready;
+
+  return `
+    <div class="paper-row ${locked ? 'is-locked' : ''}">
+      <div class="paper-row__n">T${t.n}</div>
+      <div class="paper-row__t">
+        <b>${esc(t.name)}${t.blocking ? '' : ' <span class="tag tag--off" style="font-size:10.5px">optional</span>'}</b>
+        <small>Units ${t.units.map(u => pad(u)).join(', ')}${
+          locked ? ' · finish those unit papers first' : ''}</small>
+        ${b ? `<span class="paper-row__ok">Sitting ${esc(fmtSlot(b))}</span>` : ''}
+      </div>
+      ${paperStatusTag(p)}
+      ${locked ? ''
+        : !b ? `<button class="btn btn--sm btn--gold" data-book="${t.n}">Choose a time</button>`
+        : `<button class="btn btn--sm ${p && p.status !== 'redo' ? '' : 'btn--gold'}"
+             data-submit="term-${t.n}">${p && p.status !== 'redo' ? 'Change' : 'Send paper'}</button>`}
+    </div>`;
+}
+
+const fmtSlot = (b) => {
+  const d = new Date(b.at);
+  return `${d.toLocaleDateString('en', { weekday: 'short', day: 'numeric', month: 'short' })}, ${
+    d.toLocaleTimeString('en', { hour: 'numeric', minute: '2-digit' })} · ${b.kindLabel || ''}`;
+};
+
+/* ------------------------------------------------------- booking a slot */
+
+async function bookSheet(termN) {
+  const L = await papersLib();
+  const t = L.TERMS.find(x => x.n === termN);
+  const free = L.bookableSlots(SLOTS.filter(s => Number(s.term) === termN));
+
+  if (!free.length) {
+    sheet(`<h3>${esc(t.name)}</h3>
+      <p style="color:var(--dim);margin:0 0 18px">
+        No sittings are open yet. Sir puts them up at least a week before, so
+        the paper has time to reach you. Check back in a few days.</p>
+      <button class="btn btn--wide" data-close-sheet>Close</button>`);
+    return;
+  }
+
+  sheet(`
+    <h3>${esc(t.name)} — choose a time</h3>
+    <p style="color:var(--dim);margin:0 0 4px">
+      Units ${t.units.map(u => pad(u)).join(', ')}.</p>
+    <p style="color:var(--dim);margin:0 0 18px;font-size:13px">
+      Everything here is at least a week away, because the paper goes to your
+      house by post.</p>
+    <div class="slots">
+      ${free.map(s => {
+        const d = new Date(s.at);
+        const k = L.PAPER_KINDS[s.kind] || { label: s.kind, mins: 0 };
+        return `<button class="slot" data-slot="${s.id}" data-term="${termN}">
+          <span class="slot__day">
+            <b>${d.toLocaleDateString('en', { day: 'numeric' })}</b>
+            <small>${d.toLocaleDateString('en', { month: 'short' })}</small>
+          </span>
+          <span class="slot__t">
+            <b>${d.toLocaleDateString('en', { weekday: 'long' })}, ${
+              d.toLocaleTimeString('en', { hour: 'numeric', minute: '2-digit' })}</b>
+            <small>${esc(k.label)} · ${Math.round(k.mins / 60)} hours</small>
+          </span>
+          <span class="slot__left">${Math.max(0, (s.capacity || 0) - (s.taken || 0))} left</span>
+        </button>`;
+      }).join('')}
+    </div>
+    <button class="btn btn--ghost btn--wide" data-close-sheet style="margin-top:14px">Not now</button>`);
+}
+
+async function bookSlot(slotId, termN) {
+  const L = await papersLib();
+  const slot = SLOTS.find(s => s.id === slotId);
+  if (!slot) return;
+  const k = L.PAPER_KINDS[slot.kind] || { label: slot.kind };
+
+  try {
+    if (!DEMO) {
+      await FB.setDoc(FB.doc(FB.db, 'bookings', `${ME.uid}_term-${termN}`), {
+        uid: ME.uid, studentNo: P.studentNo || null, name: P.name || '',
+        term: termN, slotId, at: slot.at, kind: slot.kind,
+        address: P.address || '', bookedAt: FB.serverTimestamp()
+      });
+    }
+    BOOKINGS[`term-${termN}`] = { term: termN, slotId, at: slot.at, kind: slot.kind, kindLabel: k.label };
+    closeSheet();
+    postingSheet(slot, k, termN);
+    renderPapers();
+  } catch (err) {
+    toast(err.code === 'permission-denied'
+      ? 'That sitting could not be booked. Refresh and try again.'
+      : 'Could not book. Check your connection.', 'bad');
+  }
+}
+
+/* The paper is now in the post, so say so with the parcel on its way. */
+function postingSheet(slot, k, termN) {
+  const d = new Date(slot.at);
+  sheet(`
+    <div style="text-align:center">
+      <h3 style="margin-bottom:4px">Booked</h3>
+      <p style="color:var(--dim);margin:0 0 16px">
+        ${esc(d.toLocaleDateString('en', { weekday: 'long', day: 'numeric', month: 'long' }))},
+        ${esc(d.toLocaleTimeString('en', { hour: 'numeric', minute: '2-digit' }))}<br>
+        ${esc(k.label)} · ${Math.round(k.mins / 60)} hours</p>
+      ${courierNote('Your paper is being posted',
+        `The sealed paper for term test ${termN} goes out by courier to
+         ${P.address ? P.address : 'your address'}. Open it only at the time
+         you booked, and start the clock yourself.`)}
+      <button class="btn btn--gold btn--wide" data-close-sheet>Got it</button>
+    </div>`);
+}
+
+
+/* ------------------------------------------------- submitting a paper --
+   The link is checked before it can be sent. The student sees the very
+   preview sir will see; if it does not appear, the file is still private and
+   the button stays off. This is what stops "I submitted it" / "I can't open
+   it" arguments, which were most of the trouble on the old site.
+   ---------------------------------------------------------------------- */
+
+let checkSeq = 0;
+
+async function submitSheet(key) {
+  const L = await papersLib();
+  const isTerm = key.startsWith('term-');
+  const n = Number(key.split('-')[1]);
+  const title = isTerm
+    ? (L.TERMS.find(t => t.n === n) || {}).name
+    : `Unit ${pad(n)} paper`;
+  const existing = PAPERS[key];
+
+  sheet(`
+    <h3>${esc(title)}</h3>
+    <p style="color:var(--dim);margin:0 0 16px">
+      Photograph or scan every page, put them in your Google Drive, and paste
+      the link. One file is best — a PDF, or a document with all the pages.</p>
+
+    <details class="how">
+      <summary>How to share it so sir can open it</summary>
+      <ol>
+        <li>Open the file in Google Drive.</li>
+        <li>Press <b>Share</b>, then <b>Change to anyone with the link</b>.</li>
+        <li>Leave it on <b>Viewer</b>. Press <b>Copy link</b>.</li>
+        <li>Paste it below. The check runs by itself.</li>
+      </ol>
+      <p>If you skip step 2 sir sees "You need access" and the paper does not
+         count, even though you sent it.</p>
+    </details>
+
+    <div class="f" style="margin-top:16px">
+      <label><span>Drive link</span>
+        <input id="dLink" placeholder="https://drive.google.com/file/d/..."
+          value="${esc(existing ? existing.driveUrl : '')}"></label>
+    </div>
+
+    <div class="check" id="dCheck" data-state="idle">
+      <div class="check__row">
+        <span class="check__icon" id="dIcon"></span>
+        <span class="check__msg" id="dMsg">Paste the link and it is checked here</span>
+      </div>
+      <div class="check__preview" id="dPrev" hidden>
+        <img id="dImg" alt="The first page, as sir will see it">
+        <small>This is what sir sees. If it looks right, send it.</small>
+      </div>
+    </div>
+
+    <button class="btn btn--gold btn--wide" id="dSend" disabled style="margin-top:14px">
+      Send to sir</button>
+    <button class="btn btn--ghost btn--wide" data-close-sheet style="margin-top:8px">Cancel</button>
+  `);
+
+  const input = $('#dLink');
+  let found = null;
+
+  const paint = (state, msg) => {
+    $('#dCheck').dataset.state = state;
+    $('#dMsg').innerHTML = msg;
+    $('#dSend').disabled = state !== 'ok' && state !== 'warn';
+  };
+
+  const run = async () => {
+    const seq = ++checkSeq;
+    const raw = input.value.trim();
+    found = null;
+    $('#dPrev').hidden = true;
+
+    if (!raw) return paint('idle', 'Paste the link and it is checked here');
+
+    const parsed = L.parseDrive(raw);
+    if (!parsed.ok) return paint('bad', esc(parsed.why));
+
+    if (parsed.kind === 'folder') {
+      found = parsed;
+      return paint('warn',
+        'That is a folder. It will work, but a single file is much easier to ' +
+        'mark — and folders are where papers get lost. Make sure the folder ' +
+        'itself is shared with anyone who has the link.');
+    }
+
+    paint('busy', 'Checking whether sir can open it…');
+    const res = await L.checkAccess(parsed.id, parsed.kind);
+    if (seq !== checkSeq) return;                 // they typed again meanwhile
+
+    if (!res.open) {
+      return paint('bad',
+        'Sir cannot open this yet. In Drive press <b>Share</b> → ' +
+        '<b>Change to anyone with the link</b>, then paste it again.');
+    }
+
+    found = parsed;
+    $('#dImg').src = res.thumb;
+    $('#dPrev').hidden = false;
+    paint('ok', 'Sir can open this. Have a look at the preview, then send.');
+  };
+
+  let t = null;
+  input.addEventListener('input', () => { clearTimeout(t); t = setTimeout(run, 550); });
+  if (input.value.trim()) run();
+
+  $('#dSend').onclick = async () => {
+    if (!found) return;
+
+    // The same file sent for two different papers is nearly always a paste
+    // mistake, and it used to be invisible to everyone.
+    const clash = Object.entries(PAPERS)
+      .find(([k, v]) => k !== key && v.driveId === found.id);
+    if (clash && !confirm(
+      `That is the same file you sent for ${clash[0].startsWith('term')
+        ? 'a term test' : 'unit ' + pad(Number(clash[0].split('-')[1]))}. Send it anyway?`))
+      return;
+
+    busy('#dSend', true, 'Sending…');
+    const rec = {
+      uid: ME.uid, studentNo: P.studentNo || null, name: P.name || '',
+      batch: P.batch || BATCH, key,
+      kind: isTerm ? 'term' : 'unit', n,
+      driveId: found.id, driveKind: found.kind,
+      driveUrl: L.viewUrl(found.id, found.kind),
+      status: 'submitted', feedback: '', marks: null
+    };
+
+    try {
+      if (!DEMO) {
+        await FB.setDoc(FB.doc(FB.db, 'papers', `${ME.uid}_${key}`),
+          { ...rec, at: FB.serverTimestamp() });
+      }
+      PAPERS[key] = { ...rec, at: new Date() };
+      closeSheet();
+      sentSheet(title, isTerm, n);
+      renderPapers();
+      renderRec();
+    } catch (err) {
+      busy('#dSend', false);
+      toast(err.code === 'permission-denied'
+        ? 'That could not be sent. Refresh the page and try again.'
+        : 'Could not send. Check your connection.', 'bad');
+    }
+  };
+}
+
+function sentSheet(title, isTerm, n) {
+  const next = isTerm ? null : SEASONS.find(x => x.n === n + 1);
+  const opensNext = next && isOpen(next.n);
+  sheet(`
+    <div style="text-align:center">
+      <div class="tick-ring">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3">
+          <path d="M20 6 9 17l-5-5"/></svg>
+      </div>
+      <h3>Paper sent</h3>
+      <p style="color:var(--dim);margin:0 0 6px">${esc(title)} is with sir.</p>
+      <p style="color:var(--dim);margin:0 0 20px">
+        ${opensNext
+          ? `Unit ${pad(next.n)} is open for you now.`
+          : 'He will mark it and write back here.'}</p>
+      <button class="btn btn--gold btn--wide" data-close-sheet>Done</button>
+    </div>`);
 }
 
 /* ========================================================= payments view */
@@ -822,17 +1487,18 @@ function paintTop() {
 }
 
 function switchTab(t) {
-  ['live','rec','pay','me'].forEach(k => { $('#v-' + k).hidden = k !== t; });
+  ['live','rec','papers','pay','me'].forEach(k => { $('#v-' + k).hidden = k !== t; });
   $$('.tab').forEach(b => b.classList.toggle('on', b.dataset.tab === t));
   if (t === 'me') renderMe();
   if (t === 'rec') renderRec();
+  if (t === 'papers') renderPapers();
   window.scrollTo({ top: 0 });
 }
 
 /* --------------------------------------------------------------- events */
 
 document.addEventListener('click', (e) => {
-  const t = e.target.closest('[data-tab],[data-season],[data-ep],[data-jump],[data-go-pay],[data-close-sheet],[data-filter]');
+  const t = e.target.closest('[data-tab],[data-season],[data-ep],[data-jump],[data-go-pay],[data-close-sheet],[data-filter],[data-submit],[data-book],[data-slot]');
   if (!t) return;
   const d = t.dataset;
 
@@ -853,6 +1519,9 @@ document.addEventListener('click', (e) => {
   }
 
   if (d.ep) return openEpisode(...d.ep.split('-').map(Number));
+  if (d.submit) { closeSheet(); return submitSheet(d.submit); }
+  if (d.book) return bookSheet(Number(d.book));
+  if (d.slot) return bookSlot(d.slot, Number(d.term));
 
   if (d.goPay) {
     switchTab('pay');
@@ -872,7 +1541,7 @@ $('#viewMode').addEventListener('click', () => {
   renderSeasons();
 });
 $('#plClose').addEventListener('click', closePlayer);
-$('#plDone').addEventListener('click', markWatched);
+$('#plDone').addEventListener('click', doneButton);
 $('#plNext').addEventListener('click', () => stepEpisode(1));
 $('#plPrev').addEventListener('click', () => stepEpisode(-1));
 $('#sheet').addEventListener('click', e => { if (e.target.id === 'sheet') closeSheet(); });
@@ -886,6 +1555,7 @@ $('#pFor').addEventListener('change', syncPayForm);
 $('#pFile').addEventListener('change', e => pickSlip(e.target.files[0]));
 $('#pSend').addEventListener('click', sendSlip);
 $('#meSave').addEventListener('click', saveMe);
+$('#themeBtn')?.addEventListener('click', toggleTheme);
 $('#outBtn').addEventListener('click', () => signOutNow());
 $('#acOut').addEventListener('click', () => signOutNow());
 $('#holdOut').addEventListener('click', () => signOutNow());
@@ -1143,6 +1813,8 @@ async function loadMine(uid) {
     FB.getDoc(FB.doc(FB.db, 'settings', 'public')).catch(() => null)
   ]);
 
+  GATE = await papersLib();
+  await loadPapers(uid);
   ACCESS = new Set(); acc.forEach(d => ACCESS.add(d.data().month));
   PAYMENTS = []; pay.forEach(d => PAYMENTS.push({ id: d.id, ...d.data() }));
   PAYMENTS.sort((a, b) => (b.at?.seconds || 0) - (a.at?.seconds || 0));
@@ -1164,12 +1836,29 @@ async function loadMine(uid) {
 let splashFrom = Date.now();
 function dropSplash() {
   const el = $('#splash');
-  if (!el || el.classList.contains('gone')) return;
-  const wait = Math.max(0, 550 - (Date.now() - splashFrom));
+  if (!el || el.classList.contains('open')) return;
+  const wait = Math.max(0, 900 - (Date.now() - splashFrom));
   setTimeout(() => {
-    el.classList.add('gone');
-    setTimeout(() => el.remove(), 600);
+    el.classList.add('open');                 // the doors part
+    setTimeout(() => el.remove(), 950);
   }, wait);
+}
+
+/* Shown once per sign-in, not on every reload — a greeting that appears
+   every time you glance at the site stops being a greeting. */
+function welcomeCard() {
+  if (sessionStorage.getItem('eict.greeted')) return;
+  sessionStorage.setItem('eict.greeted', '1');
+  const w = $('#welcome');
+  if (!w) return;
+  $('#wcName').textContent = (P.name || 'Student').split(' ')[0];
+  $('#wcNo').textContent = P.studentNo || '—';
+  w.hidden = false;
+  setTimeout(() => {
+    w.style.transition = 'opacity .4s';
+    w.style.opacity = '0';
+    setTimeout(() => { w.hidden = true; w.style.opacity = ''; }, 420);
+  }, 1900);
 }
 
 /* Remember what was open last time, so that when something new is approved
@@ -1197,26 +1886,97 @@ function announceNew() {
       : `${newUnits.length} units of recordings`);
 
   setTimeout(() => {
-    sheet(`
-      <div style="text-align:center">
-        <div class="tick-ring">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3">
-            <path d="M20 6 9 17l-5-5"/></svg>
-        </div>
-        <h3>Approved</h3>
-        <p style="color:var(--dim);margin:0 0 20px">
-          Sir has opened ${esc(lines.join(', and '))} for you. It is ready now.</p>
-        <button class="btn btn--gold btn--wide" data-close-sheet>Open it</button>
-      </div>`);
+    if (newUnits.length) unitOpenedSheet(newUnits, newMonths);
+    else monthOpenedSheet(newMonths);
 
-    // make the thing that changed pulse once the sheet is out of the way
     setTimeout(() => {
       newUnits.forEach(u => {
         const card = $(`.sn-card[data-season="${u}"]`);
         if (card) card.classList.add('just-opened');
       });
     }, 400);
-  }, 700);
+  }, 800);
+}
+
+/* A seal giving way, not a tick. The unit number is behind a card that flips
+   as the padlock springs and drops. Tutes are mentioned here because that is
+   the moment a recordings student is wondering what else they paid for. */
+function unitOpenedSheet(units, months) {
+  const first = units[0];
+  const s = SEASONS.find(x => x.n === first);
+  const sparks = Array.from({ length: 8 }, (_, i) => {
+    const a = (i / 8) * Math.PI * 2;
+    return `<i class="unlock__spark" style="--dx:${Math.round(Math.cos(a) * 78)}px;--dy:${Math.round(Math.sin(a) * 78)}px;animation-delay:${.4 + i * .015}s"></i>`;
+  }).join('');
+
+  sheet(`
+    <div style="text-align:center">
+      <div class="unlock">
+        ${sparks}
+        <svg class="unlock__lock" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <rect x="4" y="10" width="16" height="11" rx="2"/><path d="M8 10V7a4 4 0 0 1 7.5-2"/></svg>
+        <div class="unlock__card">
+          <div class="unlock__face unlock__front">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="width:34px;height:34px">
+              <rect x="4" y="10" width="16" height="11" rx="2"/><path d="M8 10V6a4 4 0 0 1 8 0v4"/></svg>
+          </div>
+          <div class="unlock__face unlock__back">${pad(first)}</div>
+        </div>
+      </div>
+
+      <h3>Unit ${pad(first)} is open</h3>
+      <p style="color:var(--dim);margin:0 0 4px">${esc(s ? s.title : '')}</p>
+      <p style="color:var(--dim);margin:0 0 18px">
+        ${units.length > 1 ? `And ${units.length - 1} more unit${units.length > 2 ? 's' : ''}. ` : ''}
+        ${s ? s.episodes.length : ''} episodes, ready to watch now.</p>
+
+      ${courierNote()}
+
+      ${months.length ? `<p style="color:var(--dim);font-size:13px;margin:0 0 16px">
+        The ${esc(monthName(months[0]))} live class is open too.</p>` : ''}
+
+      <button class="btn btn--gold btn--wide" data-close-sheet>Start watching</button>
+    </div>`);
+}
+
+function monthOpenedSheet(months) {
+  sheet(`
+    <div style="text-align:center">
+      <div class="tick-ring">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3">
+          <path d="M20 6 9 17l-5-5"/></svg>
+      </div>
+      <h3>You are in</h3>
+      <p style="color:var(--dim);margin:0 0 20px">
+        Sir has opened the ${esc(monthName(months[0]))} live class for you.
+        The join link is on the Live class tab.</p>
+      <button class="btn btn--gold btn--wide" data-close-sheet>Open it</button>
+    </div>`);
+}
+
+/* Recordings students are paying partly for printed tutes, so say so at the
+   moment the payment is approved rather than leaving them to wonder. */
+function courierNote(title, body) {
+  return `
+    <div style="background:var(--sunk);border:1px dashed var(--wire-2);border-radius:var(--r);padding:4px 14px 14px;margin:0 0 18px">
+      <div class="courier">
+        <div class="courier__road"></div>
+        <i class="courier__puff" style="left:22%"></i>
+        <i class="courier__puff" style="left:38%;animation-delay:.5s"></i>
+        <i class="courier__puff" style="left:56%;animation-delay:1s"></i>
+        <svg class="courier__box" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7">
+          <path d="M3 8h18v11a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V8Z"/>
+          <path d="M2 4h20v4H2zM12 4v16"/></svg>
+        <svg class="courier__home" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7">
+          <path d="m3 10 9-7 9 7v10a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1V10Z"/></svg>
+      </div>
+      <b style="display:block;font-family:var(--d);font-size:14.5px;margin-bottom:3px">
+        ${esc(title || 'Your tutes are on the way')}</b>
+      <small style="color:var(--dim);font-size:12.5px;line-height:1.5;display:block">
+        ${body ? esc(body) : `Printed tutes, past papers and this unit's paper go out by
+        courier to ${P.address ? P.address : 'your address'}. Usually 3–5 days.`}
+        ${P.address ? '' : ' Add your address under My details so sir knows where to send them.'}</small>
+    </div>`;
 }
 
 function enter() {
@@ -1231,6 +1991,7 @@ function enter() {
   renderLive();
   renderRec();
   renderPayHistory();
+  welcomeCard();
   announceNew();
 
   if (DEMO) return;
@@ -1264,6 +2025,7 @@ function enter() {
   if (DEMO) {
     seedDemo();
     ME = { uid: 'demo' };
+    papersLib().then(L => { GATE = L; renderRec(); });
     enter();
     toast('Sample mode — not connected to the class database');
     return;
@@ -1303,6 +2065,9 @@ function enter() {
     if (!snap.exists()) return finishRegistration(user);
 
     P = { uid: user.uid, ...snap.data() };
+    PROG = P.progress || {};
+    // A theme chosen on another device wins, unless this one has been set.
+    if (P.theme && !localStorage.getItem(THEME_KEY)) applyTheme(P.theme);
 
     if (P.role === 'teacher') { location.href = 'Admin.html'; return; }
     if (P.status === 'pending') return showHold('pending');
