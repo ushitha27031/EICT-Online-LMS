@@ -1,0 +1,255 @@
+rules_version = '2';
+
+/* ===========================================================================
+   EICT — Firestore rules
+
+   This file is the real lock on the class. Everything in Class.html and
+   Admin.html can be edited by anyone with devtools; only these rules run on
+   Google's servers where a student cannot touch them.
+
+   Deploy:  Firebase console -> Firestore Database -> Rules -> paste -> Publish
+
+   Collections
+     students/{uid}            profile + status, one per account
+     counters/studentNo        the running number that issues SN-xxxx
+     access/{uid}_{YYYY-MM}    proof a month of live class is paid for
+     payments/{id}             slips uploaded by students
+     freeRequests/{id}         free class asked for by student number
+     seasons/{batch}-{n}       the YouTube ids for one season's episodes
+     settings/live             the Zoom link and whether the room is open
+     requests/{id}             enquiries from the public site
+   =========================================================================== */
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    /* ------------------------------------------------------------- helpers */
+
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    function me() {
+      return get(/databases/$(database)/documents/students/$(request.auth.uid)).data;
+    }
+
+    function meExists() {
+      return signedIn() &&
+             exists(/databases/$(database)/documents/students/$(request.auth.uid));
+    }
+
+    function isTeacher() {
+      return meExists() && me().role == 'teacher';
+    }
+
+    // An approved student. Pending and suspended accounts fall through to
+    // nothing: this is what stops a fresh sign-up seeing class material.
+    function isActiveStudent() {
+      return meExists() && me().role == 'student' && me().status == 'active';
+    }
+
+    // Has this student paid (or been granted a free pass) for a given month?
+    function hasMonth(month) {
+      return signedIn() &&
+             exists(/databases/$(database)/documents/access/$(request.auth.uid + '_' + month));
+    }
+
+    /* ------------------------------------------------------------ students */
+
+    match /students/{uid} {
+
+      // You can read your own record. The teacher can read everyone.
+      allow read: if isTeacher() || (signedIn() && request.auth.uid == uid);
+
+      // Sign-up writes its own record, but only ever as a PENDING STUDENT.
+      // A new account cannot make itself a teacher, cannot set its own
+      // student number, and cannot mark itself paid.
+      allow create: if signedIn()
+                    && request.auth.uid == uid
+                    && request.resource.data.role == 'student'
+                    && request.resource.data.status == 'pending'
+                    && request.resource.data.studentNo == null
+                    && request.resource.data.paidLive == false
+                    && request.resource.data.unlocked.size() == 0
+                    && request.resource.data.email == request.auth.token.email;
+
+      // Students may edit their own profile — name, phone, school, address,
+      // photo, and their watched list. Anything that decides access is simply
+      // not in this list, so an attempt to change it fails.
+      //
+      // affectedKeys() is used rather than field-by-field comparison because
+      // older records predate some of these fields, and comparing a field that
+      // does not exist yet would throw and deny a legitimate edit.
+      allow update: if isTeacher()
+                    || (signedIn() && request.auth.uid == uid
+                        && request.resource.data.diff(resource.data)
+                             .affectedKeys()
+                             .hasOnly(['name','whatsapp','school','address',
+                                       'photoURL','track','watched',
+                                       'lastSeenAt','updatedAt']));
+
+      allow delete: if isTeacher();
+    }
+
+    /* ------------------------------------------------- student no counter */
+
+    // Only the teacher's dashboard increments this, inside a transaction,
+    // when a registration is approved.
+    match /counters/{id} {
+      allow read, write: if isTeacher();
+    }
+
+    /* -------------------------------------------------------------- access */
+
+    // The month passes. A student may check their own, and nothing else.
+    // Only the teacher can create one, which is the whole point: paying is
+    // not something the browser gets to decide.
+    match /access/{id} {
+      allow read:  if isTeacher() || (signedIn() && resource.data.uid == request.auth.uid);
+      allow write: if isTeacher();
+    }
+
+    /* ------------------------------------------------------------ payments */
+
+    match /payments/{id} {
+
+      allow read: if isTeacher()
+                  || (signedIn() && resource.data.uid == request.auth.uid);
+
+      // A student uploads their own slip. It always arrives pending; they
+      // cannot self-approve, and they cannot file a slip for someone else.
+      allow create: if isActiveStudent()
+                    && request.resource.data.uid == request.auth.uid
+                    && request.resource.data.status == 'pending'
+                    && request.resource.data.month is string;
+
+      // Only the teacher decides. A student may not edit a submitted slip.
+      allow update, delete: if isTeacher();
+    }
+
+    /* --------------------------------------------------------------- slips */
+
+    // The slip IMAGE, kept apart from the payment record on purpose.
+    //
+    // Cloud Storage needs a paid plan, so the picture is compressed in the
+    // browser and stored here as a base64 string. Keeping it in its own
+    // document means the Payments list reads only names and amounts; the
+    // picture is fetched one at a time, when the teacher actually looks at
+    // it. Putting it inside payments/{id} would pull every image on every
+    // page load and burn through the daily read quota.
+    //
+    // Document id is the payment id it belongs to.
+    match /slips/{payId} {
+      allow read:   if isTeacher()
+                    || (signedIn() && resource.data.uid == request.auth.uid);
+      allow create: if signedIn()
+                    && request.resource.data.uid == request.auth.uid
+                    && request.resource.data.data is string
+                    && request.resource.data.data.size() < 900000;
+      allow update, delete: if isTeacher();
+    }
+
+    /* ------------------------------------------------------- free requests */
+
+    match /freeRequests/{id} {
+
+      allow read: if isTeacher()
+                  || (signedIn() && resource.data.uid == request.auth.uid);
+
+      allow create: if isActiveStudent()
+                    && request.resource.data.uid == request.auth.uid
+                    && request.resource.data.studentNo == me().studentNo
+                    && request.resource.data.status == 'pending';
+
+      allow update, delete: if isTeacher();
+    }
+
+    /* ------------------------------------------------------------- seasons */
+
+    // The episode video ids. This is the leak that matters: without this
+    // block any signed-in account could read every season at once.
+    // A season opens only if the teacher put its number in the student's
+    // unlocked list.
+    match /seasons/{seasonId} {
+      allow read: if isTeacher()
+                  || (isActiveStudent()
+                      && me().get('unlocked', []).hasAny([resource.data.season]));
+      allow write: if isTeacher();
+    }
+
+    /* ------------------------------------------------------------ settings */
+
+    // Bank details, fee, day and time. Any approved student may read these —
+    // somebody who has not paid yet is exactly the person who needs to know
+    // where to pay. Keep nothing private in here.
+    match /settings/public {
+      allow read:  if isTeacher() || isActiveStudent();
+      allow write: if isTeacher();
+    }
+
+    // The live Zoom link. Visible only to students who have paid for the
+    // current month, so the link cannot be copied out and passed around by
+    // someone who never paid.
+    match /settings/live {
+      allow read:  if isTeacher() || (isActiveStudent() && hasMonth(resource.data.month));
+      allow write: if isTeacher();
+    }
+
+    match /settings/{docId} {
+      allow read:  if isTeacher();
+      allow write: if isTeacher();
+    }
+
+    /* ------------------------------------------------------------ requests */
+
+    // Enquiries, from the public site and from inside the class. Anyone may
+    // send one, nobody but the teacher may read them back.
+    //
+    // The allowlist must cover every field your pages actually send. Class.html
+    // adds 'uid'; the public form adds 'school' and 'fee'. A field that is not
+    // listed here causes the whole write to be refused, silently, because both
+    // pages swallow the error.
+    match /requests/{id} {
+      allow create: if request.resource.data.keys().hasOnly(
+                        ['name','whatsapp','school','type','batch','slot',
+                         'fee','at','uid','note','email'])
+                    && request.resource.data.name is string
+                    && request.resource.data.name.size() < 120
+                    && request.resource.data.keys().hasAll(['name']);
+      allow read, update, delete: if isTeacher();
+    }
+
+    /* --------------------------------------------------------------- holds */
+
+    // Slot holds for one-to-one classes. The public timetable listens to this
+    // collection while logged out so it can grey out taken slots, so read has
+    // to stay open. A hold only ever contains a slot label and a time, which
+    // is exactly what the timetable already shows in public.
+    match /holds/{id} {
+      allow read:   if true;
+      allow create: if request.resource.data.keys().hasOnly(['slot','at','name','whatsapp'])
+                    && request.resource.data.slot is string
+                    && request.resource.data.slot.size() < 120;
+      allow update, delete: if isTeacher();
+    }
+
+    /* --------------------------------------------------------------- views */
+
+    // The watch log written each time an episode is opened. Append-only for
+    // students: they may record their own view and nothing else. Only the
+    // teacher can read the log back.
+    match /views/{id} {
+      allow create: if signedIn()
+                    && request.resource.data.uid == request.auth.uid;
+      allow read, update, delete: if isTeacher();
+    }
+
+    /* --------------------------------------------------------- catch‑all */
+
+    // Anything not named above is closed. Never replace this with a
+    // permissive rule to "make something work" — add a block for it instead.
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

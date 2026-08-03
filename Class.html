@@ -7,7 +7,10 @@
 <title>EICT — my class</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="class.css">
+<!-- The ?v= number is what forces browsers to fetch a fresh copy. Without it
+     GitHub Pages keeps serving the old CSS for hours and changes look like
+     they never happened. Bump it in BOTH places whenever a file changes. -->
+<link rel="stylesheet" href="class.css?v=1.1.1">
 </head>
 
 <body class="checking">
@@ -29,7 +32,8 @@
 
     <!-- sign in -->
     <div id="paneIn">
-      <p class="eyebrow">EICT · <span id="batchLabel">Advanced Level 2027</span></p>
+      <p class="eyebrow">EICT · <span id="batchLabel">Advanced Level 2027</span>
+        <span style="margin-left:auto;opacity:.55" id="verTag">v—</span></p>
       <h1>My class</h1>
       <p>Sign in to reach your live class and your recordings.</p>
       <div class="gate__msg" id="gMsg"></div>
@@ -284,6 +288,6 @@
 
 <script src="firebase-config.js" onerror="void 0"></script>
 <script src="class-config.js" onerror="void 0"></script>
-<script type="module" src="class.js"></script>
+<script type="module" src="class.js?v=1.1.1"></script>
 </body>
 </html>

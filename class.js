@@ -19,6 +19,11 @@
    they have not paid for is firestore.rules, on Google's servers.
    ========================================================================== */
 
+/* Shown in the corner of the sign-in card so you can tell at a glance which
+   version a student is actually running. If this does not match what you just
+   uploaded, their browser is still on a cached copy. */
+const VERSION = '1.1.1';
+
 const SESSION_MAX_MS = 24 * 60 * 60 * 1000;
 const STAMP_AT  = 'eict.sessionAt';
 const STAMP_UID = 'eict.sessionUid';
@@ -1251,6 +1256,7 @@ function enter() {
   FB = await bootFirebase();
   DEMO = !FB;
   $('#batchLabel').textContent = BATCH_LABEL;
+  const vt = $('#verTag'); if (vt) vt.textContent = 'v' + VERSION;
 
   const carried = sessionStorage.getItem('eict.reason');
   sessionStorage.removeItem('eict.reason');

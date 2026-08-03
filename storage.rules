@@ -1,0 +1,73 @@
+rules_version = '2';
+
+/* ===========================================================================
+   EICT — Cloud Storage rules
+
+   NOT NEEDED YET. Cloud Storage requires the paid Blaze plan; since
+   3 February 2026 a free Spark project has no bucket at all.
+
+   The class runs without it: payment slips are compressed in the browser and
+   stored in Firestore under `slips/{paymentId}` instead. See
+   Shared/slip-upload.js.
+
+   Keep this file for the day you upgrade. Once you are on Blaze and have
+   moved slips to Storage, deploy it at:
+     Firebase console -> Storage -> Rules -> paste -> Publish
+   =========================================================================== */
+
+service firebase.storage {
+  match /b/{bucket}/o {
+
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    function isTeacher() {
+      return signedIn() &&
+             firestore.get(/databases/(default)/documents/students/$(request.auth.uid)).data.role == 'teacher';
+    }
+
+    /* ---------------------------------------------------- payment slips */
+
+    // Path: slips/{uid}/{month}-{timestamp}.jpg
+    //
+    // A student writes only into their own folder, one image at a time,
+    // capped at 5 MB so nobody uses the bucket as free hosting. They can
+    // read their own slips back; the teacher reads all of them.
+    match /slips/{uid}/{fileName} {
+
+      allow read:   if isTeacher() || (signedIn() && request.auth.uid == uid);
+
+      allow create: if signedIn()
+                    && request.auth.uid == uid
+                    && request.resource.size < 5 * 1024 * 1024
+                    && request.resource.contentType.matches('image/.*');
+
+      // A slip cannot be swapped out after the teacher has looked at it.
+      allow update: if isTeacher();
+      allow delete: if isTeacher();
+    }
+
+    /* ------------------------------------------------- profile pictures */
+
+    match /avatars/{uid}/{fileName} {
+      allow read:  if signedIn();
+      allow write: if signedIn()
+                   && request.auth.uid == uid
+                   && request.resource.size < 2 * 1024 * 1024
+                   && request.resource.contentType.matches('image/.*');
+    }
+
+    /* -------------------------------------------------- course material */
+
+    // Tutes and papers the teacher posts against a season.
+    match /material/{seasonId}/{fileName} {
+      allow read:  if signedIn();
+      allow write: if isTeacher();
+    }
+
+    match /{allPaths=**} {
+      allow read, write: if false;
+    }
+  }
+}

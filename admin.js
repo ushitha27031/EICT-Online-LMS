@@ -11,6 +11,10 @@
 
 /* ------------------------------------------------------------- constants */
 
+/* Shown in the sidebar. If this does not match what you just uploaded, your
+   browser is still running a cached copy — hard refresh with Ctrl+Shift+R. */
+const VERSION = '1.1.1';
+
 const SESSION_MAX_MS = 24 * 60 * 60 * 1000;   // one day, hard cap
 const STAMP_AT  = 'eict.sessionAt';
 const STAMP_UID = 'eict.sessionUid';
@@ -1328,6 +1332,7 @@ const AUTH_MSG = {
 };
 
 (async () => {
+  const vt = $('#verTag'); if (vt) vt.textContent = 'v' + VERSION;
   FB = await bootFirebase();
   DEMO = !FB;
 

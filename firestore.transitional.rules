@@ -1,0 +1,186 @@
+rules_version = '2';
+
+/* ===========================================================================
+   EICT — STAGE ONE rules (transitional)
+
+   Publish THIS file first, while Class.html is still the old version.
+
+   It does three things:
+     - gives the teacher dashboard everything it needs to read and write
+     - keeps the current Class.html and the public EICT site working exactly
+       as they do today, including sign-up, enquiries and slot holds
+     - closes the worst hole straight away: a student can no longer read the
+       whole seasons collection, only the seasons you opened for them
+
+   What it deliberately does NOT do yet: force every account to have a
+   role and a status. The old sign-up form does not write those fields, so
+   demanding them here would stop new students registering.
+
+   Replace this with firestore.rules once the new Class.html is live.
+   =========================================================================== */
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    /* ------------------------------------------------------------- helpers */
+
+    function signedIn() { return request.auth != null; }
+
+    function me() {
+      return get(/databases/$(database)/documents/students/$(request.auth.uid)).data;
+    }
+
+    function meExists() {
+      return signedIn() &&
+             exists(/databases/$(database)/documents/students/$(request.auth.uid));
+    }
+
+    function isTeacher() {
+      return meExists() && me().role == 'teacher';
+    }
+
+    // Lenient on purpose during the changeover: an account counts as a student
+    // if it is not suspended. Records migrated to status 'active' pass, and so
+    // do old records that have no status field at all.
+    function isStudentish() {
+      return meExists() && me().role != 'teacher' && me().get('status', 'active') != 'suspended';
+    }
+
+    function hasMonth(month) {
+      return signedIn() &&
+             exists(/databases/$(database)/documents/access/$(request.auth.uid + '_' + month));
+    }
+
+    /* ------------------------------------------------------------ students */
+
+    match /students/{uid} {
+
+      allow read: if isTeacher() || (signedIn() && request.auth.uid == uid);
+
+      // The old sign-up form is allowed through, but it still cannot make
+      // itself a teacher, give itself a student number, or mark itself paid.
+      allow create: if signedIn()
+                    && request.auth.uid == uid
+                    && request.resource.data.get('role', 'student') == 'student'
+                    && request.resource.data.get('studentNo', null) == null
+                    && request.resource.data.get('paidLive', false) == false
+                    && request.resource.data.get('unlocked', []).size() == 0;
+
+      // Profile and progress only. Access fields are absent from this list,
+      // so any attempt to change them fails.
+      allow update: if isTeacher()
+                    || (signedIn() && request.auth.uid == uid
+                        && request.resource.data.diff(resource.data)
+                             .affectedKeys()
+                             .hasOnly(['name','whatsapp','school','address',
+                                       'photoURL','track','watched',
+                                       'lastSeenAt','updatedAt']));
+
+      allow delete: if isTeacher();
+    }
+
+    /* ------------------------------------------------- new collections --- */
+
+    match /counters/{id} {
+      allow read, write: if isTeacher();
+    }
+
+    match /access/{id} {
+      allow read:  if isTeacher() || (signedIn() && resource.data.uid == request.auth.uid);
+      allow write: if isTeacher();
+    }
+
+    match /payments/{id} {
+      allow read:   if isTeacher() || (signedIn() && resource.data.uid == request.auth.uid);
+      allow create: if signedIn()
+                    && request.resource.data.uid == request.auth.uid
+                    && request.resource.data.status == 'pending';
+      allow update, delete: if isTeacher();
+    }
+
+    match /freeRequests/{id} {
+      allow read:   if isTeacher() || (signedIn() && resource.data.uid == request.auth.uid);
+      allow create: if signedIn()
+                    && request.resource.data.uid == request.auth.uid
+                    && request.resource.data.status == 'pending';
+      allow update, delete: if isTeacher();
+    }
+
+    /* --------------------------------------------------------------- slips */
+
+    // The slip IMAGE, kept apart from the payment record on purpose.
+    //
+    // Cloud Storage needs a paid plan, so the picture is compressed in the
+    // browser and stored here as a base64 string. Keeping it in its own
+    // document means the Payments list reads only names and amounts; the
+    // picture is fetched one at a time, when the teacher actually looks at
+    // it. Putting it inside payments/{id} would pull every image on every
+    // page load and burn through the daily read quota.
+    //
+    // Document id is the payment id it belongs to.
+    match /slips/{payId} {
+      allow read:   if isTeacher()
+                    || (signedIn() && resource.data.uid == request.auth.uid);
+      allow create: if signedIn()
+                    && request.resource.data.uid == request.auth.uid
+                    && request.resource.data.data is string
+                    && request.resource.data.data.size() < 900000;
+      allow update, delete: if isTeacher();
+    }
+
+    /* ------------------------------------------------------------- seasons */
+
+    // This is the one real tightening in stage one. Class.html already fetches
+    // the video id only at the moment an episode is opened, and lets the rules
+    // decide, so this needs no change to the student page.
+    match /seasons/{seasonId} {
+      allow read:  if isTeacher()
+                   || (isStudentish() && me().get('unlocked', []).hasAny([resource.data.season]));
+      allow write: if isTeacher();
+    }
+
+    /* ------------------------------------------------------------ settings */
+
+    // Bank details, fee, day and time. Any approved student may read these —
+    // somebody who has not paid yet is exactly the person who needs to know
+    // where to pay. Keep nothing private in here.
+    match /settings/public {
+      allow read:  if isTeacher() || isStudentish();
+      allow write: if isTeacher();
+    }
+
+    match /settings/{docId} {
+      allow read, write: if isTeacher();
+    }
+
+    /* ------------------------------------------- unchanged from today --- */
+
+    match /requests/{id} {
+      allow create: if request.resource.data.keys().hasOnly(
+                        ['name','whatsapp','school','type','batch','slot',
+                         'fee','at','uid','note','email'])
+                    && request.resource.data.name is string
+                    && request.resource.data.name.size() < 120;
+      allow read, update, delete: if isTeacher();
+    }
+
+    match /holds/{id} {
+      allow read:   if true;
+      allow create: if request.resource.data.keys().hasOnly(['slot','at','name','whatsapp'])
+                    && request.resource.data.slot is string
+                    && request.resource.data.slot.size() < 120;
+      allow update, delete: if isTeacher();
+    }
+
+    match /views/{id} {
+      allow create: if signedIn() && request.resource.data.uid == request.auth.uid;
+      allow read, update, delete: if isTeacher();
+    }
+
+    /* --------------------------------------------------------- catch‑all */
+
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
