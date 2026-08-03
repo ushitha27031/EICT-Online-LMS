@@ -472,36 +472,6 @@ body.checking .shell,body.blocked .shell{display:none}
    under prefers-reduced-motion at the end of this file.
    ========================================================================== */
 
-/* ---------------------------------------------------- first paint ------- */
-
-.boot-splash{
-  position:fixed;inset:0;z-index:120;display:grid;place-items:center;
-  background:var(--ink);transition:opacity .45s ease,visibility .45s;
-}
-.boot-splash.gone{opacity:0;visibility:hidden;pointer-events:none}
-.boot-splash__in{text-align:center}
-.boot-splash__mark{
-  font-family:var(--d);font-size:38px;font-weight:700;letter-spacing:-.02em;
-  color:var(--gold);animation:markIn .7s cubic-bezier(.2,.8,.3,1) both;
-}
-.boot-splash__sub{
-  font-family:var(--m);font-size:10.5px;letter-spacing:.24em;text-transform:uppercase;
-  color:var(--dimmer);margin-top:8px;animation:markIn .7s .12s cubic-bezier(.2,.8,.3,1) both;
-}
-.boot-splash__track{
-  width:132px;height:2px;border-radius:2px;background:rgba(142,164,255,.14);
-  margin:22px auto 0;overflow:hidden;
-}
-.boot-splash__track i{
-  display:block;height:100%;width:40%;border-radius:2px;background:var(--gold);
-  animation:slide 1.05s ease-in-out infinite;
-}
-@keyframes markIn{from{opacity:0;transform:translateY(9px)}}
-@keyframes slide{
-  0%{transform:translateX(-100%)}
-  100%{transform:translateX(330%)}
-}
-
 /* content easing in behind the splash */
 .view:not([hidden]){animation:viewIn .34s cubic-bezier(.2,.8,.3,1) both}
 @keyframes viewIn{from{opacity:0;transform:translateY(7px)}}
@@ -676,43 +646,6 @@ html[data-theme="light"] .theme-btn .moon{display:none}
 /* ============================ ARRIVING ==================================
    Not a spinner. The doors of the class opening, then the room behind them.
    ====================================================================== */
-
-.boot-splash{overflow:hidden}
-.boot-splash__in{position:relative;z-index:3}
-
-/* two panels that part in the middle */
-.door{
-  position:absolute;top:0;bottom:0;width:51%;background:var(--ink);z-index:2;
-  transition:transform .85s cubic-bezier(.7,0,.2,1);
-}
-.door--l{left:0;border-right:1px solid rgba(255,194,75,.22)}
-.door--r{right:0;border-left:1px solid rgba(255,194,75,.22)}
-.boot-splash.open .door--l{transform:translateX(-101%)}
-.boot-splash.open .door--r{transform:translateX(101%)}
-.boot-splash.open .boot-splash__in{opacity:0;transform:scale(.94);transition:opacity .3s,transform .4s}
-
-/* light spilling through the gap as they part */
-.door-glow{
-  position:absolute;left:50%;top:0;bottom:0;width:2px;margin-left:-1px;z-index:1;
-  background:linear-gradient(180deg,transparent,var(--gold),transparent);
-  opacity:0;transition:opacity .3s;
-}
-.boot-splash.open .door-glow{opacity:1;animation:widen .85s cubic-bezier(.7,0,.2,1) forwards}
-@keyframes widen{
-  0%{width:2px;margin-left:-1px;opacity:.9}
-  100%{width:220px;margin-left:-110px;opacity:0}
-}
-
-.boot-splash__mark{
-  font-family:var(--d);font-size:44px;font-weight:700;letter-spacing:-.03em;
-  color:var(--gold);animation:markIn .7s cubic-bezier(.2,.8,.3,1) both;
-}
-/* the bell-ring underline sweeping out from the mark */
-.boot-splash__rule{
-  height:2px;width:0;background:var(--gold);margin:14px auto 0;border-radius:2px;
-  animation:ruleOut .8s .25s cubic-bezier(.2,.8,.3,1) forwards;
-}
-@keyframes ruleOut{to{width:140px}}
 
 /* welcome card that stamps in after signing in — like being handed your
    ID at the door rather than a loading bar */
@@ -1054,3 +987,193 @@ html[data-theme="light"] .theme-btn .moon{display:none}
 /* a unit that is paid for but waiting on a paper */
 .sn-card.waiting{border-style:dashed;border-color:rgba(255,194,75,.4)}
 .sn-card.waiting .sn-card__n{color:var(--gold);opacity:.6}
+
+/* ==========================================================================
+   v1.4.0 — signing on to the class
+
+   The board powers up, data arrives along the traces, the processor comes
+   alive, the link is made, and the panels iris open onto the room. Every
+   stage overlaps the next so it reads as one continuous move.
+   ========================================================================== */
+
+.intro{
+  position:fixed;inset:0;z-index:120;overflow:hidden;
+  background:var(--ink);color:var(--gold);
+  display:grid;place-items:center;
+}
+.intro[hidden]{display:none}
+
+/* faint board grid underneath everything */
+.intro::before{
+  content:'';position:absolute;inset:0;opacity:0;
+  background-image:
+    linear-gradient(rgba(142,164,255,.10) 1px,transparent 1px),
+    linear-gradient(90deg,rgba(142,164,255,.10) 1px,transparent 1px);
+  background-size:34px 34px;
+  animation:gridUp 1.1s .05s ease-out forwards;
+}
+@keyframes gridUp{
+  0%{opacity:0;transform:scale(1.06)}
+  100%{opacity:1;transform:scale(1)}
+}
+
+/* a soft pool of light that grows behind the chip */
+.intro::after{
+  content:'';position:absolute;left:50%;top:50%;width:520px;height:520px;
+  margin:-260px 0 0 -260px;border-radius:50%;pointer-events:none;
+  background:radial-gradient(circle,var(--glow-gold),transparent 66%);
+  opacity:0;animation:pool 1.6s .5s ease-out forwards;
+}
+@keyframes pool{
+  0%{opacity:0;transform:scale(.5)}
+  60%{opacity:1}
+  100%{opacity:.85;transform:scale(1)}
+}
+
+.intro__stage{
+  position:relative;width:min(340px,78vw);aspect-ratio:1;
+  display:grid;place-items:center;z-index:2;
+}
+
+/* ---- the board ---- */
+
+.intro__board{
+  position:absolute;inset:0;width:100%;height:100%;
+  color:var(--gold);opacity:.85;
+}
+
+/* traces draw themselves inward from the edges */
+.intro__board .trace path{
+  stroke-dasharray:260;stroke-dashoffset:260;
+  animation:drawTrace .85s cubic-bezier(.4,0,.2,1) forwards;
+}
+.intro__board .trace path:nth-child(1){animation-delay:.14s}
+.intro__board .trace path:nth-child(2){animation-delay:.22s}
+.intro__board .trace path:nth-child(3){animation-delay:.18s}
+.intro__board .trace path:nth-child(4){animation-delay:.26s}
+.intro__board .trace path:nth-child(5){animation-delay:.16s}
+.intro__board .trace path:nth-child(6){animation-delay:.30s}
+.intro__board .trace path:nth-child(7){animation-delay:.24s}
+.intro__board .trace path:nth-child(8){animation-delay:.20s}
+@keyframes drawTrace{to{stroke-dashoffset:0}}
+
+/* the contact points flare as their trace lands */
+.intro__board .node circle{
+  opacity:0;transform-box:fill-box;transform-origin:center;
+  animation:nodeOn .5s cubic-bezier(.3,1.5,.4,1) forwards;
+}
+.intro__board .node circle:nth-child(odd){animation-delay:.55s}
+.intro__board .node circle:nth-child(even){animation-delay:.65s}
+@keyframes nodeOn{
+  0%{opacity:0;transform:scale(0)}
+  55%{opacity:1;transform:scale(2.1)}
+  100%{opacity:.95;transform:scale(1)}
+}
+
+/* the processor outline snaps in, then its pins */
+.intro__board .chip{
+  stroke-dasharray:400;stroke-dashoffset:400;
+  animation:drawTrace .7s .75s cubic-bezier(.4,0,.2,1) forwards;
+}
+.intro__board .pins path{
+  opacity:0;animation:pinsOn .4s 1.05s ease-out forwards;
+}
+@keyframes pinsOn{to{opacity:.9}}
+
+/* a pulse travelling out through the whole board once it is connected */
+.intro__board{animation:boardPulse 1.4s 1.25s ease-out}
+@keyframes boardPulse{
+  0%{filter:drop-shadow(0 0 0 rgba(255,194,75,0))}
+  35%{filter:drop-shadow(0 0 14px rgba(255,194,75,.55))}
+  100%{filter:drop-shadow(0 0 0 rgba(255,194,75,0))}
+}
+
+/* ---- the core ---- */
+
+.intro__core{position:relative;z-index:3;text-align:center}
+.intro__mark{
+  font-family:var(--d);font-size:31px;font-weight:700;letter-spacing:.02em;
+  color:var(--gold);opacity:0;
+  animation:markUp .6s 1.1s cubic-bezier(.2,1.3,.4,1) forwards;
+}
+@keyframes markUp{
+  0%{opacity:0;transform:scale(.7);filter:blur(6px)}
+  100%{opacity:1;transform:scale(1);filter:blur(0)}
+}
+
+/* ones and zeroes streaming up out of the chip */
+.intro__bits{
+  position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);
+  width:180px;height:120px;pointer-events:none;overflow:hidden;
+}
+.bit{
+  position:absolute;font-family:var(--m);font-size:11px;color:var(--gold);
+  opacity:0;animation:bitUp 1.3s ease-out forwards;
+}
+@keyframes bitUp{
+  0%{opacity:0;transform:translateY(26px) scale(.8)}
+  25%{opacity:.85}
+  100%{opacity:0;transform:translateY(-40px) scale(1)}
+}
+
+/* ---- status line ---- */
+
+.intro__status{
+  position:absolute;bottom:-46px;left:0;right:0;text-align:center;
+  font-family:var(--m);font-size:10.5px;letter-spacing:.2em;text-transform:uppercase;
+  color:var(--dimmer);opacity:0;
+  animation:statusIn .5s .35s ease-out forwards;
+}
+.intro__status::after{content:'';animation:dots 1.2s steps(4,end) infinite}
+@keyframes statusIn{to{opacity:1}}
+@keyframes dots{
+  0%{content:''}25%{content:'.'}50%{content:'..'}75%{content:'...'}
+}
+.intro.linked .intro__status{color:var(--live)}
+.intro.linked .intro__status::after{animation:none;content:''}
+
+/* ---- the room opening ---- */
+
+.intro__panel{
+  position:absolute;left:0;right:0;height:50.5%;z-index:6;
+  background:var(--ink);
+  border-color:rgba(255,194,75,.28);border-style:solid;border-width:0;
+  transition:transform .95s cubic-bezier(.76,0,.18,1);
+}
+.intro__panel--t{top:0;border-bottom-width:1px}
+.intro__panel--b{bottom:0;border-top-width:1px}
+
+/* the panels only exist once it is time for them to move, so nothing
+   covers the board while it is drawing */
+.intro.open .intro__panel--t{transform:translateY(-100%)}
+.intro.open .intro__panel--b{transform:translateY(100%)}
+.intro.open .intro__stage{
+  opacity:0;transform:scale(1.16);
+  transition:opacity .45s ease,transform .8s cubic-bezier(.5,0,.75,0);
+}
+.intro.open::before,.intro.open::after{
+  opacity:0;transition:opacity .5s ease;
+}
+.intro.open{background:transparent;transition:background .5s .2s ease}
+
+/* the room itself easing up to meet them */
+body.arriving .shell{
+  animation:roomIn .8s .25s cubic-bezier(.2,.8,.3,1) both;
+}
+@keyframes roomIn{
+  from{opacity:0;transform:scale(.985) translateY(10px)}
+  to{opacity:1;transform:none}
+}
+
+@media (max-width:520px){
+  .intro__mark{font-size:25px}
+  .intro__status{bottom:-38px;font-size:9.5px}
+}
+
+@media (prefers-reduced-motion:reduce){
+  .intro::before,.intro::after,.intro__board,.intro__board *,
+  .intro__mark,.intro__status,.intro__status::after,.bit,
+  body.arriving .shell{animation:none!important;opacity:1!important}
+  .intro__board .trace path,.intro__board .chip{stroke-dashoffset:0}
+  .intro__panel{transition:none}
+}

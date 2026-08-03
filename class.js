@@ -22,7 +22,7 @@
 /* Shown in the corner of the sign-in card so you can tell at a glance which
    version a student is actually running. If this does not match what you just
    uploaded, their browser is still on a cached copy. */
-const VERSION = '1.3.0';
+const VERSION = '1.4.0';
 
 const SESSION_MAX_MS = 24 * 60 * 60 * 1000;
 const STAMP_AT  = 'eict.sessionAt';
@@ -109,6 +109,13 @@ function toggleTheme() {
     FB.updateDoc(FB.doc(FB.db, 'students', ME.uid), { theme: next }).catch(() => {});
   }
 }
+
+/* Safe writers. A page whose HTML is a version behind its JavaScript should
+   degrade, not die: a missing element used to throw inside the sign-in
+   callback, which left the button saying "Signing in…" forever with the real
+   error swallowed as an unhandled rejection. */
+const setTx = (sel, text) => { const el = $(sel); if (el) el.textContent = text; return el; };
+const setHt = (sel, html) => { const el = $(sel); if (el) el.innerHTML = html; return el; };
 
 function toast(msg, kind = 'ok') {
   const el = document.createElement('div');
@@ -267,6 +274,7 @@ function leftText(ms) {
 
 async function signOutNow(reason) {
   clearStamp();
+  sessionStorage.removeItem('eict.greeted');
   if (FB) { try { await FB.signOut(FB.auth); } catch(_) {} }
   if (reason) sessionStorage.setItem('eict.reason', reason);
   location.reload();
@@ -275,7 +283,9 @@ async function signOutNow(reason) {
 /* ============================================================== screens */
 
 function showGate(msg, kind = 'bad') {
-  dropSplash();
+  busy('#doIn', false);
+  busy('#doReg', false);
+  hideIntro();
   document.body.classList.remove('checking');
   document.body.classList.add('blocked');
   $('#hold').hidden = true;
@@ -286,7 +296,8 @@ function showGate(msg, kind = 'bad') {
 }
 
 function showHold(kind) {
-  dropSplash();
+  busy('#doIn', false);
+  hideIntro();
   document.body.classList.remove('checking');
   document.body.classList.add('blocked');
   $('#gate').hidden = true;
@@ -459,25 +470,24 @@ function renderHero() {
   const C = 289;                                   // 2 * pi * 46
   const arc = $('#heroArc');
   if (arc) arc.style.strokeDashoffset = String(C - (C * pct / 100));
-  $('#heroPct').textContent = pct + '%';
-  $('#statEps').textContent = doneEps;
-  $('#statHrs').textContent = hrs >= 10 ? Math.round(hrs) : hrs.toFixed(1);
-  $('#statUnits').textContent = units;
+  setTx('#heroPct', pct + '%');
+  setTx('#statEps', doneEps);
+  setTx('#statHrs', hrs >= 10 ? Math.round(hrs) : hrs.toFixed(1));
+  setTx('#statUnits', units);
 
   const first = (P.name || '').split(' ')[0] || 'there';
-  const t = $('#heroTitle'), say = $('#heroSay');
   if (!open.length) {
-    t.textContent = 'Nothing open yet';
-    say.textContent = 'Send a slip for a unit and its episodes appear here.';
+    setTx('#heroTitle', 'Nothing open yet');
+    setTx('#heroSay', 'Send a slip for a unit and its episodes appear here.');
   } else if (pct === 100) {
-    t.textContent = 'Every unit finished';
-    say.textContent = 'Go back over anything that felt shaky before the paper.';
+    setTx('#heroTitle', 'Every unit finished');
+    setTx('#heroSay', 'Go back over anything that felt shaky before the paper.');
   } else if (doneEps === 0) {
-    t.textContent = `Ready when you are, ${first}`;
-    say.textContent = `${totalEps} episodes waiting across ${open.length} unit${open.length === 1 ? '' : 's'}.`;
+    setTx('#heroTitle', `Ready when you are, ${first}`);
+    setTx('#heroSay', `${totalEps} episodes waiting across ${open.length} unit${open.length === 1 ? '' : 's'}.`);
   } else {
-    t.textContent = `Keep going, ${first}`;
-    say.textContent = `${totalEps - doneEps} episode${totalEps - doneEps === 1 ? '' : 's'} left of the ${open.length} unit${open.length === 1 ? '' : 's'} open to you.`;
+    setTx('#heroTitle', `Keep going, ${first}`);
+    setTx('#heroSay', `${totalEps - doneEps} episode${totalEps - doneEps === 1 ? '' : 's'} left of the ${open.length} unit${open.length === 1 ? '' : 's'} open to you.`);
   }
 }
 
@@ -1480,10 +1490,10 @@ async function saveMe() {
 /* ================================================================ shell */
 
 function paintTop() {
-  $('#myName').textContent = P.name || 'Student';
-  $('#myLine').textContent = `${P.batch || BATCH} · ${P.school || BATCH_LABEL}`;
-  $('#myNo').textContent = P.studentNo || '—';
-  $('#avatar').textContent = (P.name || 'S').trim()[0].toUpperCase();
+  setTx('#myName', P.name || 'Student');
+  setTx('#myLine', `${P.batch || BATCH} · ${P.school || BATCH_LABEL}`);
+  setTx('#myNo', P.studentNo || '—');
+  setTx('#avatar', (P.name || 'S').trim()[0].toUpperCase());
 }
 
 function switchTab(t) {
@@ -1616,6 +1626,9 @@ function wireGate() {
       await FB.setPersistence(FB.auth, FB.browserLocalPersistence);
       const c = await FB.signInWithEmailAndPassword(FB.auth, em, pw);
       stamp(c.user.uid);
+      // The password was right, so the class is opening: start the intro now
+      // and let it run while the account and progress load behind it.
+      showIntro();
     } catch (e) {
       clearStamp();
       busy('#doIn', false);
@@ -1704,6 +1717,7 @@ function wireGate() {
         batch: BATCH, role: 'student', status: 'pending', studentNo: null
       };
       busy('#doReg', false);
+      hideIntro();
       registeredPopup(v('#rName'));
     } catch (e) {
       console.error('[class] registration failed', e);
@@ -1759,7 +1773,8 @@ function registeredPopup(name) {
    connection at exactly the wrong moment. Rather than looping them back to
    the sign-in screen forever, let them finish the part that is missing. */
 function finishRegistration(user) {
-  dropSplash();
+  busy('#doIn', false);
+  hideIntro();
   document.body.classList.remove('checking');
   document.body.classList.add('blocked');
   $('#hold').hidden = true;
@@ -1831,38 +1846,104 @@ async function loadMine(uid) {
   }
 }
 
-/* Take the splash down once we know what to show. Held for a beat so it
-   does not flash on a fast connection, then faded rather than cut. */
-let splashFrom = Date.now();
-function dropSplash() {
-  const el = $('#splash');
-  if (!el || el.classList.contains('open')) return;
-  const wait = Math.max(0, 900 - (Date.now() - splashFrom));
+/* ---------------------------------------------------------------- intro
+   Rules for when it plays:
+
+     - Already signed in and the page loads  -> play it.
+     - Credentials accepted just now         -> play it.
+     - Landing on the sign-in screen         -> do not play it. Nobody wants
+       a ceremony in front of an empty form, least of all somebody who just
+       signed out and is trying to get back in.
+
+   So the intro starts hidden. The auth check decides which way it goes, and
+   because that check is fast the student sees either the form or the intro,
+   never both.
+   -------------------------------------------------------------------- */
+
+let introFrom = 0;
+let introPlaying = false;
+
+function showIntro() {
+  const el = $('#intro');
+  if (!el || introPlaying) return;
+  introPlaying = true;
+  introFrom = Date.now();
+  el.hidden = false;
+  el.classList.remove('open', 'linked');
+  document.body.classList.add('checking');
+
+  // ones and zeroes drifting up out of the processor
+  const bits = $('#introBits');
+  if (bits) {
+    bits.innerHTML = '';
+    for (let i = 0; i < 14; i++) {
+      const b = document.createElement('i');
+      b.className = 'bit';
+      b.textContent = Math.random() < .5 ? '0' : '1';
+      b.style.left = Math.round(Math.random() * 92) + '%';
+      b.style.animationDelay = (0.9 + Math.random() * 1.1).toFixed(2) + 's';
+      bits.append(b);
+    }
+  }
+  setTx('#introStatus', 'Connecting to class');
+}
+
+/* Nothing to celebrate — take it away at once, with no animation. */
+function hideIntro() {
+  const el = $('#intro');
+  introPlaying = false;
+  if (el) { el.hidden = true; el.classList.remove('open', 'linked'); }
+  document.body.classList.remove('checking');
+}
+
+/* The link is made and the room opens. Held to a minimum so a fast
+   connection still gets the whole sequence rather than a stutter. */
+function openIntro(done) {
+  const el = $('#intro');
+  if (!el || el.hidden) { done && done(); return; }
+
+  const MIN = 2150;                       // long enough for the board to draw
+  const wait = Math.max(0, MIN - (Date.now() - introFrom));
+
   setTimeout(() => {
-    el.classList.add('open');                 // the doors part
-    setTimeout(() => el.remove(), 950);
+    el.classList.add('linked');
+    setTx('#introStatus', 'Connected');
+
+    setTimeout(() => {
+      el.classList.add('open');           // panels part
+      document.body.classList.remove('checking');
+      document.body.classList.add('arriving');
+      done && done();
+      setTimeout(() => {
+        el.hidden = true;
+        el.classList.remove('open', 'linked');
+        document.body.classList.remove('arriving');
+        introPlaying = false;
+      }, 1000);
+    }, 420);
   }, wait);
 }
 
-/* Shown once per sign-in, not on every reload — a greeting that appears
-   every time you glance at the site stops being a greeting. */
+/* Shown as the room opens, so the two read as one arrival. */
 function welcomeCard() {
-  if (sessionStorage.getItem('eict.greeted')) return;
-  sessionStorage.setItem('eict.greeted', '1');
   const w = $('#welcome');
   if (!w) return;
-  $('#wcName').textContent = (P.name || 'Student').split(' ')[0];
-  $('#wcNo').textContent = P.studentNo || '—';
+  setTx('#wcName', (P.name || 'Student').split(' ')[0]);
+  setTx('#wcNo', P.studentNo || '—');
   w.hidden = false;
   setTimeout(() => {
     w.style.transition = 'opacity .4s';
     w.style.opacity = '0';
     setTimeout(() => { w.hidden = true; w.style.opacity = ''; }, 420);
-  }, 1900);
+  }, 1750);
 }
 
-/* Remember what was open last time, so that when something new is approved
-   the student is told rather than having to notice. */
+
+/* ------------------------------------------------- something opened up --
+   Remember what was open last time, so a student who comes back after sir
+   approved a slip is told, rather than having to notice for themselves.
+   ---------------------------------------------------------------------- */
+
 const SEEN_KEY = 'eict.seen';
 
 function announceNew() {
@@ -1872,18 +1953,10 @@ function announceNew() {
   const now = { months: [...ACCESS], units: unlocked() };
   localStorage.setItem(SEEN_KEY, JSON.stringify(now));
 
-  if (!seen) return;                                    // first visit, nothing to compare
+  if (!seen) return;                                   // first visit, nothing to compare
   const newMonths = now.months.filter(m => !(seen.months || []).includes(m));
   const newUnits  = now.units.filter(u => !(seen.units || []).includes(u));
   if (!newMonths.length && !newUnits.length) return;
-
-  const lines = [];
-  if (newMonths.length)
-    lines.push(newMonths.map(m => `the ${monthName(m)} live class`).join(' and '));
-  if (newUnits.length)
-    lines.push(newUnits.length === 1
-      ? `unit ${pad(newUnits[0])} recordings`
-      : `${newUnits.length} units of recordings`);
 
   setTimeout(() => {
     if (newUnits.length) unitOpenedSheet(newUnits, newMonths);
@@ -1895,18 +1968,18 @@ function announceNew() {
         if (card) card.classList.add('just-opened');
       });
     }, 400);
-  }, 800);
+  }, 900);
 }
 
 /* A seal giving way, not a tick. The unit number is behind a card that flips
    as the padlock springs and drops. Tutes are mentioned here because that is
-   the moment a recordings student is wondering what else they paid for. */
+   the moment a recordings student wonders what else they paid for. */
 function unitOpenedSheet(units, months) {
   const first = units[0];
   const s = SEASONS.find(x => x.n === first);
   const sparks = Array.from({ length: 8 }, (_, i) => {
     const a = (i / 8) * Math.PI * 2;
-    return `<i class="unlock__spark" style="--dx:${Math.round(Math.cos(a) * 78)}px;--dy:${Math.round(Math.sin(a) * 78)}px;animation-delay:${.4 + i * .015}s"></i>`;
+    return `<i class="unlock__spark" style="--dx:${Math.round(Math.cos(a) * 78)}px;--dy:${Math.round(Math.sin(a) * 78)}px;animation-delay:${(.4 + i * .015).toFixed(2)}s"></i>`;
   }).join('');
 
   sheet(`
@@ -1954,8 +2027,8 @@ function monthOpenedSheet(months) {
     </div>`);
 }
 
-/* Recordings students are paying partly for printed tutes, so say so at the
-   moment the payment is approved rather than leaving them to wonder. */
+/* Recordings students are paying partly for printed tutes and the unit's
+   paper, so say so at the moment the payment is approved. */
 function courierNote(title, body) {
   return `
     <div style="background:var(--sunk);border:1px dashed var(--wire-2);border-radius:var(--r);padding:4px 14px 14px;margin:0 0 18px">
@@ -1974,14 +2047,13 @@ function courierNote(title, body) {
         ${esc(title || 'Your tutes are on the way')}</b>
       <small style="color:var(--dim);font-size:12.5px;line-height:1.5;display:block">
         ${body ? esc(body) : `Printed tutes, past papers and this unit's paper go out by
-        courier to ${P.address ? P.address : 'your address'}. Usually 3–5 days.`}
+        courier to ${P.address ? P.address : 'your address'}. Usually 3-5 days.`}
         ${P.address ? '' : ' Add your address under My details so sir knows where to send them.'}</small>
     </div>`;
 }
 
 function enter() {
-  dropSplash();
-  document.body.classList.remove('checking', 'blocked');
+  document.body.classList.remove('blocked');
   $('#gate').hidden = true;
   $('#hold').hidden = true;
   paintTop();
@@ -1991,8 +2063,9 @@ function enter() {
   renderLive();
   renderRec();
   renderPayHistory();
-  welcomeCard();
-  announceNew();
+
+  // Everything is drawn behind the intro; only now do the panels open.
+  openIntro(() => { welcomeCard(); announceNew(); });
 
   if (DEMO) return;
 
@@ -2022,9 +2095,22 @@ function enter() {
   const carried = sessionStorage.getItem('eict.reason');
   sessionStorage.removeItem('eict.reason');
 
+  // A stamp means a session is already live, so the page is about to open the
+  // class rather than ask for a password: play the intro straight away
+  // instead of waiting for Firebase, which would show a flash of nothing.
+  if (!carried && localStorage.getItem(STAMP_AT)) {
+    showIntro();
+  } else {
+    // No stamp means no session by our own rule, so the sign-in form can go
+    // up at once rather than leaving a blank screen while Firebase answers.
+    hideIntro();
+    if (!DEMO) showGate(carried || null, carried ? 'info' : 'bad');
+  }
+
   if (DEMO) {
     seedDemo();
     ME = { uid: 'demo' };
+    showIntro();
     papersLib().then(L => { GATE = L; renderRec(); });
     enter();
     toast('Sample mode — not connected to the class database');
@@ -2033,8 +2119,22 @@ function enter() {
 
   wireGate();
 
-  FB.onAuthStateChanged(FB.auth, async (user) => {
-    if (!user) return showGate(carried || null, carried ? 'info' : 'bad');
+  FB.onAuthStateChanged(FB.auth, (user) => {
+    handleAuth(user, carried).catch((err) => {
+      // Anything unexpected lands here rather than vanishing as an unhandled
+      // rejection with the sign-in button stuck on "Signing in...".
+      console.error('[class] sign-in failed', err);
+      busy('#doIn', false);
+      busy('#doReg', false);
+      showGate('Something went wrong opening your class: ' +
+               (err.message || err.code || 'unknown') +
+               '. Refresh the page and try again.');
+    });
+  });
+})();
+
+async function handleAuth(user, carried) {
+    if (!user) { busy('#doIn', false); return showGate(carried || null, carried ? 'info' : 'bad'); }
     ME = user;
 
     // Wait for a registration that is still writing. Without this the read
@@ -2077,8 +2177,11 @@ function enter() {
       await loadMine(user.uid);
     } catch (err) {
       console.error('[class] load failed', err);
-      return showGate('Signed in, but your class could not load. Try again shortly.');
+      busy('#doIn', false);
+      return showGate('Signed in, but your class could not load: ' +
+        (err.code || err.message) + '. If this keeps happening, tell sir the ' +
+        'Firestore rules may need publishing.');
     }
+    busy('#doIn', false);
     enter();
-  });
-})();
+}
