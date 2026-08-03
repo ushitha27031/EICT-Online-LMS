@@ -114,6 +114,7 @@ function busy(sel, on, label) {
   const b = $(sel);
   if (!b) return;
   b.disabled = on;
+  b.classList.toggle('working', on);
   if (on) {
     b.dataset.was = b.innerHTML;
     b.innerHTML = `<span class="spin"></span>${label ? esc(label) : ''}`;
@@ -121,6 +122,15 @@ function busy(sel, on, label) {
     b.innerHTML = b.dataset.was;
     delete b.dataset.was;
   }
+}
+
+/* One shake on a message that the person needs to actually read. */
+function shake(sel) {
+  const el = $(sel);
+  if (!el) return;
+  el.classList.remove('shake');
+  void el.offsetWidth;          // restart the animation
+  el.classList.add('shake');
 }
 
 const unlocked  = () => (P?.unlocked || []).map(Number);
@@ -206,6 +216,7 @@ async function signOutNow(reason) {
 /* ============================================================== screens */
 
 function showGate(msg, kind = 'bad') {
+  dropSplash();
   document.body.classList.remove('checking');
   document.body.classList.add('blocked');
   $('#hold').hidden = true;
@@ -216,6 +227,7 @@ function showGate(msg, kind = 'bad') {
 }
 
 function showHold(kind) {
+  dropSplash();
   document.body.classList.remove('checking');
   document.body.classList.add('blocked');
   $('#gate').hidden = true;
@@ -674,8 +686,7 @@ async function sendSlip() {
 
   if (!amount) return toast('Fill in the amount', 'bad');
 
-  const btn = $('#pSend');
-  btn.disabled = true; btn.textContent = 'Sending…';
+  busy('#pSend', true, 'Sending…');
 
   try {
     if (DEMO) {
@@ -704,11 +715,34 @@ async function sendSlip() {
     slipData = null;
     resetDrop();
     renderPayHistory();
-    toast('Sent. Sir will check it and open the class.');
+    busy('#pSend', false);
+    slipSentPopup(forSeason, forSeason ? season : month);
+    return;
   } catch (err) {
     toast(err.message || 'Could not send. Check your connection and try again.', 'bad');
   }
-  btn.disabled = false; btn.textContent = 'Send to sir';
+  busy('#pSend', false);
+}
+
+/* Sending money is the most anxious moment on the whole site, so it gets a
+   real confirmation rather than a toast that slides away in three seconds. */
+function slipSentPopup(forSeason, what) {
+  sheet(`
+    <div style="text-align:center">
+      <div class="tick-ring">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3">
+          <path d="M20 6 9 17l-5-5"/></svg>
+      </div>
+      <h3>Slip sent to sir</h3>
+      <p style="color:var(--dim);margin:0 0 6px">
+        ${forSeason
+          ? `For unit ${pad(Number(what))} recordings.`
+          : `For the ${esc(monthName(what))} live class.`}</p>
+      <p style="color:var(--dim);margin:0 0 20px">
+        He checks slips by hand, usually within a day. It opens here by itself
+        once he approves it — you do not need to send it again.</p>
+      <button class="btn btn--gold btn--wide" data-close-sheet>Got it</button>
+    </div>`);
 }
 
 function resetDrop() {
@@ -911,6 +945,7 @@ function wireGate() {
       clearStamp();
       busy('#doIn', false);
       say('#gMsg', AUTH_MSG[e.code] || e.message || 'Could not sign in.', 'bad');
+      shake('#gMsg');
     }
   };
   $('#inPass').addEventListener('keydown', e => { if (e.key === 'Enter') $('#doIn').click(); });
@@ -1000,6 +1035,7 @@ function wireGate() {
       clearStamp();
       busy('#doReg', false);
       say('#gMsg2', regError(e), 'bad');
+      shake('#gMsg2');
     } finally {
       registering = null;
     }
@@ -1027,9 +1063,9 @@ function regError(e) {
 function registeredPopup(name) {
   sheet(`
     <div style="text-align:center">
-      <div class="hold__ring" style="border-color:var(--live);color:var(--live)">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"
-          style="width:26px;height:26px"><path d="M20 6 9 17l-5-5"/></svg>
+      <div class="tick-ring">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3">
+          <path d="M20 6 9 17l-5-5"/></svg>
       </div>
       <h3>Registration sent</h3>
       <p style="color:var(--dim);margin:0 0 6px">
@@ -1048,6 +1084,7 @@ function registeredPopup(name) {
    connection at exactly the wrong moment. Rather than looping them back to
    the sign-in screen forever, let them finish the part that is missing. */
 function finishRegistration(user) {
+  dropSplash();
   document.body.classList.remove('checking');
   document.body.classList.add('blocked');
   $('#hold').hidden = true;
@@ -1117,7 +1154,68 @@ async function loadMine(uid) {
   }
 }
 
+/* Take the splash down once we know what to show. Held for a beat so it
+   does not flash on a fast connection, then faded rather than cut. */
+let splashFrom = Date.now();
+function dropSplash() {
+  const el = $('#splash');
+  if (!el || el.classList.contains('gone')) return;
+  const wait = Math.max(0, 550 - (Date.now() - splashFrom));
+  setTimeout(() => {
+    el.classList.add('gone');
+    setTimeout(() => el.remove(), 600);
+  }, wait);
+}
+
+/* Remember what was open last time, so that when something new is approved
+   the student is told rather than having to notice. */
+const SEEN_KEY = 'eict.seen';
+
+function announceNew() {
+  let seen;
+  try { seen = JSON.parse(localStorage.getItem(SEEN_KEY) || 'null'); } catch (_) { seen = null; }
+
+  const now = { months: [...ACCESS], units: unlocked() };
+  localStorage.setItem(SEEN_KEY, JSON.stringify(now));
+
+  if (!seen) return;                                    // first visit, nothing to compare
+  const newMonths = now.months.filter(m => !(seen.months || []).includes(m));
+  const newUnits  = now.units.filter(u => !(seen.units || []).includes(u));
+  if (!newMonths.length && !newUnits.length) return;
+
+  const lines = [];
+  if (newMonths.length)
+    lines.push(newMonths.map(m => `the ${monthName(m)} live class`).join(' and '));
+  if (newUnits.length)
+    lines.push(newUnits.length === 1
+      ? `unit ${pad(newUnits[0])} recordings`
+      : `${newUnits.length} units of recordings`);
+
+  setTimeout(() => {
+    sheet(`
+      <div style="text-align:center">
+        <div class="tick-ring">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3">
+            <path d="M20 6 9 17l-5-5"/></svg>
+        </div>
+        <h3>Approved</h3>
+        <p style="color:var(--dim);margin:0 0 20px">
+          Sir has opened ${esc(lines.join(', and '))} for you. It is ready now.</p>
+        <button class="btn btn--gold btn--wide" data-close-sheet>Open it</button>
+      </div>`);
+
+    // make the thing that changed pulse once the sheet is out of the way
+    setTimeout(() => {
+      newUnits.forEach(u => {
+        const card = $(`.sn-card[data-season="${u}"]`);
+        if (card) card.classList.add('just-opened');
+      });
+    }, 400);
+  }, 700);
+}
+
 function enter() {
+  dropSplash();
   document.body.classList.remove('checking', 'blocked');
   $('#gate').hidden = true;
   $('#hold').hidden = true;
@@ -1128,6 +1226,7 @@ function enter() {
   renderLive();
   renderRec();
   renderPayHistory();
+  announceNew();
 
   if (DEMO) return;
 
