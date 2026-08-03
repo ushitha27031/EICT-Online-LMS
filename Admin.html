@@ -133,6 +133,10 @@
       </button>
       <h1 id="viewTitle">Today</h1>
       <span class="topbar__sub" id="viewSub"></span>
+      <button class="btn btn--sm" id="refreshBtn" title="Check for new registrations and slips">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12a9 9 0 1 1-2.6-6.4M21 3v6h-6"/></svg>
+        <span id="refreshLbl">Refresh</span>
+      </button>
     </header>
 
     <!-- ····················································· TODAY ···· -->
@@ -231,6 +235,13 @@
               <option value="verified">Approved</option>
               <option value="rejected">Sent back</option>
               <option value="">Everything</option>
+            </select>
+          </div>
+          <div class="field">
+            <select id="payKind">
+              <option value="">Live and recordings</option>
+              <option value="live">Live class only</option>
+              <option value="season">Recordings only</option>
             </select>
           </div>
           <div class="field">
