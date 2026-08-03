@@ -651,8 +651,17 @@ function fillSeasonPicker() {
 
 function syncPayForm() {
   const forSeason = $('#pFor').value === 'season';
-  $('#pMonthWrap').hidden = forSeason;
-  $('#pSeasonWrap').hidden = !forSeason;
+  // `hidden` alone loses to the stylesheet's display rule on .f label, so set
+  // display directly as well. Otherwise the season picker stays on screen
+  // during a live-class payment and can attach a unit to it by mistake.
+  const show = (sel, on) => {
+    const el = $(sel);
+    if (!el) return;
+    el.hidden = !on;
+    el.style.display = on ? '' : 'none';
+  };
+  show('#pMonthWrap', !forSeason);
+  show('#pSeasonWrap', forSeason);
   $('#pAmount').value = forSeason ? FEE_SEASON : FEE_LIVE;
 }
 
