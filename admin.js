@@ -15,6 +15,8 @@ const SESSION_MAX_MS = 24 * 60 * 60 * 1000;   // one day, hard cap
 const STAMP_AT  = 'eict.sessionAt';
 const STAMP_UID = 'eict.sessionUid';
 const SN_PREFIX = 'EICT';
+const FEE_LIVE   = 2000;   // rupees per month
+const FEE_SEASON = 2500;   // rupees per unit of recordings
 const BATCH     = 'AL-27';
 
 const UNITS = [
@@ -326,6 +328,14 @@ async function revokeMonth(uid, month) {
   DB.access = DB.access.filter(a => a !== id);
 }
 
+/* What a slip is actually paying for. Older records were written before the
+   purpose field existed, so an absent value means live class. */
+const isSeasonPay = (p) => p.purpose === 'season' && p.season != null;
+
+const payFor = (p) => isSeasonPay(p)
+  ? `Unit ${pad(Number(p.season), 2)} recordings`
+  : `Live class · ${monthName(p.month)}`;
+
 async function reviewSlip(payId, decision, noteText) {
   const p = DB.payments.find(x => x.id === payId);
   if (!p) return;
@@ -340,15 +350,50 @@ async function reviewSlip(payId, decision, noteText) {
   Object.assign(p, patch);
 
   if (decision === 'verified') {
-    await grantMonth(p.uid, p.month, 'payment');
-    note(`${p.name} paid for ${monthName(p.month)}`);
-    toast(`Live class opened for ${p.name}`);
+    if (isSeasonPay(p)) {
+      // A recordings payment opens that unit, not a month of live class.
+      await openSeasonFor(p.uid, Number(p.season));
+      note(`${p.name} paid for unit ${pad(Number(p.season), 2)}`);
+      toast(`Unit ${pad(Number(p.season), 2)} opened for ${p.name}`);
+    } else {
+      await grantMonth(p.uid, p.month, 'payment');
+      note(`${p.name} paid for ${monthName(p.month)}`);
+      toast(`Live class opened for ${p.name}`);
+    }
   } else {
-    await revokeMonth(p.uid, p.month);
+    if (isSeasonPay(p)) {
+      await closeSeasonFor(p.uid, Number(p.season));
+    } else {
+      await revokeMonth(p.uid, p.month);
+    }
     note(`Slip sent back to ${p.name}`);
     toast(`Sent back to ${p.name}`, 'bad');
   }
   renderAll();
+}
+
+/* Unlock one unit for one student. Kept separate from toggleSeason so that
+   approving a slip twice cannot accidentally re-lock what it just opened. */
+async function openSeasonFor(uid, n) {
+  const st = DB.students.find(s => s.id === uid);
+  if (!st) return;
+  const list = (st.unlocked || []).map(Number);
+  if (list.includes(n)) return;
+  if (!DEMO) {
+    await FB.updateDoc(FB.doc(FB.db, 'students', uid), { unlocked: FB.arrayUnion(n) });
+  }
+  st.unlocked = [...list, n];
+}
+
+async function closeSeasonFor(uid, n) {
+  const st = DB.students.find(s => s.id === uid);
+  if (!st) return;
+  const list = (st.unlocked || []).map(Number);
+  if (!list.includes(n)) return;
+  if (!DEMO) {
+    await FB.updateDoc(FB.doc(FB.db, 'students', uid), { unlocked: FB.arrayRemove(n) });
+  }
+  st.unlocked = list.filter(x => x !== n);
 }
 
 async function reviewFree(reqId, decision) {
@@ -463,8 +508,15 @@ function renderCounts() {
   const r = pendingRegs().length, p = pendingPays().length, f = pendingFrees().length;
   const put = (sel, n) => {
     const el = $(sel); if (!el) return;
+    const was = el.textContent;
     el.textContent = n;
     el.dataset.zero = n ? '0' : '1';
+    if (was !== String(n) && n) {
+      el.classList.remove('bump');
+      void el.offsetWidth;
+      el.classList.add('bump');
+      setTimeout(() => el.classList.remove('bump'), 240);
+    }
   };
   put('#cReg', r); put('#cPay', p); put('#cFree', f);
 
@@ -576,9 +628,17 @@ function renderStudents() {
 
 function renderPayments() {
   const want = $('#paySeen')?.value ?? 'pending';
-  const mo = $('#payMonth')?.value || '';
-  const list = DB.payments.filter(p =>
-    (!want || p.status === want) && (!mo || p.month === mo));
+  const mo   = $('#payMonth')?.value || '';
+  const kind = $('#payKind')?.value || '';
+  const list = DB.payments.filter(p => {
+    if (want && p.status !== want) return false;
+    if (kind === 'season' && !isSeasonPay(p)) return false;
+    if (kind === 'live' && isSeasonPay(p)) return false;
+    // A recordings payment is not tied to a month, so the month filter must
+    // not silently hide it.
+    if (mo && !isSeasonPay(p) && p.month !== mo) return false;
+    return true;
+  });
 
   const box = $('#payList');
   if (!list.length) {
@@ -590,9 +650,12 @@ function renderPayments() {
 
   box.innerHTML = list.map(p => {
     const st = studentOf(p.uid) || {};
-    const expected = 2000;
+    const season = isSeasonPay(p);
+    const expected = season ? FEE_SEASON : FEE_LIVE;
     const mismatch = p.amount && p.amount !== expected;
-    const already = hasAccess(p.uid, p.month);
+    const already = season
+      ? (st.unlocked || []).map(Number).includes(Number(p.season))
+      : hasAccess(p.uid, p.month);
 
     return `<div class="slip" data-slip="${p.id}">
       <div class="slip__img" data-slipbox="${p.id}">
@@ -608,15 +671,19 @@ function renderPayments() {
             <h3>${esc(p.name || st.name || 'Unknown student')}</h3>
             ${snChip(p.studentNo || st.studentNo)}
           </div>
-          ${p.status === 'pending'
-            ? '<span class="pill pill--warn">Not checked</span>'
-            : p.status === 'verified'
-              ? '<span class="pill pill--ok">Approved</span>'
-              : '<span class="pill pill--bad">Sent back</span>'}
+          <div style="display:flex;flex-direction:column;gap:6px;align-items:flex-end">
+            ${p.status === 'pending'
+              ? '<span class="pill pill--warn">Not checked</span>'
+              : p.status === 'verified'
+                ? '<span class="pill pill--ok">Approved</span>'
+                : '<span class="pill pill--bad">Sent back</span>'}
+            <span class="pill ${season ? 'pill--accent' : 'pill--neutral'}">
+              ${season ? 'Recordings' : 'Live class'}</span>
+          </div>
         </div>
 
         <dl class="kv">
-          <dt>For</dt><dd>${monthName(p.month)}</dd>
+          <dt>For</dt><dd>${esc(payFor(p))}</dd>
           <dt>Amount</dt><dd class="amount">Rs. ${Number(p.amount || 0).toLocaleString()}</dd>
           <dt>Sent</dt><dd>${ago(p.at)}</dd>
           <dt>WhatsApp</dt>
@@ -630,13 +697,13 @@ function renderPayments() {
 
         ${already && p.status === 'pending' ? `<div class="flag">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 9v4m0 4h.01M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0Z"/></svg>
-          <span>${esc(p.name)} already has ${monthName(p.month)} open. This may be a second slip.</span></div>` : ''}
+          <span>${esc(p.name)} already has ${esc(payFor(p))} open. This may be a second slip.</span></div>` : ''}
 
         ${p.status === 'pending' ? `
           <textarea class="slip__note" data-note="${p.id}"
             placeholder="Note back to the student — only needed if you send it back"></textarea>
           <div class="slip__act">
-            <button class="btn btn--ok" data-verify="${p.id}">Approve and open ${monthName(p.month).split(' ')[0]}</button>
+            <button class="btn btn--ok" data-verify="${p.id}">Approve and open ${season ? `unit ${pad(Number(p.season), 2)}` : monthName(p.month).split(' ')[0]}</button>
             <button class="btn btn--bad" data-reject-pay="${p.id}">Send back</button>
           </div>`
         : `<div class="slip__act">
@@ -682,11 +749,14 @@ function hydrateSlips() {
   boxes.forEach(b => io.observe(b));
 }
 
-async function addManualPayment(uid, month, amount, noteText) {
+async function addManualPayment(uid, month, amount, noteText, season) {
   const st = studentOf(uid);
   if (!st) return;
+  const forSeason = season != null;
   const rec = {
     uid, studentNo: st.studentNo || null, name: st.name,
+    purpose: forSeason ? 'season' : 'live',
+    season: forSeason ? Number(season) : null,
     month, amount, status: 'verified', hasSlip: false,
     note: noteText || 'Entered by hand', at: new Date(), reviewedAt: new Date()
   };
@@ -700,9 +770,16 @@ async function addManualPayment(uid, month, amount, noteText) {
     rec.id = 'm' + Date.now();
   }
   DB.payments.unshift(rec);
-  await grantMonth(uid, month, 'payment');
-  note(`${st.name} marked paid for ${monthName(month)}`);
-  toast(`Live class opened for ${st.name}`);
+
+  if (forSeason) {
+    await openSeasonFor(uid, Number(season));
+    note(`${st.name} marked paid for unit ${pad(Number(season))}`);
+    toast(`Unit ${pad(Number(season))} opened for ${st.name}`);
+  } else {
+    await grantMonth(uid, month, 'payment');
+    note(`${st.name} marked paid for ${monthName(month)}`);
+    toast(`Live class opened for ${st.name}`);
+  }
   renderAll();
 }
 
@@ -723,16 +800,34 @@ function manualPayModal() {
           ${active.map(s => `<option value="${s.id}">${esc(s.name)} — ${esc(s.studentNo || 'no number')}</option>`).join('')}
         </select>
       </label>
+      <label><span>What for</span>
+        <select id="mpKind">
+          <option value="live">Live class — one month</option>
+          <option value="season">Recordings — one unit</option>
+        </select>
+      </label>
       <div class="form__row">
-        <label><span>Month</span><input id="mpMonth" type="month" value="${DB.live.month || thisMonth()}"></label>
-        <label><span>Amount</span><input id="mpAmount" type="number" value="2000"></label>
+        <label id="mpMonthWrap"><span>Month</span>
+          <input id="mpMonth" type="month" value="${DB.live.month || thisMonth()}"></label>
+        <label id="mpSeasonWrap" style="display:none"><span>Unit</span>
+          <select id="mpSeason">
+            ${SEASONS.map(x => `<option value="${x.n}">Unit ${pad(x.n)} — ${esc(x.title)}</option>`).join('')}
+          </select></label>
+        <label><span>Amount</span><input id="mpAmount" type="number" value="${FEE_LIVE}"></label>
       </div>
       <label><span>Note to yourself</span>
         <input id="mpNote" placeholder="Cash, paid at class">
       </label>
     </div>
   `, `<button class="btn" data-close>Cancel</button>
-      <button class="btn btn--primary" data-save-manual="1">Record and open the month</button>`);
+      <button class="btn btn--primary" data-save-manual="1">Record and open it</button>`);
+
+  $('#mpKind').addEventListener('change', (e) => {
+    const forSeason = e.target.value === 'season';
+    $('#mpMonthWrap').style.display  = forSeason ? 'none' : '';
+    $('#mpSeasonWrap').style.display = forSeason ? '' : 'none';
+    $('#mpAmount').value = forSeason ? FEE_SEASON : FEE_LIVE;
+  });
 }
 
 /* ------------------------------------------------------ free class asks */
@@ -1077,11 +1172,14 @@ document.addEventListener('click', async (e) => {
 
   if (d.saveManual) {
     const uid = $('#mpStudent').value;
-    const month = $('#mpMonth').value;
+    const forSeason = $('#mpKind').value === 'season';
+    const month = forSeason ? thisMonth() : $('#mpMonth').value;
     const amount = Number($('#mpAmount').value || 0);
-    if (!uid || !month) return toast('Pick a student and a month', 'bad');
+    const season = forSeason ? Number($('#mpSeason').value) : null;
+    if (!uid) return toast('Pick a student', 'bad');
+    if (!forSeason && !month) return toast('Pick a month', 'bad');
     t.disabled = true;
-    await addManualPayment(uid, month, amount, $('#mpNote').value.trim());
+    await addManualPayment(uid, month, amount, $('#mpNote').value.trim(), season);
     return closeModal();
   }
 });
@@ -1091,7 +1189,7 @@ document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeModal
 
 ['#stuSearch', '#stuStatus', '#stuTrack'].forEach(s =>
   $(s)?.addEventListener('input', renderStudents));
-['#paySeen', '#payMonth'].forEach(s =>
+['#paySeen', '#payMonth', '#payKind'].forEach(s =>
   $(s)?.addEventListener('input', renderPayments));
 ['#recSearch', '#recFilter'].forEach(s =>
   $(s)?.addEventListener('input', renderRecorded));
@@ -1170,6 +1268,45 @@ function enterApp(profile, uid) {
 
   renderAll();
 }
+
+/* The dashboard reads everything once at sign-in. A registration or a slip
+   that arrives while it is sitting open would otherwise never show up, which
+   looks exactly like the student page failing to submit. This re-reads on
+   demand, and whenever the tab is brought back to the front. */
+let lastPull = Date.now();
+let pulling = false;
+
+async function refreshAll(quiet) {
+  if (DEMO || pulling) return;
+  pulling = true;
+  const lbl = $('#refreshLbl');
+  $('#refreshBtn')?.classList.add('spinning');
+  if (lbl && !quiet) lbl.textContent = 'Checking…';
+  try {
+    await loadAll();
+    lastPull = Date.now();
+    renderAll();
+    if (!quiet) {
+      const waiting = pendingRegs().length + pendingPays().length + pendingFrees().length;
+      toast(waiting ? `${waiting} thing${waiting === 1 ? '' : 's'} waiting for you` : 'Nothing new');
+    }
+  } catch (err) {
+    console.error('[admin] refresh failed', err);
+    if (!quiet) toast('Could not refresh: ' + (err.code || err.message), 'bad');
+  }
+  pulling = false;
+  $('#refreshBtn')?.classList.remove('spinning');
+  if (lbl) lbl.textContent = 'Refresh';
+}
+
+$('#refreshBtn')?.addEventListener('click', () => refreshAll(false));
+
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState === 'visible' && Date.now() - lastPull > 30000) refreshAll(true);
+});
+setInterval(() => {
+  if (document.visibilityState === 'visible') refreshAll(true);
+}, 120000);
 
 async function doSignOut(reason) {
   clearStamp();
