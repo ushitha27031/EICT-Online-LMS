@@ -188,6 +188,28 @@ service cloud.firestore {
       allow write: if isTeacher();
     }
 
+    /* ---------------------------------------------------------- attendance */
+
+    // One document per student per month, id {uid}_{month}. A student can
+    // read only their own — this is the whole reason it is split this way
+    // rather than one shared register: nobody should be able to read who
+    // else was in the class. Absence is the default; a date only appears in
+    // `sessions` when the student was marked present, so most months this
+    // document is small.
+    match /liveSessions/{id} {
+      allow read: if isTeacher()
+                  || (signedIn() && resource.data.uid == request.auth.uid);
+      allow write: if isTeacher();
+    }
+
+    // The dates a register was taken on, and that day's recording for
+    // whoever missed it. No attendee list here — that is what keeps this
+    // one safe for every active student to read.
+    match /liveMeta/{month} {
+      allow read:  if isTeacher() || isStudentish();
+      allow write: if isTeacher();
+    }
+
     /* ------------------------------------------------------------ settings */
 
     // Bank details, fee, day and time. Any approved student may read these —

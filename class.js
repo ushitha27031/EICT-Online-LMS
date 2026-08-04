@@ -22,7 +22,7 @@
 /* Shown in the corner of the sign-in card so you can tell at a glance which
    version a student is actually running. If this does not match what you just
    uploaded, their browser is still on a cached copy. */
-const VERSION = '1.6.0';
+const VERSION = '1.7.0';
 
 const SESSION_MAX_MS = 24 * 60 * 60 * 1000;
 const STAMP_AT  = 'eict.sessionAt';
@@ -218,6 +218,12 @@ function seedDemo() {
     at: new Date(Date.now() - 40 * 86400000)
   };
   ACCESS = new Set([thisMonth()]);
+  LIVE_META = {
+    dates: ['2026-08-02', '2026-08-09'],
+    recordings: { '2026-08-02': 'dQw4w9WgXcQ' },
+    titles: { '2026-08-02': 'Class 1 — recap' }
+  };
+  MY_SESSIONS = { sessions: { '2026-08-02': false, '2026-08-09': true } };
   PAPERS = {
     'unit-1': { key:'unit-1', kind:'unit', n:1, status:'accepted', marks:'72/100',
                 feedback:'Good work. Watch the units in question 4.',
@@ -322,6 +328,86 @@ function showHold(kind) {
 
 /* ============================================================ live view */
 
+
+/* ============================================================ attendance
+   Read-only from the student's side: an own-record register and, for any
+   date they missed while they had access, whether sir uploaded a recording.
+   ====================================================================== */
+
+let MY_SESSIONS = null;   // this student's own liveSessions doc, or null
+let LIVE_META = null;     // the shared liveMeta doc for this month
+
+async function loadAttendance(uid) {
+  const month = thisMonth();
+  try {
+    const [mine, meta] = await Promise.all([
+      FB.getDoc(FB.doc(FB.db, 'liveSessions', `${uid}_${month}`)),
+      FB.getDoc(FB.doc(FB.db, 'liveMeta', month))
+    ]);
+    MY_SESSIONS = mine.exists() ? mine.data() : { sessions: {} };
+    LIVE_META = meta.exists() ? meta.data() : { dates: [], recordings: {}, titles: {} };
+  } catch (err) {
+    console.warn('[class] attendance unavailable:', err.code || err.message);
+    MY_SESSIONS = null; LIVE_META = null;
+  }
+}
+
+function attendanceCard() {
+  if (!LIVE_META || !LIVE_META.dates || !LIVE_META.dates.length) return '';
+
+  const dates = LIVE_META.dates.slice().sort();
+  const got = dates.filter(d => MY_SESSIONS?.sessions?.[d]).length;
+  const missed = dates.filter(d => !MY_SESSIONS?.sessions?.[d]);
+  const catchUp = missed.filter(d => LIVE_META.recordings && LIVE_META.recordings[d]);
+
+  return `
+    <div class="card">
+      <div class="card__h">
+        <div>
+          <h2>Attendance this month</h2>
+          <p>${got} of ${dates.length} classes so far.</p>
+        </div>
+      </div>
+      ${catchUp.length ? `
+        <div class="rec__eyebrow" style="margin-bottom:9px">Catch up on what you missed</div>
+        ${catchUp.map(d => {
+          const label = (LIVE_META.titles && LIVE_META.titles[d]) ||
+            new Date(d).toLocaleDateString('en', { weekday: 'long', day: 'numeric', month: 'long' });
+          return `<div class="paper-row">
+            <div class="paper-row__t">
+              <b>${esc(label)}</b>
+              <small>${new Date(d).toLocaleDateString('en', { weekday: 'short', day: 'numeric', month: 'short' })}</small>
+            </div>
+            <button class="btn btn--sm btn--gold" data-catchup="${d}">Watch</button>
+          </div>`;
+        }).join('')}`
+        : `<p style="color:var(--dimmer);font-size:12.5px;margin:0">
+             ${missed.length ? 'No recording uploaded for the class you missed yet.' : 'You have not missed one yet.'}</p>`}
+    </div>`;
+}
+
+function openCatchup(date) {
+  const rec = LIVE_META && LIVE_META.recordings && LIVE_META.recordings[date];
+  if (!rec) return;
+  const label = (LIVE_META.titles && LIVE_META.titles[date]) || 'Class recording';
+
+  curEp = null;                       // this is not an episode; nothing to mark watched
+  $('#plTitle').textContent = label;
+  $('#plSub').textContent = new Date(date).toLocaleDateString('en', { weekday: 'long', day: 'numeric', month: 'long' });
+  $('#plMeter').hidden = true;        // no progress tracking on a catch-up recording
+  $('#plDone').textContent = 'Close';
+  $('#plDone').disabled = false;
+  $('#plPrev').style.display = 'none';
+  $('#plNext').style.display = 'none';
+
+  $('#stage').innerHTML =
+    `<iframe src="https://www.youtube-nocookie.com/embed/${encodeURIComponent(rec)}?rel=0&modestbranding=1&playsinline=1&autoplay=1"
+      title="${esc(label)}" allow="autoplay; encrypted-media; picture-in-picture; fullscreen"
+      allowfullscreen></iframe>`;
+  $('#player').hidden = false;
+  document.body.classList.add('locked');
+}
+
 function renderLive() {
   const m = thisMonth();
   const open = hasMonth(m);
@@ -348,7 +434,7 @@ function renderLive() {
           : `<div class="empty" style="padding:22px"><b>Link not posted yet</b>
              <p>Sir puts the link up shortly before the class starts. Check back then.</p></div>`}
         <p class="hint">The link is only sent to students who have paid for this month. Please don't pass it on.</p>
-      </div>`;
+      </div>` + attendanceCard();
     return;
   }
 
@@ -386,7 +472,7 @@ function renderLive() {
           'One free session before you decide.'
         ]).map(b => `<li>${esc(b)}</li>`).join('')}
       </ul>
-    </div>`;
+    </div>` + attendanceCard();
 
   $('#askFree')?.addEventListener('click', askFree);
 }
@@ -743,6 +829,13 @@ async function openEpisode(sn, en) {
   if (!s || !ep) return;
   curEp = [sn, en];
   const key = `${sn}-${en}`;
+
+  // A catch-up recording reuses this same overlay and hides/relabels a few
+  // controls that only make sense for one episode at a time. Reset them
+  // every time a real episode opens, so watching a catch-up first does not
+  // leave the player looking wrong afterward.
+  $('#plPrev').style.display = '';
+  $('#plNext').style.display = '';
 
   $('#plTitle').textContent = ep.title;
   $('#plSub').textContent = `Unit ${pad(sn)} · episode ${pad(en)}`;
@@ -1575,7 +1668,7 @@ function switchTab(t) {
 /* --------------------------------------------------------------- events */
 
 document.addEventListener('click', (e) => {
-  const t = e.target.closest('[data-tab],[data-season],[data-ep],[data-jump],[data-go-pay],[data-close-sheet],[data-filter],[data-submit],[data-book],[data-slot]');
+  const t = e.target.closest('[data-tab],[data-season],[data-ep],[data-jump],[data-go-pay],[data-close-sheet],[data-filter],[data-submit],[data-book],[data-slot],[data-catchup]');
   if (!t) return;
   const d = t.dataset;
 
@@ -1597,6 +1690,7 @@ document.addEventListener('click', (e) => {
 
   if (d.ep) return openEpisode(...d.ep.split('-').map(Number));
   if (d.submit) { closeSheet(); return submitSheet(d.submit); }
+  if (d.catchup) return openCatchup(d.catchup);
   if (d.book) return bookSheet(Number(d.book));
   if (d.slot) return bookSlot(d.slot, Number(d.term));
 
@@ -1923,6 +2017,8 @@ async function loadMine(uid) {
     window.COURSE = Object.assign({}, window.COURSE,
       { live: Object.assign({}, window.COURSE?.live, B) });
   }
+
+  await loadAttendance(uid);
 }
 
 /* ---------------------------------------------------------------- intro

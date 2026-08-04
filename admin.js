@@ -244,12 +244,38 @@ function seedDemo() {
   DB.seasons = { 1: { 1: 'dQw4w9WgXcQ', 2: 'dQw4w9WgXcQ', 3: 'dQw4w9WgXcQ' }, 2: { 1: 'dQw4w9WgXcQ' } };
   DB.live.url = 'https://zoom.us/j/00000000000';
   DB.live.bank = 'Bank : Commercial Bank\nAccount : 0000 0000 0000\nName : S. Manurathna';
+
+  const dm = thisMonth();
+  META = {
+    month: dm, dates: ['2026-08-02', '2026-08-09'],
+    recordings: { '2026-08-02': 'dQw4w9WgXcQ' }, titles: { '2026-08-02': 'Class 1 — recap' }
+  };
+  SESS = [
+    { uid: 'demo1', month: dm, sessions: { '2026-08-02': true,  '2026-08-09': true  } },
+    { uid: 'demo2', month: dm, sessions: { '2026-08-02': false, '2026-08-09': true  } },
+    { uid: 'demo3', month: dm, sessions: { '2026-08-02': true,  '2026-08-09': false } }
+  ];
+  DB.students.forEach(st => {
+    if (['demo1','demo2','demo3'].includes(st.id)) {
+      // seed some watch progress so the Watching column has something to show
+      st.progress = st.progress || {};
+      st.watched = st.watched || [];
+    }
+  });
+  DB.students[0].progress = { '1-1': { furthest: 2400, dur: 2400, done: true } };
+  DB.students[0].watched = ['1-1','1-2','1-3','1-4','1-5','1-6','1-7','2-1','2-2','3-1'];
 }
 
 /* ------------------------------------------------------------ data reads */
 
 async function loadAll() {
   if (DEMO) return;
+  // Attendance is registered by calendar month, same as live-class payments.
+  // This runs before DB.live loads below, so thisMonth() is the only sane
+  // value here — DB.live.month is a teacher setting for the join link, not
+  // a substitute for "what month is it".
+  try { await loadAttendance(thisMonth()); }
+  catch (err) { console.warn('[admin] attendance unavailable:', err.code || err.message); }
   const f = FB;
   const [stu, pay, free, acc, live] = await Promise.all([
     f.getDocs(f.collection(f.db, 'students')),
@@ -657,6 +683,182 @@ async function delSlot(id) {
   slotSheet();
 }
 
+
+/* ================================================================== attendance
+   Two collections, on purpose. `liveSessions/{uid}_{month}` is one document
+   per student, so a student reading their own can never see anyone else's —
+   that split is the whole design. `liveMeta/{month}` holds the shared part:
+   which dates a register was taken, and that date's catch-up recording.
+   ====================================================================== */
+
+let SESS = [];        // this month's liveSessions docs, all students
+let META = null;      // this month's liveMeta doc
+
+const todayStr = () => new Date().toISOString().slice(0, 10);
+const fmtDate = (iso) => {
+  const d = new Date(iso + 'T00:00:00');
+  return d.toLocaleDateString('en', { weekday: 'short', day: 'numeric', month: 'short' });
+};
+
+async function loadAttendance(month) {
+  if (DEMO) return;
+  const f = FB;
+  const [sess, meta] = await Promise.all([
+    f.getDocs(f.query(f.collection(f.db, 'liveSessions'), f.where('month', '==', month))).catch(() => null),
+    f.getDoc(f.doc(f.db, 'liveMeta', month)).catch(() => null)
+  ]);
+  SESS = []; sess && sess.forEach(d => SESS.push({ id: d.id, ...d.data() }));
+  META = (meta && meta.exists()) ? meta.data() : { month, dates: [], recordings: {}, titles: {} };
+}
+
+function attendedOn(uid, date) {
+  const doc = SESS.find(x => x.uid === uid);
+  return !!(doc && doc.sessions && doc.sessions[date]);
+}
+
+function renderAttendance() {
+  const date = $('#attDate').value || todayStr();
+  renderRegister(date);
+  renderHistory();
+  renderMonthlySummary();
+}
+
+function renderRegister(date) {
+  const term = ($('#attSearch')?.value || '').toLowerCase().trim();
+  const active = DB.students
+    .filter(s => s.status === 'active')
+    .filter(s => !term || [s.name, s.studentNo].some(v => String(v || '').toLowerCase().includes(term)))
+    .sort((a, b) => (a.name || '').localeCompare(b.name || ''));
+
+  const box = $('#attList');
+  if (!active.length) {
+    box.innerHTML = emptyState('No students', 'No active students match.');
+    return;
+  }
+
+  box.innerHTML = `<table class="table"><tbody>${active.map(s => `
+    <tr>
+      <td style="width:44px"><label class="switch">
+        <input type="checkbox" data-present="${s.id}" ${attendedOn(s.id, date) ? 'checked' : ''}>
+        <span class="switch__track"></span></label></td>
+      <td>${snChip(s.studentNo)}</td>
+      <td><b>${esc(s.name)}</b></td>
+    </tr>`).join('')}</tbody></table>`;
+
+  $('#attRecording').value = (META && META.recordings && META.recordings[date]) || '';
+  $('#attLabel').value = (META && META.titles && META.titles[date]) || '';
+}
+
+function renderHistory() {
+  const box = $('#attHistory');
+  const dates = (META?.dates || []).slice().sort().reverse();
+  if (!dates.length) {
+    box.innerHTML = emptyState('No sessions yet', 'Take a register above and it will list here.');
+    return;
+  }
+  const activeCount = DB.students.filter(s => s.status === 'active').length;
+  box.innerHTML = `<table class="table">
+    <thead><tr><th>Date</th><th>Present</th><th>Recording</th><th></th></tr></thead>
+    <tbody>${dates.map(date => {
+      const present = SESS.filter(x => x.sessions && x.sessions[date]).length;
+      const rec = META.recordings && META.recordings[date];
+      return `<tr>
+        <td>${fmtDate(date)}</td>
+        <td class="num">${present} of ${activeCount}</td>
+        <td>${rec ? '<span class="pill pill--ok">Uploaded</span>' : '<span class="pill pill--neutral">None</span>'}</td>
+        <td class="right"><button class="btn btn--sm" data-edit-date="${date}">Open</button></td>
+      </tr>`;
+    }).join('')}</tbody></table>`;
+}
+
+function renderMonthlySummary() {
+  const box = $('#attSummary');
+  const dates = META?.dates || [];
+  const active = DB.students.filter(s => s.status === 'active');
+  if (!dates.length || !active.length) {
+    box.innerHTML = emptyState('Nothing yet', 'Shows once at least one date has been registered.');
+    return;
+  }
+  const rows = active.map(s => {
+    const doc = SESS.find(x => x.uid === s.id);
+    const got = dates.filter(d => doc && doc.sessions && doc.sessions[d]).length;
+    return { s, got, pct: Math.round((got / dates.length) * 100) };
+  }).sort((a, b) => a.pct - b.pct);
+
+  box.innerHTML = `<table class="table">
+    <thead><tr><th>Student no</th><th>Name</th><th class="right">Attended</th><th class="right">Rate</th></tr></thead>
+    <tbody>${rows.map(r => `<tr>
+      <td>${snChip(r.s.studentNo)}</td>
+      <td><b>${esc(r.s.name)}</b></td>
+      <td class="right num">${r.got} of ${dates.length}</td>
+      <td class="right">
+        <span class="pill ${r.pct < 50 ? 'pill--bad' : r.pct < 80 ? 'pill--warn' : 'pill--ok'}">${r.pct}%</span>
+      </td>
+    </tr>`).join('')}</tbody></table>`;
+}
+
+async function saveRegister() {
+  // Attendance is kept by calendar month, on purpose separate from whatever
+  // month DB.live.month is currently set to for the join link — those are
+  // two different settings that happen to usually agree.
+  const regMonth = thisMonth();
+  const date = $('#attDate').value || todayStr();
+  const recording = $('#attRecording').value.trim();
+  const label = $('#attLabel').value.trim();
+  const present = $$('[data-present]').filter(i => i.checked).map(i => i.dataset.present);
+
+  $('#attSave').disabled = true;
+  try {
+    if (!DEMO) {
+      // liveMeta first: the date, and this date's recording.
+      await FB.setDoc(FB.doc(FB.db, 'liveMeta', regMonth), {
+        month: regMonth,
+        dates: FB.arrayUnion(date),
+        [`recordings.${date}`]: recording,
+        [`titles.${date}`]: label
+      }, { merge: true });
+
+      // Then one write per active student, present or not — this is what
+      // keeps the register meaningfully editable (unchecking someone who
+      // was wrongly marked present has to actually clear it, not just skip
+      // writing them).
+      const active = DB.students.filter(s => s.status === 'active');
+      await Promise.all(active.map(s => {
+        const id = `${s.id}_${regMonth}`;
+        const key = `sessions.${date}`;
+        return FB.setDoc(FB.doc(FB.db, 'liveSessions', id), {
+          uid: s.id, studentNo: s.studentNo || null, name: s.name || '',
+          month: regMonth,
+          [key]: present.includes(s.id),
+          updatedAt: FB.serverTimestamp()
+        }, { merge: true });
+      }));
+    }
+
+    // reflect locally without a full reload
+    if (!META) META = { month: regMonth, dates: [], recordings: {}, titles: {} };
+    if (!META.dates.includes(date)) META.dates.push(date);
+    META.recordings = META.recordings || {}; META.recordings[date] = recording;
+    META.titles = META.titles || {}; META.titles[date] = label;
+    const activeIds = new Set(DB.students.filter(s => s.status === 'active').map(s => s.id));
+    activeIds.forEach(uid => {
+      let doc = SESS.find(x => x.uid === uid);
+      if (!doc) { doc = { uid, month: META.month, sessions: {} }; SESS.push(doc); }
+      doc.sessions = doc.sessions || {};
+      doc.sessions[date] = present.includes(uid);
+    });
+
+    toast(`Register saved for ${fmtDate(date)}`);
+    renderAttendance();
+  } catch (err) {
+    toast(err.code === 'permission-denied'
+      ? 'Could not save — publish the Firestore rules for liveSessions and liveMeta.'
+      : 'Could not save. Check your connection.', 'bad');
+  }
+  $('#attSave').disabled = false;
+}
+
+
 /* ============================================================== rendering
    ====================================================================== */
 
@@ -693,6 +895,7 @@ function renderAll() {
   renderLive();
   renderRecorded();
   renderPapers();
+  renderAttendance();
 }
 
 /* ------------------------------------------------------------- counters */
@@ -781,6 +984,41 @@ function renderRegs() {
 
 /* ------------------------------------------------------------- students */
 
+
+/* ==================================================== student progress ===
+   Every episode a student watches writes into their own record via the
+   anti-cheat tracker in watch.js, and the teacher already reads every
+   student in full when the dashboard loads. Nothing new to fetch — this
+   just makes sense of what is already there.
+   ====================================================================== */
+
+/* An episode counts as watched using the same rule the student side used to
+   mark it done: it does not just trust an old boolean if a fresher progress
+   record disagrees. */
+function progressOf(s) {
+  const prog = s.progress || {};
+  const done = new Set(s.watched || []);
+  let totalEpSeen = 0, totalHrs = 0, unitsFinished = 0, unitsStarted = 0;
+  const perUnit = [];
+
+  for (const season of SEASONS) {
+    let doneCount = 0, hrs = 0, anyProgress = false;
+    for (const ep of season.episodes) {
+      const key = `${season.n}-${ep.n}`;
+      const p = prog[key];
+      if (done.has(key) || (p && p.done)) doneCount++;
+      if (p && p.furthest) { hrs += Math.min(p.furthest, p.dur || p.furthest) / 3600; anyProgress = true; }
+    }
+    if (doneCount) totalEpSeen += doneCount;
+    if (doneCount === season.episodes.length) unitsFinished++;
+    else if (doneCount > 0 || anyProgress) unitsStarted++;
+    totalHrs += hrs;
+    perUnit.push({ n: season.n, title: season.title, done: doneCount, total: season.episodes.length, hrs });
+  }
+
+  return { totalEpSeen, totalHrs, unitsFinished, unitsStarted, perUnit };
+}
+
 function renderStudents() {
   const term = ($('#stuSearch')?.value || '').toLowerCase().trim();
   const st = $('#stuStatus')?.value || '';
@@ -803,8 +1041,10 @@ function renderStudents() {
   const m = DB.live.month || thisMonth();
   box.innerHTML = `<table class="table">
     <thead><tr><th>Student no</th><th>Name</th><th>Batch</th><th>This month</th>
-    <th>Seasons</th><th>Account</th><th></th></tr></thead>
-    <tbody>${list.map(s => `
+    <th>Watching</th><th>Account</th><th></th></tr></thead>
+    <tbody>${list.map(s => {
+      const pr = progressOf(s);
+      return `
       <tr>
         <td data-label="Student no">${snChip(s.studentNo)}</td>
         <td data-label="Name"><div class="who"><b>${esc(s.name)}</b><small>${esc(s.school || s.email || '')}</small></div></td>
@@ -812,10 +1052,14 @@ function renderStudents() {
         <td data-label="This month">${hasAccess(s.id, m)
           ? '<span class="pill pill--ok">Live open</span>'
           : '<span class="pill pill--neutral">Not paid</span>'}</td>
-        <td data-label="Seasons" class="num">${(s.unlocked || []).length} of 13</td>
+        <td data-label="Watching" class="num">
+          ${pr.unitsFinished}/${(s.unlocked || []).length || 0} units ·
+          ${pr.totalEpSeen} eps · ${pr.totalHrs >= 10 ? Math.round(pr.totalHrs) : pr.totalHrs.toFixed(1)}h
+        </td>
         <td data-label="Account">${statusPill(s.status)}</td>
         <td class="actions"><button class="btn btn--sm" data-open="${s.id}">Open</button></td>
-      </tr>`).join('')}</tbody></table>`;
+      </tr>`;
+    }).join('')}</tbody></table>`;
 }
 
 /* ------------------------------------------------------------- payments */
@@ -1181,8 +1425,30 @@ function studentModal(id) {
       <dt>Batch</dt><dd>${esc(s.batch || BATCH)}</dd>
       <dt>Track</dt><dd>${s.track === 'live' ? 'Live class' : s.track === 'rec' ? 'Recorded' : 'Not chosen'}</dd>
       <dt>Joined</dt><dd>${ago(s.at)}</dd>
-      <dt>Watched</dt><dd>${(s.watched || []).length} episodes</dd>
     </dl>
+
+    <div class="rec__eyebrow" style="margin-bottom:9px">Watching</div>
+    ${(() => {
+      const pr = progressOf(s);
+      const paid = pr.perUnit.filter(u => un.includes(u.n));
+      if (!paid.length) return '<p style="color:var(--text-3);font-size:13px;margin:0 0 22px">No units open yet.</p>';
+      return `
+        <dl class="kv" style="margin-bottom:12px">
+          <dt>Total watched</dt>
+          <dd>${pr.totalEpSeen} episodes · ${pr.totalHrs >= 10 ? Math.round(pr.totalHrs) : pr.totalHrs.toFixed(1)} hours</dd>
+          <dt>Units</dt>
+          <dd>${pr.unitsFinished} finished, ${pr.unitsStarted} in progress, ${un.length - pr.unitsFinished - pr.unitsStarted} not started</dd>
+        </dl>
+        <table class="table" style="border:1px solid var(--line-2);border-radius:6px;margin-bottom:22px">
+          <thead><tr><th style="width:36px">Un</th><th>Unit</th><th class="right">Episodes</th><th class="right">Hours</th></tr></thead>
+          <tbody>${paid.map(u => `<tr>
+            <td class="num" style="color:var(--accent)">${pad(u.n)}</td>
+            <td style="font-size:12.5px">${esc(u.title)}</td>
+            <td class="right num">${u.done}/${u.total}</td>
+            <td class="right num">${u.hrs.toFixed(1)}h</td>
+          </tr>`).join('')}</tbody>
+        </table>`;
+    })()}
 
     <div class="rec__eyebrow" style="margin-bottom:9px">Seasons this student can watch</div>
     <div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:22px">
@@ -1292,7 +1558,8 @@ function switchView(v) {
     free: ['Free class requests', 'asked for by student number'],
     papers: ['Answer papers', 'opens in the student\'s own Drive'],
     live: ['Live class', ''],
-    recorded: ['Recorded library', '13 seasons']
+    recorded: ['Recorded library', '13 seasons'],
+    attendance: ['Attendance', 'take the register and see who is keeping up']
   };
   $('#viewTitle').textContent = (titles[v] || ['—'])[0];
   $('#viewSub').textContent = (titles[v] || ['', ''])[1] || '';
@@ -1306,7 +1573,7 @@ document.addEventListener('click', async (e) => {
     '[data-season-open],[data-save-season],[data-zoom],[data-close],[data-suspend],' +
     '[data-unsuspend],[data-give],[data-revoke],[data-toggle-season],[data-drop-slip],' +
     '[data-manual-pay],[data-save-manual],[data-mark],[data-accept],[data-redo],' +
-    '[data-add-slot],[data-del-slot]');
+    '[data-add-slot],[data-del-slot],[data-edit-date]');
   if (!t) return;
   const d = t.dataset;
 
@@ -1345,6 +1612,8 @@ document.addEventListener('click', async (e) => {
   }
   if ('addSlot' in d) return addSlot();
   if (d.delSlot) return delSlot(d.delSlot);
+  if (d.editDate) { $('#attDate').value = d.editDate; renderAttendance();
+    $('#v-attendance').scrollIntoView?.({ behavior: 'smooth' }); return; }
 
   if (d.freeOk)   return reviewFree(d.freeOk, 'approved');
   if (d.freeNo)   return reviewFree(d.freeNo, 'declined');
@@ -1424,6 +1693,13 @@ document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeModal
 ['#paperSeen', '#paperKind'].forEach(s =>
   $(s)?.addEventListener('input', renderPapers));
 $('#slotBtn')?.addEventListener('click', slotSheet);
+
+$('#attDate')?.addEventListener('change', renderAttendance);
+$('#attSearch')?.addEventListener('input', () => renderRegister($('#attDate').value || todayStr()));
+$('#attSave')?.addEventListener('click', saveRegister);
+$('#attAll')?.addEventListener('click', () => { $$('[data-present]').forEach(i => i.checked = true); });
+$('#attNone')?.addEventListener('click', () => { $$('[data-present]').forEach(i => i.checked = false); });
+if ($('#attDate')) $('#attDate').value = todayStr();
 ['#recSearch', '#recFilter'].forEach(s =>
   $(s)?.addEventListener('input', renderRecorded));
 
