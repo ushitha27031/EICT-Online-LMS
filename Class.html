@@ -10,7 +10,7 @@
 <!-- The ?v= number is what forces browsers to fetch a fresh copy. Without it
      GitHub Pages keeps serving the old CSS for hours and changes look like
      they never happened. Bump it in BOTH places whenever a file changes. -->
-<link rel="stylesheet" href="class.css?v=1.8.2">
+<link rel="stylesheet" href="class.css?v=1.9.0">
 </head>
 
 <body class="checking">
@@ -127,11 +127,38 @@
         <label><span>Address</span><input id="rAddr" placeholder="Where tutes should be posted"></label>
         <label><span>Email</span><input id="rEmail" type="email" autocomplete="username" placeholder="you@example.com"></label>
         <label><span>Password</span><input id="rPass" type="password" autocomplete="new-password" placeholder="At least 6 characters"></label>
+
+        <label><span>What are you joining</span>
+          <select id="rTrack">
+            <option value="live">Live class — the weekly Zoom session</option>
+            <option value="rec">Recordings — watch anytime, at your own pace</option>
+            <option value="both">Both</option>
+          </select></label>
+
         <button class="btn btn--gold btn--wide" id="doReg">Send my registration</button>
       </div>
       <p class="gate__swap">Already registered? <button id="toIn">Sign in</button></p>
     </div>
 
+  </div>
+</div>
+
+<!-- ================================================== choose a track ==
+     Shown once to anyone approved before this existed, whose account has
+     no track on record and no payment history to infer one from. Blocks
+     nothing they already have — it only asks when there is truly nothing
+     to go on. -->
+<div class="hold" id="trackChoose" hidden>
+  <div class="hold__in">
+    <div class="hold__ring">?</div>
+    <h1>Which one are you joining?</h1>
+    <p>This decides what you see here — you can ask sir to change it later
+       if you need both.</p>
+    <div class="f" style="max-width:320px;margin:0 auto">
+      <button class="btn btn--gold btn--wide" data-pick-track="live">Live class — the weekly Zoom</button>
+      <button class="btn btn--gold btn--wide" data-pick-track="rec">Recordings — watch anytime</button>
+      <button class="btn btn--wide" data-pick-track="both">Both</button>
+    </div>
   </div>
 </div>
 
@@ -174,15 +201,15 @@
   </header>
 
   <nav class="tabs">
-    <button class="tab on" data-tab="live">
+    <button class="tab on" data-tab="live" data-section="live">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M23 7l-7 5 7 5V7zM14 5H3a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2h11a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2Z"/></svg>
       Live class
     </button>
-    <button class="tab" data-tab="rec">
+    <button class="tab" data-tab="rec" data-section="rec">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 4h16v16H4zM4 9h16M9 4v16"/></svg>
       Recordings
     </button>
-    <button class="tab" data-tab="papers">
+    <button class="tab" data-tab="papers" data-section="rec">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8Z"/><path d="M14 2v6h6M9 15h6M9 11h3"/></svg>
       Papers
       <i class="tab__dot" id="paperDot" hidden></i>
@@ -292,7 +319,7 @@
 
       <div class="f">
         <div class="f__row">
-          <label><span>What is this for</span>
+          <label id="pForWrap"><span>What is this for</span>
             <select id="pFor">
               <option value="live">Live class — one month</option>
               <option value="season">Recordings — one season</option>
@@ -401,9 +428,9 @@
 <div class="sheet" id="sheet" hidden><div class="sheet__box" id="sheetBox"></div></div>
 <div class="toasts" id="toasts"></div>
 
-<script src="netbg.js?v=1.8.2" defer></script>
+<script src="netbg.js?v=1.9.0" defer></script>
 <script src="firebase-config.js" onerror="void 0"></script>
 <script src="class-config.js" onerror="void 0"></script>
-<script type="module" src="class.js?v=1.8.2"></script>
+<script type="module" src="class.js?v=1.9.0"></script>
 </body>
 </html>

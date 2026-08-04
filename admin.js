@@ -13,7 +13,7 @@
 
 /* Shown in the sidebar. If this does not match what you just uploaded, your
    browser is still running a cached copy — hard refresh with Ctrl+Shift+R. */
-const VERSION = '1.8.2';
+const VERSION = '1.9.0';
 
 const SESSION_MAX_MS = 24 * 60 * 60 * 1000;   // one day, hard cap
 const STAMP_AT  = 'eict.sessionAt';
@@ -1438,7 +1438,15 @@ function studentModal(id) {
       <dt>School</dt><dd>${esc(s.school || '—')}</dd>
       <dt>Address</dt><dd>${esc(s.address || '—')}</dd>
       <dt>Batch</dt><dd>${esc(s.batch || BATCH)}</dd>
-      <dt>Track</dt><dd>${s.track === 'live' ? 'Live class' : s.track === 'rec' ? 'Recorded' : 'Not chosen'}</dd>
+      <dt>Track</dt><dd>
+        <select data-track-select="${s.id}" style="border:1px solid var(--line);border-radius:5px;padding:3px 7px;font-size:12.5px">
+          <option value="" ${!s.track ? 'selected' : ''}>Not chosen</option>
+          <option value="live" ${s.track === 'live' ? 'selected' : ''}>Live class only</option>
+          <option value="rec" ${s.track === 'rec' ? 'selected' : ''}>Recordings only</option>
+          <option value="both" ${s.track === 'both' ? 'selected' : ''}>Both</option>
+        </select>
+        <button class="btn btn--sm" data-save-track="${s.id}" style="margin-left:6px">Save</button>
+      </dd>
       <dt>Joined</dt><dd>${ago(s.at)}</dd>
     </dl>
 
@@ -1588,7 +1596,7 @@ document.addEventListener('click', async (e) => {
     '[data-season-open],[data-save-season],[data-zoom],[data-close],[data-suspend],' +
     '[data-unsuspend],[data-give],[data-revoke],[data-toggle-season],[data-drop-slip],' +
     '[data-manual-pay],[data-save-manual],[data-mark],[data-accept],[data-redo],' +
-    '[data-add-slot],[data-del-slot],[data-edit-date]');
+    '[data-add-slot],[data-del-slot],[data-edit-date],[data-save-track]');
   if (!t) return;
   const d = t.dataset;
 
@@ -1629,6 +1637,19 @@ document.addEventListener('click', async (e) => {
   if (d.delSlot) return delSlot(d.delSlot);
   if (d.editDate) { $('#attDate').value = d.editDate; renderAttendance();
     $('#v-attendance').scrollIntoView?.({ behavior: 'smooth' }); return; }
+  if (d.saveTrack) {
+    const sel = $(`[data-track-select="${d.saveTrack}"]`);
+    const track = sel ? sel.value || null : null;
+    const st = studentOf(d.saveTrack);
+    if (!st) return;
+    st.track = track;
+    if (!DEMO) {
+      try { await FB.updateDoc(FB.doc(FB.db, 'students', d.saveTrack), { track }); }
+      catch (err) { toast('Could not save track', 'bad'); return; }
+    }
+    toast(`${st.name} set to ${track === 'live' ? 'live class only' : track === 'rec' ? 'recordings only' : track === 'both' ? 'both' : 'not chosen'}`);
+    return;
+  }
 
   if (d.freeOk)   return reviewFree(d.freeOk, 'approved');
   if (d.freeNo)   return reviewFree(d.freeNo, 'declined');

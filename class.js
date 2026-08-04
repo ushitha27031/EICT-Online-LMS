@@ -22,7 +22,7 @@
 /* Shown in the corner of the sign-in card so you can tell at a glance which
    version a student is actually running. If this does not match what you just
    uploaded, their browser is still on a cached copy. */
-const VERSION = '1.8.2';
+const VERSION = '1.9.0';
 
 const SESSION_MAX_MS = 24 * 60 * 60 * 1000;
 const STAMP_AT  = 'eict.sessionAt';
@@ -213,7 +213,7 @@ function seedDemo() {
   P = {
     name: 'Sample Student', email: 'sample@eict.lk', whatsapp: '0771234567',
     school: 'Sample College', address: 'Colombo', batch: BATCH,
-    role: 'student', status: 'active', studentNo: 'EICT-0007',
+    role: 'student', status: 'active', studentNo: 'EICT-0007', track: 'both',
     unlocked: [1, 2, 3], watched: ['1-1','1-2','1-3','1-4','1-5','1-6','1-7','2-1','2-2','3-1'],
     at: new Date(Date.now() - 40 * 86400000)
   };
@@ -1540,6 +1540,12 @@ function fillSeasonPicker() {
 }
 
 function syncPayForm() {
+  // A single-track student has an obvious answer to "what is this for",
+  // so the selector only earns its place for someone who actually has both.
+  const track = resolveTrack();
+  if (track === 'live') $('#pFor').value = 'live';
+  else if (track === 'rec') $('#pFor').value = 'season';
+
   const forSeason = $('#pFor').value === 'season';
   // `hidden` alone loses to the stylesheet's display rule on .f label, so set
   // display directly as well. Otherwise the season picker stays on screen
@@ -1550,6 +1556,7 @@ function syncPayForm() {
     el.hidden = !on;
     el.style.display = on ? '' : 'none';
   };
+  show('#pForWrap', track === 'both' || track === null);
   show('#pMonthWrap', !forSeason);
   show('#pSeasonWrap', forSeason);
   $('#pAmount').value = forSeason ? FEE_SEASON : FEE_LIVE;
@@ -1703,6 +1710,63 @@ async function saveMe() {
 
 /* ================================================================ shell */
 
+/* ============================================================== track ===
+   Live-class students and recordings students are shown different portals.
+   Papers only exist to gate recordings, so they never apply to a live-only
+   student either.
+   ========================================================================= */
+
+/**
+ * What this student sees. Explicit `track` on the record wins outright.
+ * Failing that, infer from what they actually have — a student who already
+ * has recordings unlocked should not suddenly be asked to choose and lose
+ * access to a tab they were using. Only a genuinely fresh account with no
+ * track and no history returns null, which is the one case worth asking.
+ */
+function resolveTrack() {
+  if (P.track === 'live' || P.track === 'rec' || P.track === 'both') return P.track;
+  const hasRec = (P.unlocked || []).length > 0;
+  const hasLive = !!P.paidLive || ACCESS.size > 0;
+  if (hasRec && hasLive) return 'both';
+  if (hasRec) return 'rec';
+  if (hasLive) return 'live';
+  return null;
+}
+
+/** Hide whatever section does not apply, and land on a tab that exists. */
+function applyTrackToNav() {
+  const track = resolveTrack();
+  const showsLive = track === 'live' || track === 'both' || track === null;
+  const showsRec  = track === 'rec'  || track === 'both' || track === null;
+
+  $$('.tab').forEach((b) => {
+    const sec = b.dataset.section;
+    if (!sec) return;                              // Payments and My details always show
+    b.hidden = sec === 'live' ? !showsLive : !showsRec;
+  });
+
+  const current = $('.tab.on:not([hidden])');
+  if (!current) {
+    switchTab(showsLive ? 'live' : 'rec');
+  }
+}
+
+function trackChooseGate() {
+  document.body.classList.add('checking');
+  $('#trackChoose').hidden = false;
+}
+
+async function pickTrack(track) {
+  $('#trackChoose').hidden = true;
+  document.body.classList.remove('checking');
+  P.track = track;
+  if (!DEMO) {
+    try { await FB.updateDoc(FB.doc(FB.db, 'students', ME.uid), { track }); }
+    catch (err) { console.warn('[class] could not save track choice', err.code || err.message); }
+  }
+  enterContent();
+}
+
 function paintTop() {
   setTx('#myName', P.name || 'Student');
   setTx('#myLine', `${P.batch || BATCH} · ${P.school || BATCH_LABEL}`);
@@ -1722,10 +1786,11 @@ function switchTab(t) {
 /* --------------------------------------------------------------- events */
 
 document.addEventListener('click', (e) => {
-  const t = e.target.closest('[data-tab],[data-season],[data-ep],[data-jump],[data-go-pay],[data-close-sheet],[data-filter],[data-submit],[data-book],[data-slot],[data-catchup]');
+  const t = e.target.closest('[data-tab],[data-season],[data-ep],[data-jump],[data-go-pay],[data-close-sheet],[data-filter],[data-submit],[data-book],[data-slot],[data-catchup],[data-pick-track]');
   if (!t) return;
   const d = t.dataset;
 
+  if (d.pickTrack) return pickTrack(d.pickTrack);
   if (d.tab) return switchTab(d.tab);
   if ('closeSheet' in d) return closeSheet();
 
@@ -1906,7 +1971,7 @@ function wireGate() {
           address: v('#rAddr'),
           email: cred.user.email,
           batch: BATCH,
-          track: null,
+          track: v('#rTrack') || 'both',
           unlocked: [],
           watched: [],
           paidLive: false,
@@ -1929,7 +1994,8 @@ function wireGate() {
       P = {
         uid: user.uid, name: v('#rName'), whatsapp: v('#rWa'),
         school: v('#rSchool'), address: v('#rAddr'), email: user.email,
-        batch: BATCH, role: 'student', status: 'pending', studentNo: null
+        batch: BATCH, role: 'student', status: 'pending', studentNo: null,
+        track: v('#rTrack') || 'both'
       };
       busy('#doReg', false);
       hideIntro();
@@ -2013,7 +2079,7 @@ function finishRegistration(user) {
         role: 'student', status: 'pending', studentNo: null,
         name: v('#rName'), whatsapp: v('#rWa'), school: v('#rSchool'),
         address: v('#rAddr'), email: user.email,
-        batch: BATCH, track: null, unlocked: [], watched: [], paidLive: false,
+        batch: BATCH, track: v('#rTrack') || 'both', unlocked: [], watched: [], paidLive: false,
         at: FB.serverTimestamp()
       });
       stamp(user.uid);
@@ -2286,6 +2352,34 @@ function enter() {
   $('#gate').hidden = true;
   $('#hold').hidden = true;
   paintTop();
+
+  // The session clock runs regardless of anything below — it must not wait
+  // on a track choice that may never come.
+  if (!DEMO) {
+    const tick = () => {
+      const left = remaining(ME.uid);
+      if (left <= 0) return signOutNow('Your day is up. Sign in again to carry on.');
+      if (!$('#v-me').hidden) $('#acSession').textContent = leftText(left);
+    };
+    setInterval(tick, 60000);
+    document.addEventListener('visibilitychange', () => {
+      if (document.visibilityState === 'visible') tick();
+    });
+    window.addEventListener('focus', tick);
+    window.addEventListener('storage', e => {
+      if (e.key === STAMP_AT && e.newValue === null) location.reload();
+    });
+  }
+
+  // A student with no track on record and no history to infer one from is
+  // asked once, before anything else renders — there is nothing yet to show
+  // them a version of, so there is nothing lost by asking first.
+  if (resolveTrack() === null) { trackChooseGate(); return; }
+  enterContent();
+}
+
+function enterContent() {
+  applyTrackToNav();
   fillSeasonPicker();
   $('#pMonth').value = thisMonth();
   syncPayForm();
@@ -2295,22 +2389,6 @@ function enter() {
 
   // Everything is drawn behind the intro; only now do the panels open.
   openIntro(() => { welcomeCard(); announceNew(); });
-
-  if (DEMO) return;
-
-  const tick = () => {
-    const left = remaining(ME.uid);
-    if (left <= 0) return signOutNow('Your day is up. Sign in again to carry on.');
-    if (!$('#v-me').hidden) $('#acSession').textContent = leftText(left);
-  };
-  setInterval(tick, 60000);
-  document.addEventListener('visibilitychange', () => {
-    if (document.visibilityState === 'visible') tick();
-  });
-  window.addEventListener('focus', tick);
-  window.addEventListener('storage', e => {
-    if (e.key === STAMP_AT && e.newValue === null) location.reload();
-  });
 }
 
 /* ================================================================= boot */
