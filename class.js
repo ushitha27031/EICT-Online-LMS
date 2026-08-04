@@ -22,7 +22,7 @@
 /* Shown in the corner of the sign-in card so you can tell at a glance which
    version a student is actually running. If this does not match what you just
    uploaded, their browser is still on a cached copy. */
-const VERSION = '1.5.0';
+const VERSION = '1.6.0';
 
 const SESSION_MAX_MS = 24 * 60 * 60 * 1000;
 const STAMP_AT  = 'eict.sessionAt';
@@ -1529,6 +1529,7 @@ function renderMe() {
     ? (P.at.toDate ? P.at.toDate() : new Date(P.at)).toLocaleDateString('en', { day:'numeric', month:'long', year:'numeric' })
     : '—';
   $('#acSession').textContent = DEMO ? 'sample mode' : leftText(remaining(ME.uid));
+  setTx('#acVersion', 'v' + VERSION);
 }
 
 async function saveMe() {

@@ -10,7 +10,7 @@
 <!-- The ?v= number is what forces browsers to fetch a fresh copy. Without it
      GitHub Pages keeps serving the old CSS for hours and changes look like
      they never happened. Bump it in BOTH places whenever a file changes. -->
-<link rel="stylesheet" href="class.css?v=1.5.0">
+<link rel="stylesheet" href="class.css?v=1.6.0">
 </head>
 
 <body class="checking">
@@ -23,13 +23,7 @@
   <i class="ambient__glow ambient__glow--a"></i>
   <i class="ambient__glow ambient__glow--b"></i>
   <i class="ambient__glow ambient__glow--c"></i>
-  <div class="ambient__grid"></div>
-  <i class="ambient__bit" style="--x:8%;--y:70%;--tx:130px;--ty:-110px;--d:0"></i>
-  <i class="ambient__bit" style="--x:70%;--y:85%;--tx:-100px;--ty:-140px;--d:1.3"></i>
-  <i class="ambient__bit" style="--x:20%;--y:15%;--tx:90px;--ty:120px;--d:2.6"></i>
-  <i class="ambient__bit" style="--x:85%;--y:20%;--tx:-120px;--ty:100px;--d:3.9"></i>
-  <i class="ambient__bit" style="--x:45%;--y:92%;--tx:60px;--ty:-150px;--d:5.2"></i>
-  <i class="ambient__bit" style="--x:60%;--y:8%;--tx:-70px;--ty:130px;--d:6.5"></i>
+  <canvas id="netbg" class="netbg"></canvas>
 </div>
 
 <!-- Shown from the first paint until the account has been checked, so the
@@ -361,6 +355,7 @@
         <dt>Email</dt><dd id="acMail">—</dd>
         <dt>Joined</dt><dd id="acJoined">—</dd>
         <dt>Session</dt><dd id="acSession">—</dd>
+        <dt>Version</dt><dd id="acVersion" style="font-family:var(--m);font-size:12.5px;color:var(--dimmer)">—</dd>
       </dl>
       <div style="display:flex;gap:9px;flex-wrap:wrap;margin-top:20px">
         <button class="btn" id="acReset">Change my password</button>
@@ -405,8 +400,9 @@
 <div class="sheet" id="sheet" hidden><div class="sheet__box" id="sheetBox"></div></div>
 <div class="toasts" id="toasts"></div>
 
+<script src="netbg.js?v=1.6.0" defer></script>
 <script src="firebase-config.js" onerror="void 0"></script>
 <script src="class-config.js" onerror="void 0"></script>
-<script type="module" src="class.js?v=1.5.0"></script>
+<script type="module" src="class.js?v=1.6.0"></script>
 </body>
 </html>
