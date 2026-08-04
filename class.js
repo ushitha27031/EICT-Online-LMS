@@ -22,7 +22,7 @@
 /* Shown in the corner of the sign-in card so you can tell at a glance which
    version a student is actually running. If this does not match what you just
    uploaded, their browser is still on a cached copy. */
-const VERSION = '1.4.1';
+const VERSION = '1.5.0';
 
 const SESSION_MAX_MS = 24 * 60 * 60 * 1000;
 const STAMP_AT  = 'eict.sessionAt';
@@ -598,23 +598,45 @@ function renderSeasons() {
     return;
   }
 
+  const art = ART;   // captured once so a mid-render load doesn't half-apply
+
   $('#seasons').innerHTML = list.map(s => {
     const open = isOpen(s.n);
     const waiting = !open && isPaid(s.n);
+    const done100 = seasonStats(s).pct === 100;
     const { done, total, pct } = seasonStats(s);
-    return `<button class="sn-card ${open ? '' : 'locked'} ${waiting ? 'waiting' : ''} ${pct === 100 ? 'done' : ''} ${curSeason === s.n ? 'on' : ''}"
+
+    return `<button class="sn-card ${open ? '' : 'locked'} ${waiting ? 'waiting' : ''} ${done100 ? 'done' : ''} ${curSeason === s.n ? 'on' : ''}"
       data-season="${s.n}">
-      <span class="sn-card__n">${pad(s.n)}</span>
-      <span class="sn-card__k">Unit</span>
-      <span class="sn-card__t">${esc(s.title)}</span>
-      <span class="sn-card__f">
-        <span>${total} episodes</span>
-        <span style="color:${open ? 'var(--dim)' : 'var(--gold)'}">
-          ${open ? `${done}/${total}` : waiting ? 'paper due' : `Rs. ${FEE_SEASON.toLocaleString()}`}</span>
+      <span class="sn-card__thumb">
+        <span class="sn-card__art" style="--fd:${(s.n % 5) * 0.5}s">${art ? art.svgFor(s.n) : ''}</span>
+        <span class="sn-card__badge">${pad(s.n)}</span>
+        ${!open && !waiting ? `<span class="sn-card__flag" title="Locked">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+            <rect x="4" y="10" width="16" height="11" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></svg>
+        </span>` : ''}
+        ${waiting ? `<span class="sn-card__flag" title="Waiting on a paper">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+            <circle cx="12" cy="12" r="9"/><path d="M12 7v5l3.5 2"/></svg>
+        </span>` : ''}
+        ${done100 && open ? `<span class="sn-card__check">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.4"><path d="M20 6 9 17l-5-5"/></svg>
+        </span>` : ''}
       </span>
-      ${open ? `<span class="sn-card__bar"><i style="width:${pct}%"></i></span>` : ''}
+      <span class="sn-card__body">
+        <span class="sn-card__k">Unit</span>
+        <span class="sn-card__t">${esc(s.title)}</span>
+        <span class="sn-card__f">
+          <span>${total} episodes</span>
+          <span style="color:${open ? 'var(--dim)' : 'var(--gold)'}">
+            ${open ? `${done}/${total}` : waiting ? 'paper due' : `Rs. ${FEE_SEASON.toLocaleString()}`}</span>
+        </span>
+        ${open ? `<span class="sn-card__bar"><i style="width:${pct}%"></i></span>` : ''}
+      </span>
     </button>`;
   }).join('');
+
+  if (!art) artLib();     // fires once; re-renders this list when it lands
 }
 
 /* ---- episode list ---- */
@@ -1175,6 +1197,17 @@ function postingSheet(slot, k, termN) {
    the button stays off. This is what stops "I submitted it" / "I can't open
    it" arguments, which were most of the trouble on the old site.
    ---------------------------------------------------------------------- */
+
+let ART = null, artRequested = false;
+async function artLib() {
+  if (ART) return ART;
+  if (!artRequested) {
+    artRequested = true;
+    try { ART = await import('./season-art.js?v=' + VERSION); renderSeasons(); }
+    catch (err) { console.warn('[class] season art unavailable:', err.message); }
+  }
+  return ART;
+}
 
 let checkSeq = 0;
 

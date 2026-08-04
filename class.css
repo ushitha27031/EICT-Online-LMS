@@ -1177,3 +1177,151 @@ body.arriving .shell{
   .intro__board .trace path,.intro__board .chip{stroke-dashoffset:0}
   .intro__panel{transition:none}
 }
+
+/* ==========================================================================
+   v1.5.0 — ambient background, and art behind each unit
+   ========================================================================== */
+
+/* -------------------------------------------------------- ambient layer -- */
+
+.ambient{
+  position:fixed;inset:0;z-index:0;overflow:hidden;pointer-events:none;
+}
+
+.ambient__glow{
+  position:absolute;width:min(50vw,560px);aspect-ratio:1;border-radius:50%;
+  filter:blur(64px);opacity:.4;will-change:transform;
+}
+.ambient__glow--a{
+  background:radial-gradient(circle,rgba(255,194,75,.55),transparent 70%);
+  top:-12%;left:-10%;animation:driftA 24s ease-in-out infinite;
+}
+.ambient__glow--b{
+  background:radial-gradient(circle,rgba(78,104,255,.45),transparent 70%);
+  bottom:-16%;right:-10%;animation:driftB 30s ease-in-out infinite;
+}
+.ambient__glow--c{
+  background:radial-gradient(circle,rgba(53,224,143,.3),transparent 70%);
+  top:38%;left:58%;animation:driftC 34s ease-in-out infinite;
+}
+@keyframes driftA{0%,100%{transform:translate(0,0) scale(1)}50%{transform:translate(6vw,8vh) scale(1.15)}}
+@keyframes driftB{0%,100%{transform:translate(0,0) scale(1)}50%{transform:translate(-5vw,-7vh) scale(1.1)}}
+@keyframes driftC{0%,100%{transform:translate(0,0) scale(1)}50%{transform:translate(-7vw,5vh) scale(.92)}}
+
+.ambient__grid{
+  position:absolute;inset:-2px;opacity:.045;
+  background-image:
+    linear-gradient(rgba(142,164,255,.6) 1px,transparent 1px),
+    linear-gradient(90deg,rgba(142,164,255,.6) 1px,transparent 1px);
+  background-size:42px 42px;
+  mask-image:radial-gradient(circle at 50% 25%,#000,transparent 72%);
+  -webkit-mask-image:radial-gradient(circle at 50% 25%,#000,transparent 72%);
+}
+
+/* small points drifting along a fixed vector each, like data moving across
+   a board. Six elements total, animation only touches transform/opacity. */
+.ambient__bit{
+  position:absolute;left:var(--x);top:var(--y);
+  width:3px;height:3px;border-radius:50%;background:var(--gold);
+  opacity:0;animation:bitTravel 10s linear infinite;
+  animation-delay:calc(var(--d,0) * 1s);
+}
+@keyframes bitTravel{
+  0%{opacity:0;transform:translate(0,0)}
+  10%{opacity:.65}
+  88%{opacity:.4}
+  100%{opacity:0;transform:translate(var(--tx),var(--ty))}
+}
+
+html[data-theme="light"] .ambient__glow{opacity:.28}
+html[data-theme="light"] .ambient__bit{background:var(--gold)}
+
+@media (prefers-reduced-motion:reduce){
+  .ambient__glow,.ambient__bit{animation:none!important}
+  .ambient__bit{opacity:.3}
+}
+
+/* -------------------------------------------------------- season art ---- */
+
+.sn-card{
+  padding:0;                              /* thumb + body replace the old padded layout */
+}
+.sn-card__thumb{
+  position:relative;aspect-ratio:16/10;overflow:hidden;flex:none;
+  background:linear-gradient(160deg,#141a33,#0B1026);
+}
+html[data-theme="light"] .sn-card__thumb{background:linear-gradient(160deg,#EDE7D6,#F4F1E8)}
+
+.sn-card__art{
+  position:absolute;inset:0;display:grid;place-items:center;
+  color:var(--gold);opacity:.6;
+}
+.sn-card__art svg{
+  width:76%;height:76%;
+  animation:artFloat 7s ease-in-out infinite;
+  animation-delay:var(--fd,0s);
+}
+@keyframes artFloat{
+  0%,100%{transform:translateY(0) scale(1)}
+  50%{transform:translateY(-3px) scale(1.02)}
+}
+
+/* the scrim: guarantees the badge and any overlay icon stay legible over
+   whatever the art is doing underneath, whatever the theme */
+.sn-card__thumb::after{
+  content:'';position:absolute;inset:0;
+  background:linear-gradient(180deg,rgba(7,11,28,.05),rgba(7,11,28,.62) 100%);
+}
+html[data-theme="light"] .sn-card__thumb::after{
+  background:linear-gradient(180deg,rgba(20,20,30,.02),rgba(20,20,30,.42) 100%);
+}
+
+.sn-card__badge{
+  position:absolute;left:9px;top:9px;z-index:2;
+  font-family:var(--d);font-size:15px;font-weight:700;letter-spacing:-.02em;
+  color:#fff;background:rgba(7,11,28,.55);backdrop-filter:blur(3px);
+  padding:3px 9px;border-radius:7px;
+}
+
+.sn-card__flag{
+  position:absolute;inset:0;z-index:2;display:grid;place-items:center;
+  color:rgba(255,255,255,.82);
+}
+.sn-card__flag svg{width:24px;height:24px}
+
+.sn-card__check{
+  position:absolute;right:8px;top:8px;z-index:2;width:20px;height:20px;
+  border-radius:50%;background:var(--live);color:#04220F;
+  display:grid;place-items:center;
+}
+.sn-card__check svg{width:11px;height:11px}
+
+.sn-card__body{
+  padding:11px 13px 13px;display:flex;flex-direction:column;gap:6px;flex:1;min-width:0;
+}
+
+/* state variants */
+.sn-card.locked .sn-card__art{color:var(--dimmer);opacity:.3;filter:grayscale(.5)}
+.sn-card.locked .sn-card__thumb::after{background:rgba(7,11,28,.58)}
+.sn-card.locked .sn-card__badge{color:var(--dimmer);background:rgba(7,11,28,.7)}
+
+.sn-card.waiting .sn-card__art{color:var(--gold);opacity:.45}
+.sn-card.waiting .sn-card__thumb::after{
+  background:linear-gradient(180deg,rgba(255,194,75,.04),rgba(96,64,8,.6) 100%);
+}
+
+/* list mode: thumb becomes a small fixed square on the left */
+.grid.as-list .sn-card{flex-direction:row;align-items:stretch}
+.grid.as-list .sn-card__thumb{width:96px;aspect-ratio:auto}
+.grid.as-list .sn-card__body{flex-direction:row;align-items:center;gap:12px;padding:0 14px}
+.grid.as-list .sn-card__k{display:none}
+.grid.as-list .sn-card__t{flex:1}
+.grid.as-list .sn-card__bar{width:80px;flex:none}
+
+@media (max-width:420px){
+  .sn-card__t{font-size:13.5px}
+}
+
+@media (prefers-reduced-motion:reduce){
+  .sn-card__art svg{animation:none!important}
+}
