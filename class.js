@@ -22,7 +22,7 @@
 /* Shown in the corner of the sign-in card so you can tell at a glance which
    version a student is actually running. If this does not match what you just
    uploaded, their browser is still on a cached copy. */
-const VERSION = '1.7.1';
+const VERSION = '1.7.2';
 
 const SESSION_MAX_MS = 24 * 60 * 60 * 1000;
 const STAMP_AT  = 'eict.sessionAt';
@@ -1634,6 +1634,20 @@ function renderMe() {
     : '—';
   $('#acSession').textContent = DEMO ? 'sample mode' : leftText(remaining(ME.uid));
   setTx('#acVersion', 'v' + VERSION);
+
+  // A plain-English readout of exactly what the attendance fetch found, so a
+  // mismatch between "sir says it's uploaded" and "student can't see it" is
+  // visible on this one line instead of needing devtools to chase down.
+  if (LIVE_META === null) {
+    setTx('#acAttendance', 'Could not be read — ask sir to check the Firestore rules');
+  } else {
+    const dates = LIVE_META.dates || [];
+    const present = Object.values(MY_SESSIONS?.sessions || {}).filter(Boolean).length;
+    const recs = Object.keys(LIVE_META.recordings || {}).length;
+    setTx('#acAttendance', dates.length
+      ? `${dates.length} date(s) on record · present for ${present} · ${recs} recording(s) uploaded`
+      : 'No sessions registered yet');
+  }
 }
 
 async function saveMe() {
