@@ -13,7 +13,7 @@
 
 /* Shown in the sidebar. If this does not match what you just uploaded, your
    browser is still running a cached copy — hard refresh with Ctrl+Shift+R. */
-const VERSION = '1.8.1';
+const VERSION = '1.8.2';
 
 const SESSION_MAX_MS = 24 * 60 * 60 * 1000;   // one day, hard cap
 const STAMP_AT  = 'eict.sessionAt';
@@ -810,28 +810,43 @@ async function saveRegister() {
   $('#attSave').disabled = true;
   try {
     if (!DEMO) {
-      // liveMeta first: the date, and this date's recording.
-      await FB.setDoc(FB.doc(FB.db, 'liveMeta', regMonth), {
-        month: regMonth,
-        dates: FB.arrayUnion(date),
+      // Two calls per document, not one, and this is not incidental.
+      // setDoc(ref, {...}, {merge:true}) treats a computed key like
+      // `recordings.${date}` as one literal field NAME containing a dot —
+      // it does NOT nest it under a `recordings` map the way it looks like
+      // it should. Only updateDoc() parses dot-notation keys as a path into
+      // nested fields. Writing dotted keys through setDoc-merge (which is
+      // what this used to do) silently created a top-level field literally
+      // named "recordings.2026-08-04" instead of recordings: { "2026-08-04":
+      // ... }, so no read anywhere could ever find it — explaining exactly
+      // what you saw: "Uploaded" right after saving (that came from the
+      // local copy in memory, untouched by this bug) and "None" again on
+      // the next refresh (that came from what Firestore actually had).
+      //
+      // setDoc first, to guarantee the parent document exists (updateDoc
+      // fails outright on a document that has never been created). updateDoc
+      // second, for the fields that actually need to nest under a date key.
+      const metaRef = FB.doc(FB.db, 'liveMeta', regMonth);
+      await FB.setDoc(metaRef, { month: regMonth, dates: FB.arrayUnion(date) }, { merge: true });
+      await FB.updateDoc(metaRef, {
         [`recordings.${date}`]: recording,
         [`titles.${date}`]: label
-      }, { merge: true });
+      });
 
       // Then one write per active student, present or not — this is what
       // keeps the register meaningfully editable (unchecking someone who
       // was wrongly marked present has to actually clear it, not just skip
-      // writing them).
+      // writing them). Same two-step pattern, same reason.
       const active = DB.students.filter(s => s.status === 'active');
-      await Promise.all(active.map(s => {
-        const id = `${s.id}_${regMonth}`;
-        const key = `sessions.${date}`;
-        return FB.setDoc(FB.doc(FB.db, 'liveSessions', id), {
-          uid: s.id, studentNo: s.studentNo || null, name: s.name || '',
-          month: regMonth,
-          [key]: present.includes(s.id),
-          updatedAt: FB.serverTimestamp()
+      await Promise.all(active.map(async (s) => {
+        const ref = FB.doc(FB.db, 'liveSessions', `${s.id}_${regMonth}`);
+        await FB.setDoc(ref, {
+          uid: s.id, studentNo: s.studentNo || null, name: s.name || '', month: regMonth
         }, { merge: true });
+        await FB.updateDoc(ref, {
+          [`sessions.${date}`]: present.includes(s.id),
+          updatedAt: FB.serverTimestamp()
+        });
       }));
     }
 
