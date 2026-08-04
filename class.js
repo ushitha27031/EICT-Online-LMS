@@ -22,7 +22,7 @@
 /* Shown in the corner of the sign-in card so you can tell at a glance which
    version a student is actually running. If this does not match what you just
    uploaded, their browser is still on a cached copy. */
-const VERSION = '1.7.2';
+const VERSION = '1.8.0';
 
 const SESSION_MAX_MS = 24 * 60 * 60 * 1000;
 const STAMP_AT  = 'eict.sessionAt';
@@ -339,37 +339,80 @@ let LIVE_META = null;     // the shared liveMeta doc for this month
 
 async function loadAttendance(uid) {
   const month = thisMonth();
+
+  // Two independent reads, two independent failures. A problem with the
+  // per-student attendance query must never take the recordings list down
+  // with it — that decoupling is the whole point of splitting these.
+  try {
+    const meta = await FB.getDoc(FB.doc(FB.db, 'liveMeta', month));
+    LIVE_META = meta.exists() ? meta.data() : { dates: [], recordings: {}, titles: {} };
+  } catch (err) {
+    console.warn('[class] liveMeta unavailable:', err.code || err.message);
+    LIVE_META = null;
+  }
+
   try {
     // A direct getDoc by a guessed id (uid_month) fails the rules check
     // whenever that document does not exist yet — a security rule has
     // nothing to check ownership against on a document with no data, so
-    // Firestore denies the read outright, not just returns "not found".
-    // That silently hid the whole attendance box for anyone approved after
-    // the teacher's most recent register save. A query does not have this
-    // problem: a document that does not match simply is not in the results,
-    // no ownership check needed. Every other own-record read on the site
-    // already uses a query for this exact reason; this one now matches.
-    const [mineQ, meta] = await Promise.all([
-      FB.getDocs(FB.query(FB.collection(FB.db, 'liveSessions'), FB.where('uid', '==', uid))),
-      FB.getDoc(FB.doc(FB.db, 'liveMeta', month))
-    ]);
+    // Firestore denies the read outright rather than returning "not found".
+    // A query does not have this problem: a non-matching document simply
+    // is not in the results, no ownership check needed.
+    const mineQ = await FB.getDocs(FB.query(FB.collection(FB.db, 'liveSessions'), FB.where('uid', '==', uid)));
     let mine = null;
     mineQ.forEach((d) => { if (d.data().month === month) mine = d.data(); });
     MY_SESSIONS = mine || { sessions: {} };
-    LIVE_META = meta.exists() ? meta.data() : { dates: [], recordings: {}, titles: {} };
   } catch (err) {
-    console.warn('[class] attendance unavailable:', err.code || err.message);
-    MY_SESSIONS = null; LIVE_META = null;
+    console.warn('[class] liveSessions unavailable:', err.code || err.message);
+    MY_SESSIONS = null;
   }
 }
 
+/* Recordings — deliberately independent of attendance. This needs only the
+   liveMeta document (one collection, already read successfully by every
+   student on this tab for the join-link schedule), not the per-student
+   liveSessions match used for the attendance count below. If that second
+   part ever fails to load, the list of recordings must still work. */
+function recordingsCard() {
+  if (!LIVE_META || !LIVE_META.dates || !LIVE_META.dates.length) return '';
+
+  const withRec = LIVE_META.dates
+    .filter(d => LIVE_META.recordings && LIVE_META.recordings[d])
+    .sort()
+    .reverse();
+  if (!withRec.length) return '';
+
+  return `
+    <div class="card">
+      <div class="card__h">
+        <div>
+          <h2>Class recordings</h2>
+          <p>Watch any class again, whether you were there or not.</p>
+        </div>
+      </div>
+      ${withRec.map(d => {
+        const label = (LIVE_META.titles && LIVE_META.titles[d]) ||
+          new Date(d).toLocaleDateString('en', { weekday: 'long', day: 'numeric', month: 'long' });
+        return `<div class="paper-row">
+          <div class="paper-row__t">
+            <b>${esc(label)}</b>
+            <small>${new Date(d).toLocaleDateString('en', { weekday: 'short', day: 'numeric', month: 'short' })}</small>
+          </div>
+          <button class="btn btn--sm btn--gold" data-catchup="${d}">Watch</button>
+        </div>`;
+      }).join('')}
+    </div>`;
+}
+
+/* Attendance summary — a bonus on top, not a dependency. If MY_SESSIONS
+   failed to load this simply does not render; it never blocks the
+   recordings list above from showing. */
 function attendanceCard() {
   if (!LIVE_META || !LIVE_META.dates || !LIVE_META.dates.length) return '';
+  if (!MY_SESSIONS) return '';                     // failed to load — say nothing, break nothing
 
   const dates = LIVE_META.dates.slice().sort();
   const got = dates.filter(d => MY_SESSIONS?.sessions?.[d]).length;
-  const missed = dates.filter(d => !MY_SESSIONS?.sessions?.[d]);
-  const catchUp = missed.filter(d => LIVE_META.recordings && LIVE_META.recordings[d]);
 
   return `
     <div class="card">
@@ -379,21 +422,6 @@ function attendanceCard() {
           <p>${got} of ${dates.length} classes so far.</p>
         </div>
       </div>
-      ${catchUp.length ? `
-        <div class="rec__eyebrow" style="margin-bottom:9px">Catch up on what you missed</div>
-        ${catchUp.map(d => {
-          const label = (LIVE_META.titles && LIVE_META.titles[d]) ||
-            new Date(d).toLocaleDateString('en', { weekday: 'long', day: 'numeric', month: 'long' });
-          return `<div class="paper-row">
-            <div class="paper-row__t">
-              <b>${esc(label)}</b>
-              <small>${new Date(d).toLocaleDateString('en', { weekday: 'short', day: 'numeric', month: 'short' })}</small>
-            </div>
-            <button class="btn btn--sm btn--gold" data-catchup="${d}">Watch</button>
-          </div>`;
-        }).join('')}`
-        : `<p style="color:var(--dimmer);font-size:12.5px;margin:0">
-             ${missed.length ? 'No recording uploaded for the class you missed yet.' : 'You have not missed one yet.'}</p>`}
     </div>`;
 }
 
@@ -445,7 +473,7 @@ function renderLive() {
           : `<div class="empty" style="padding:22px"><b>Link not posted yet</b>
              <p>Sir puts the link up shortly before the class starts. Check back then.</p></div>`}
         <p class="hint">The link is only sent to students who have paid for this month. Please don't pass it on.</p>
-      </div>` + attendanceCard();
+      </div>` + recordingsCard() + attendanceCard();
     return;
   }
 
@@ -483,7 +511,7 @@ function renderLive() {
           'One free session before you decide.'
         ]).map(b => `<li>${esc(b)}</li>`).join('')}
       </ul>
-    </div>` + attendanceCard();
+    </div>` + recordingsCard() + attendanceCard();
 
   $('#askFree')?.addEventListener('click', askFree);
 }
@@ -1639,13 +1667,14 @@ function renderMe() {
   // mismatch between "sir says it's uploaded" and "student can't see it" is
   // visible on this one line instead of needing devtools to chase down.
   if (LIVE_META === null) {
-    setTx('#acAttendance', 'Could not be read — ask sir to check the Firestore rules');
+    setTx('#acAttendance', 'Recordings could not be read — ask sir to check the Firestore rules for liveMeta');
   } else {
     const dates = LIVE_META.dates || [];
-    const present = Object.values(MY_SESSIONS?.sessions || {}).filter(Boolean).length;
     const recs = Object.keys(LIVE_META.recordings || {}).length;
+    const present = MY_SESSIONS ? Object.values(MY_SESSIONS.sessions || {}).filter(Boolean).length : null;
     setTx('#acAttendance', dates.length
-      ? `${dates.length} date(s) on record · present for ${present} · ${recs} recording(s) uploaded`
+      ? `${dates.length} date(s) on record · ${recs} recording(s) uploaded` +
+        (present === null ? ' · attendance count unavailable' : ` · present for ${present}`)
       : 'No sessions registered yet');
   }
 }
