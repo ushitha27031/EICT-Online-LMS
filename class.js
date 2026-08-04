@@ -22,7 +22,7 @@
 /* Shown in the corner of the sign-in card so you can tell at a glance which
    version a student is actually running. If this does not match what you just
    uploaded, their browser is still on a cached copy. */
-const VERSION = '1.7.0';
+const VERSION = '1.7.1';
 
 const SESSION_MAX_MS = 24 * 60 * 60 * 1000;
 const STAMP_AT  = 'eict.sessionAt';
@@ -340,11 +340,22 @@ let LIVE_META = null;     // the shared liveMeta doc for this month
 async function loadAttendance(uid) {
   const month = thisMonth();
   try {
-    const [mine, meta] = await Promise.all([
-      FB.getDoc(FB.doc(FB.db, 'liveSessions', `${uid}_${month}`)),
+    // A direct getDoc by a guessed id (uid_month) fails the rules check
+    // whenever that document does not exist yet — a security rule has
+    // nothing to check ownership against on a document with no data, so
+    // Firestore denies the read outright, not just returns "not found".
+    // That silently hid the whole attendance box for anyone approved after
+    // the teacher's most recent register save. A query does not have this
+    // problem: a document that does not match simply is not in the results,
+    // no ownership check needed. Every other own-record read on the site
+    // already uses a query for this exact reason; this one now matches.
+    const [mineQ, meta] = await Promise.all([
+      FB.getDocs(FB.query(FB.collection(FB.db, 'liveSessions'), FB.where('uid', '==', uid))),
       FB.getDoc(FB.doc(FB.db, 'liveMeta', month))
     ]);
-    MY_SESSIONS = mine.exists() ? mine.data() : { sessions: {} };
+    let mine = null;
+    mineQ.forEach((d) => { if (d.data().month === month) mine = d.data(); });
+    MY_SESSIONS = mine || { sessions: {} };
     LIVE_META = meta.exists() ? meta.data() : { dates: [], recordings: {}, titles: {} };
   } catch (err) {
     console.warn('[class] attendance unavailable:', err.code || err.message);
