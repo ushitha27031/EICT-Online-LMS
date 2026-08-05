@@ -149,7 +149,8 @@ body.checking .shell,body.blocked .shell{display:none}
   border-bottom:1px solid var(--hair);
   display:flex;align-items:center;gap:14px;padding:11px 22px;
 }
-.top__id{display:flex;align-items:center;gap:11px;min-width:0;flex:1}
+.top__id{display:flex;align-items:center;gap:11px;min-width:0;flex:1;cursor:pointer;transition:opacity .14s}
+.top__id:hover{opacity:.8}
 .top__av{
   width:36px;height:36px;border-radius:10px;flex:none;display:grid;place-items:center;
   background:linear-gradient(150deg,var(--gold),#E08A2B);color:var(--on-gold);
@@ -184,10 +185,8 @@ body.checking .shell,body.blocked .shell{display:none}
    is active — so the hierarchy reads at a glance, not just by position. */
 
 .subtabs{
-  display:flex;gap:4px;padding:8px 22px;
-  background:rgba(142,164,255,.045);border-bottom:1px solid var(--hair);
-  position:sticky;top:calc(var(--bar) + 46px);z-index:38;
-  backdrop-filter:blur(14px);overflow-x:auto;scrollbar-width:none;
+  display:flex;gap:4px;padding:10px 22px 12px;
+  overflow-x:auto;scrollbar-width:none;
 }
 .subtabs::-webkit-scrollbar{display:none}
 .subtab{
@@ -198,24 +197,6 @@ body.checking .shell,body.blocked .shell{display:none}
 }
 .subtab:hover{color:var(--dim);background:rgba(142,164,255,.06)}
 .subtab.on{color:var(--gold);background:var(--glow-gold);border-color:rgba(255,194,75,.28)}
-
-/* When there is no section row above it (single-track student), the
-   sub-nav is promoted to look and feel like ordinary top-level tabs —
-   nothing about a live-only or recordings-only student's nav should look
-   like a sub-level of something that, for them, does not exist. */
-#sectionTabs[hidden] + .subtabs,
-#sectionTabs[hidden] ~ .subtabs{
-  position:sticky;top:var(--bar);
-  background:rgba(7,11,28,.86);border-bottom:1px solid var(--hair);
-  padding:0 22px;
-}
-#sectionTabs[hidden] + .subtabs .subtab,
-#sectionTabs[hidden] ~ .subtabs .subtab{
-  border-radius:0;border:0;border-bottom:2px solid transparent;
-  padding:13px 15px;font-size:14px;background:none!important;
-}
-#sectionTabs[hidden] + .subtabs .subtab.on,
-#sectionTabs[hidden] ~ .subtabs .subtab.on{border-bottom-color:var(--gold)}
 
 /* ----------------------------------------------------------- me-btn ---- */
 
@@ -1361,3 +1342,82 @@ html[data-theme="light"] .sn-card__thumb::after{
 @media (prefers-reduced-motion:reduce){
   .sn-card__art svg{animation:none!important}
 }
+
+/* ==========================================================================
+   v1.11.0 — a home screen with two real cards, and Live Class split properly
+   ========================================================================== */
+
+/* -------------------------------------------------------------- home ---- */
+
+#v-home{padding-top:8px}
+
+.home-cards{
+  display:grid;grid-template-columns:1fr 1fr;gap:16px;
+  max-width:840px;margin:0 auto;
+}
+@media (max-width:720px){.home-cards{grid-template-columns:1fr}}
+
+.home-card{
+  position:relative;display:flex;align-items:center;gap:18px;
+  text-align:left;cursor:pointer;overflow:hidden;
+  background:var(--panel);border:1px solid var(--wire);border-radius:18px;
+  padding:26px 22px;transition:transform .18s cubic-bezier(.2,.8,.3,1),border-color .18s;
+  animation:cardIn .4s cubic-bezier(.2,.8,.3,1) both;
+}
+.home-card:nth-child(2){animation-delay:.06s}
+.home-card:hover{transform:translateY(-4px);border-color:var(--wire-2)}
+.home-card::after{
+  content:'';position:absolute;right:-40px;top:-40px;width:160px;height:160px;
+  border-radius:50%;background:var(--glow-gold);pointer-events:none;
+  transition:transform .3s;
+}
+.home-card:hover::after{transform:scale(1.15)}
+
+.home-card__icon{
+  position:relative;z-index:1;flex:none;width:56px;height:56px;border-radius:14px;
+  display:grid;place-items:center;color:var(--on-gold);
+  background:linear-gradient(150deg,var(--gold),#E08A2B);
+}
+.home-card__icon svg{width:26px;height:26px}
+
+.home-card__body{position:relative;z-index:1;flex:1;min-width:0}
+.home-card__body h2{
+  font-family:var(--d);font-size:19px;font-weight:700;letter-spacing:-.02em;margin:0 0 4px;
+}
+.home-card__body p{margin:0;font-size:13px;color:var(--dim)}
+
+.home-card__arrow{
+  position:relative;z-index:1;flex:none;width:20px;height:20px;color:var(--dimmer);
+  transition:transform .18s,color .18s;
+}
+.home-card:hover .home-card__arrow{transform:translateX(3px);color:var(--gold)}
+
+.home-card__dot{
+  position:absolute;right:16px;top:16px;z-index:2;width:9px;height:9px;
+  border-radius:50%;background:var(--signal);
+}
+.home-card__dot[hidden]{display:none}
+
+/* ---------------------------------------------------------- space head -- */
+
+.space{position:sticky;top:var(--bar);z-index:39;background:rgba(7,11,28,.86);backdrop-filter:blur(14px);border-bottom:1px solid var(--hair)}
+html[data-theme="light"] .space{background:rgba(244,241,232,.9)}
+.space__head{
+  display:flex;align-items:center;gap:12px;padding:12px 22px 0;
+}
+.space__back{
+  display:flex;align-items:center;gap:5px;
+  background:none;border:0;color:var(--dimmer);cursor:pointer;
+  font-size:12.5px;font-weight:600;padding:5px 2px;transition:color .14s;
+}
+.space__back:hover{color:var(--gold)}
+.space__back svg{width:14px;height:14px}
+.space__title{
+  font-family:var(--d);font-size:14px;font-weight:700;color:var(--dim);
+  padding-left:12px;border-left:1px solid var(--wire);
+}
+
+/* single-track students never see the back button — nothing to go back to */
+.space.is-only .space__back{display:none}
+.space.is-only .space__title{padding-left:0;border-left:0}
+

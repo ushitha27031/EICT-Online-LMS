@@ -10,7 +10,7 @@
 <!-- The ?v= number is what forces browsers to fetch a fresh copy. Without it
      GitHub Pages keeps serving the old CSS for hours and changes look like
      they never happened. Bump it in BOTH places whenever a file changes. -->
-<link rel="stylesheet" href="class.css?v=1.10.0">
+<link rel="stylesheet" href="class.css?v=1.11.0">
 </head>
 
 <body class="checking">
@@ -183,7 +183,7 @@
 <div class="shell" id="shell">
 
   <header class="top">
-    <div class="top__id">
+    <div class="top__id" id="topHome" role="button" tabindex="0" title="Back to your classes">
       <div class="top__av" id="avatar">S</div>
       <div class="top__txt">
         <b id="myName">Student</b>
@@ -209,36 +209,86 @@
        row is skipped entirely and their one section's own tabs take its
        place at the top. My details lives in the header above, not here:
        account settings are not a third course section. -->
-  <nav class="tabs" id="sectionTabs" hidden>
-    <button class="tab on" data-section="live">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M23 7l-7 5 7 5V7zM14 5H3a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2h11a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2Z"/></svg>
-      Live Class
-    </button>
-    <button class="tab" data-section="rec">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 4h16v16H4zM4 9h16M9 4v16"/></svg>
-      Recording Class
-    </button>
-  </nav>
 
-  <!-- Live Class sub-nav -->
-  <nav class="subtabs" id="subLive" hidden>
-    <button class="subtab on" data-tab="live">Class</button>
-    <button class="subtab" data-tab="pay" data-paycontext="live">Payments
-      <i class="tab__dot" id="payDotLive" hidden></i></button>
-  </nav>
+  <!-- ============================================================ home ==
+       What a both-track student sees first: two large cards, not a row of
+       pills. Tapping one enters that class's own space; a single-track
+       student skips this screen entirely and lands straight in their one
+       space, since there is nothing to choose between. -->
+  <section class="view" id="v-home">
+    <div class="home-cards">
+      <button class="home-card" data-enter="rec">
+        <span class="home-card__dot" id="homeDotRec" hidden></span>
+        <span class="home-card__icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M4 4h16v16H4zM4 9h16M9 4v16"/></svg>
+        </span>
+        <span class="home-card__body">
+          <h2>Recording Class</h2>
+          <p id="homeRecStatus">—</p>
+        </span>
+        <svg class="home-card__arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m9 18 6-6-6-6"/></svg>
+      </button>
 
-  <!-- Recording Class sub-nav -->
-  <nav class="subtabs" id="subRec" hidden>
-    <button class="subtab on" data-tab="rec">Recordings</button>
-    <button class="subtab" data-tab="papers">Papers
-      <i class="tab__dot" id="paperDot" hidden></i></button>
-    <button class="subtab" data-tab="pay" data-paycontext="season">Payments
-      <i class="tab__dot" id="payDotRec" hidden></i></button>
-  </nav>
+      <button class="home-card" data-enter="live">
+        <span class="home-card__dot" id="homeDotLive" hidden></span>
+        <span class="home-card__icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M23 7l-7 5 7 5V7zM14 5H3a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2h11a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2Z"/></svg>
+        </span>
+        <span class="home-card__body">
+          <h2>Live Class</h2>
+          <p id="homeLiveStatus">—</p>
+        </span>
+        <svg class="home-card__arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m9 18 6-6-6-6"/></svg>
+      </button>
+    </div>
+  </section>
+
+  <!-- ==================================================== Recording Class
+       Three sections: Seasons and Episodes, Papers, Payments. -->
+  <div class="space" id="spaceRec" hidden>
+    <div class="space__head">
+      <button class="space__back" data-leave="1">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m15 18-6-6 6-6"/></svg>
+        Classes
+      </button>
+      <span class="space__title">Recording Class</span>
+    </div>
+    <nav class="subtabs" id="subRec">
+      <button class="subtab on" data-tab="rec">Recordings</button>
+      <button class="subtab" data-tab="papers">Papers
+        <i class="tab__dot" id="paperDot" hidden></i></button>
+      <button class="subtab" data-tab="pay" data-paycontext="season">Payments
+        <i class="tab__dot" id="payDotRec" hidden></i></button>
+    </nav>
+  </div>
+
+  <!-- ========================================================= Live Class
+       Three sections: the schedule and join link, recordings for anyone who
+       missed a session, and payments together with attendance. -->
+  <div class="space" id="spaceLive" hidden>
+    <div class="space__head">
+      <button class="space__back" data-leave="1">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m15 18-6-6 6-6"/></svg>
+        Classes
+      </button>
+      <span class="space__title">Live Class</span>
+    </div>
+    <nav class="subtabs" id="subLive">
+      <button class="subtab on" data-tab="live">Class</button>
+      <button class="subtab" data-tab="livecatchup">Recordings</button>
+      <button class="subtab" data-tab="pay" data-paycontext="live">Payments
+        <i class="tab__dot" id="payDotLive" hidden></i></button>
+    </nav>
+  </div>
 
   <!-- ······································································ -->
-  <section class="view" id="v-live">
+  <section class="view" id="v-live" hidden>
     <div id="liveBody"></div>
+  </section>
+
+  <!-- ······································································ -->
+  <section class="view" id="v-livecatchup" hidden>
+    <div id="liveCatchupBody"></div>
   </section>
 
   <!-- ······································································ -->
@@ -320,6 +370,10 @@
 
   <!-- ······································································ -->
   <section class="view" id="v-pay" hidden>
+    <!-- Filled only when Payments was opened from inside Live Class — the
+         attendance summary belongs with the live payment, not with a
+         recordings purchase, which has no attendance concept at all. -->
+    <div id="payAttendance"></div>
     <div class="card">
       <div class="card__h">
         <div>
@@ -439,9 +493,9 @@
 <div class="sheet" id="sheet" hidden><div class="sheet__box" id="sheetBox"></div></div>
 <div class="toasts" id="toasts"></div>
 
-<script src="netbg.js?v=1.10.0" defer></script>
+<script src="netbg.js?v=1.11.0" defer></script>
 <script src="firebase-config.js" onerror="void 0"></script>
 <script src="class-config.js" onerror="void 0"></script>
-<script type="module" src="class.js?v=1.10.0"></script>
+<script type="module" src="class.js?v=1.11.0"></script>
 </body>
 </html>

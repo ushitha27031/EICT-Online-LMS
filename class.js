@@ -22,7 +22,7 @@
 /* Shown in the corner of the sign-in card so you can tell at a glance which
    version a student is actually running. If this does not match what you just
    uploaded, their browser is still on a cached copy. */
-const VERSION = '1.10.0';
+const VERSION = '1.11.0';
 
 const SESSION_MAX_MS = 24 * 60 * 60 * 1000;
 const STAMP_AT  = 'eict.sessionAt';
@@ -473,7 +473,7 @@ function renderLive() {
           : `<div class="empty" style="padding:22px"><b>Link not posted yet</b>
              <p>Sir puts the link up shortly before the class starts. Check back then.</p></div>`}
         <p class="hint">The link is only sent to students who have paid for this month. Please don't pass it on.</p>
-      </div>` + recordingsCard() + attendanceCard();
+      </div>`;
     return;
   }
 
@@ -511,9 +511,20 @@ function renderLive() {
           'One free session before you decide.'
         ]).map(b => `<li>${esc(b)}</li>`).join('')}
       </ul>
-    </div>` + recordingsCard() + attendanceCard();
+    </div>`;
 
   $('#askFree')?.addEventListener('click', askFree);
+}
+
+/** The missed-classes recordings list, as its own full section now rather
+ * than a card appended under the schedule. */
+function renderLiveCatchup() {
+  const box = $('#liveCatchupBody');
+  const card = recordingsCard();
+  box.innerHTML = card || `<div class="empty">
+    <b>Nothing here yet</b>
+    <p>When sir uploads a recording of a class, it appears here — whether
+       you were there or not.</p></div>`;
 }
 
 let LIVE_URL = '', BANK_TEXT = 'Bank : Commercial Bank\nAccount : 0000 0000 0000\nName : S. Manurathna';
@@ -1742,8 +1753,8 @@ function resolveTrack() {
 }
 
 /** Hide whatever section does not apply, and land on a tab that exists. */
-let PAY_CONTEXT = 'live';        // which section's Payments was opened: 'live' or 'season'
-let CURRENT_SECTION = 'live';    // which top-level section is showing, meaningful only when track === 'both'
+let PAY_CONTEXT = 'live';        // which payment form is showing: 'live' or 'season'
+let CURRENT_SPACE = null;        // null = home screen, or 'live' / 'rec' once inside a space
 
 /**
  * Reshapes the whole nav around what this student actually has.
@@ -1754,32 +1765,64 @@ let CURRENT_SECTION = 'live';    // which top-level section is showing, meaningf
  */
 function applyTrackToNav() {
   const track = resolveTrack();
-  const both = track === 'both' || track === null;
-
-  $('#sectionTabs').hidden = !both;
-
-  if (both) {
-    switchSection(CURRENT_SECTION || 'live');
+  if (track === 'both' || track === null) {
+    showHome();
   } else {
-    CURRENT_SECTION = track;
-    $('#subLive').hidden = track !== 'live';
-    $('#subRec').hidden = track !== 'rec';
-    const row = $(track === 'live' ? '#subLive' : '#subRec');
-    const active = row.querySelector('.subtab.on') || row.querySelector('.subtab');
-    if (active) switchTab(active.dataset.tab, active.dataset.paycontext);
+    enterSpace(track, true);   // true = this is their only space, no way back
   }
 }
 
-/** Switching sections shows that section's own sub-nav and lands on its
- * first (or last-active) sub-tab. Only ever called for a both-track student. */
-function switchSection(sec) {
-  CURRENT_SECTION = sec;
-  $$('#sectionTabs .tab[data-section]').forEach(b => b.classList.toggle('on', b.dataset.section === sec));
-  $('#subLive').hidden = sec !== 'live';
-  $('#subRec').hidden = sec !== 'rec';
-  const row = $(sec === 'live' ? '#subLive' : '#subRec');
+/** Two big cards, painted with a live snapshot of each — not just a label,
+ * so a both-track student knows which one actually needs them right now. */
+function showHome() {
+  CURRENT_SPACE = null;
+  $('#v-home').hidden = false;
+  $('#spaceRec').hidden = true;
+  $('#spaceLive').hidden = true;
+  ['live','rec','papers','pay','me','livecatchup'].forEach(k => { $('#v-' + k).hidden = true; });
+
+  const open = SEASONS.filter(s => isOpen(s.n));
+  const totalEps = open.reduce((a, s) => a + s.episodes.length, 0);
+  const doneEps = open.reduce((a, s) => a + seasonStats(s).done, 0);
+  setTx('#homeRecStatus', !open.length
+    ? 'Nothing open yet — send a slip to begin'
+    : `${open.length} unit${open.length === 1 ? '' : 's'} open · ${totalEps - doneEps} episode${totalEps - doneEps === 1 ? '' : 's'} left`);
+
+  const m = thisMonth();
+  setTx('#homeLiveStatus', hasMonth(m)
+    ? `Room open for ${monthName(m)}`
+    : `Closed for ${monthName(m)} — send a slip to join`);
+
+  const recAttn = PAYMENTS.some(p => p.status === 'rejected' && p.purpose === 'season');
+  const liveAttn = PAYMENTS.some(p => p.status === 'rejected' && p.purpose !== 'season');
+  $('#homeDotRec').hidden = !recAttn;
+  $('#homeDotLive').hidden = !liveAttn;
+
+  window.scrollTo({ top: 0 });
+}
+
+/**
+ * @param track    'live' or 'rec' — which space to enter
+ * @param soleSpace true when this student has only this one space, ever —
+ *                  hides the back button, since there is nowhere to go back to
+ */
+function enterSpace(track, soleSpace) {
+  CURRENT_SPACE = track;
+  $('#v-home').hidden = true;
+  $('#spaceRec').hidden = track !== 'rec';
+  $('#spaceLive').hidden = track !== 'live';
+  $('#spaceRec').classList.toggle('is-only', track === 'rec' && !!soleSpace);
+  $('#spaceLive').classList.toggle('is-only', track === 'live' && !!soleSpace);
+
+  const row = $(track === 'live' ? '#subLive' : '#subRec');
   const active = row.querySelector('.subtab.on') || row.querySelector('.subtab');
   if (active) switchTab(active.dataset.tab, active.dataset.paycontext);
+}
+
+/** Only reachable for a both-track student — a single-track student's
+ * space has no back button at all. */
+function leaveSpace() {
+  showHome();
 }
 
 function trackChooseGate() {
@@ -1806,32 +1849,39 @@ function paintTop() {
 }
 
 /**
- * @param t          which view to show
- * @param payContext when t === 'pay', which section it was opened from —
- *                    'live' or 'season'. Payments is one view underneath,
- *                    but which half of it shows is entirely decided by
- *                    which section's Payments button was actually clicked,
- *                    not by a dropdown inside the form.
+ * @param t          which view to show, within whichever space is current
+ * @param payContext when t === 'pay', 'live' or 'season' — which of the two
+ *                    payment forms this is. Decided entirely by which
+ *                    section's Payments sub-tab was clicked, never by a
+ *                    control inside the form itself.
  */
 function switchTab(t, payContext) {
-  ['live','rec','papers','pay','me'].forEach(k => { $('#v-' + k).hidden = k !== t; });
+  ['live','rec','papers','pay','me','livecatchup'].forEach(k => { $('#v-' + k).hidden = k !== t; });
   $$('.subtab').forEach(b => b.classList.toggle('on', b.dataset.tab === t &&
     (t !== 'pay' || b.dataset.paycontext === (payContext || PAY_CONTEXT))));
 
-  if (t === 'me') renderMe();
   if (t === 'rec') renderRec();
   if (t === 'papers') renderPapers();
+  if (t === 'livecatchup') renderLiveCatchup();
   if (t === 'pay') {
     if (payContext) PAY_CONTEXT = payContext;
     syncPayForm();
     renderPayHistory();
+    // The attendance summary belongs with the live payment specifically —
+    // a recordings purchase has no attendance concept at all.
+    $('#payAttendance').innerHTML = PAY_CONTEXT === 'live' ? attendanceCard() : '';
   }
   window.scrollTo({ top: 0 });
 }
 
-/** My details sits outside the section system entirely, in the header. */
+/** My details sits outside the home/space system entirely, reached from
+ * the header — it is account settings, not a course section. */
 function openMe() {
-  ['live','rec','papers','pay','me'].forEach(k => { $('#v-' + k).hidden = k !== 'me'; });
+  $('#v-home').hidden = true;
+  $('#spaceRec').hidden = true;
+  $('#spaceLive').hidden = true;
+  ['live','rec','papers','pay','livecatchup'].forEach(k => { $('#v-' + k).hidden = true; });
+  $('#v-me').hidden = false;
   renderMe();
   window.scrollTo({ top: 0 });
 }
@@ -1839,12 +1889,13 @@ function openMe() {
 /* --------------------------------------------------------------- events */
 
 document.addEventListener('click', (e) => {
-  const t = e.target.closest('[data-tab],[data-section],[data-season],[data-ep],[data-jump],[data-go-pay],[data-close-sheet],[data-filter],[data-submit],[data-book],[data-slot],[data-catchup],[data-pick-track]');
+  const t = e.target.closest('[data-tab],[data-enter],[data-leave],[data-season],[data-ep],[data-jump],[data-go-pay],[data-close-sheet],[data-filter],[data-submit],[data-book],[data-slot],[data-catchup],[data-pick-track]');
   if (!t) return;
   const d = t.dataset;
 
   if (d.pickTrack) return pickTrack(d.pickTrack);
-  if (d.section) return switchSection(d.section);
+  if (d.enter) return enterSpace(d.enter, false);
+  if (d.leave) return leaveSpace();
   if (d.tab) return switchTab(d.tab, d.paycontext);
   if ('closeSheet' in d) return closeSheet();
 
@@ -1868,9 +1919,9 @@ document.addEventListener('click', (e) => {
   if (d.slot) return bookSlot(d.slot, Number(d.term));
 
   if (d.goPay) {
-    // d.goPay is 'live' or 'season' — the same vocabulary a section uses.
-    const track = resolveTrack();
-    if (track === 'both') switchSection(d.goPay === 'season' ? 'rec' : 'live');
+    // Every button that carries data-go-pay only ever appears inside the
+    // space it belongs to, so there is no space to enter here — just show
+    // that space's Payments sub-tab with the right context.
     switchTab('pay', d.goPay);
     if (d.goPay === 'season' && d.n) $('#pSeason').value = d.n;
     if (d.goPay === 'live') $('#pMonth').value = thisMonth();
@@ -1878,6 +1929,20 @@ document.addEventListener('click', (e) => {
     return;
   }
 });
+/** Both a genuine "home" for a both-track student and the way back from My
+ * details for a single-track student, who has no home screen of their own
+ * but still needs some way out of My details. */
+function goHome() {
+  const track = resolveTrack();
+  if (track === 'both' || track === null) showHome();
+  else enterSpace(track, true);
+}
+
+$('#topHome')?.addEventListener('click', goHome);
+$('#topHome')?.addEventListener('keydown', (e) => {
+  if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); goHome(); }
+});
+
 $('#meBtn')?.addEventListener('click', openMe);
 
 $('#recQ').addEventListener('input', renderSeasons);
