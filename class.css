@@ -176,6 +176,59 @@ body.checking .shell,body.blocked .shell{display:none}
 .tab__dot{width:6px;height:6px;border-radius:50%;background:var(--signal)}
 .tab__dot[hidden]{display:none}
 
+/* ---------------------------------------------------------- sub-nav ---- */
+/* Sits directly under the section row (or stands alone, for a single-track
+   student, as their whole primary nav). Visually one step "inside" the
+   section tabs above it — smaller text, a filled strip rather than an
+   underline, and a faint top border tying it to whichever section pill
+   is active — so the hierarchy reads at a glance, not just by position. */
+
+.subtabs{
+  display:flex;gap:4px;padding:8px 22px;
+  background:rgba(142,164,255,.045);border-bottom:1px solid var(--hair);
+  position:sticky;top:calc(var(--bar) + 46px);z-index:38;
+  backdrop-filter:blur(14px);overflow-x:auto;scrollbar-width:none;
+}
+.subtabs::-webkit-scrollbar{display:none}
+.subtab{
+  background:none;border:1px solid transparent;border-radius:999px;
+  color:var(--dimmer);padding:7px 14px;cursor:pointer;font-weight:600;font-size:12.5px;
+  white-space:nowrap;display:flex;align-items:center;gap:6px;
+  transition:color .14s,background .14s,border-color .14s;
+}
+.subtab:hover{color:var(--dim);background:rgba(142,164,255,.06)}
+.subtab.on{color:var(--gold);background:var(--glow-gold);border-color:rgba(255,194,75,.28)}
+
+/* When there is no section row above it (single-track student), the
+   sub-nav is promoted to look and feel like ordinary top-level tabs —
+   nothing about a live-only or recordings-only student's nav should look
+   like a sub-level of something that, for them, does not exist. */
+#sectionTabs[hidden] + .subtabs,
+#sectionTabs[hidden] ~ .subtabs{
+  position:sticky;top:var(--bar);
+  background:rgba(7,11,28,.86);border-bottom:1px solid var(--hair);
+  padding:0 22px;
+}
+#sectionTabs[hidden] + .subtabs .subtab,
+#sectionTabs[hidden] ~ .subtabs .subtab{
+  border-radius:0;border:0;border-bottom:2px solid transparent;
+  padding:13px 15px;font-size:14px;background:none!important;
+}
+#sectionTabs[hidden] + .subtabs .subtab.on,
+#sectionTabs[hidden] ~ .subtabs .subtab.on{border-bottom-color:var(--gold)}
+
+/* ----------------------------------------------------------- me-btn ---- */
+
+.me-btn{
+  display:flex;align-items:center;gap:7px;
+  border:1px solid var(--wire);background:transparent;color:var(--dim);
+  border-radius:10px;padding:0 12px;height:34px;cursor:pointer;
+  font-size:13px;font-weight:600;transition:color .15s,border-color .15s;
+}
+.me-btn:hover{color:var(--gold);border-color:var(--wire-2)}
+.me-btn svg{width:16px;height:16px;flex:none}
+@media (max-width:640px){.me-btn span{display:none}.me-btn{padding:0 9px}}
+
 .view{padding:26px 22px 90px;max-width:1120px;width:100%;margin:0 auto;flex:1}
 .view[hidden]{display:none}
 

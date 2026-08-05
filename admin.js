@@ -13,7 +13,7 @@
 
 /* Shown in the sidebar. If this does not match what you just uploaded, your
    browser is still running a cached copy — hard refresh with Ctrl+Shift+R. */
-const VERSION = '1.9.0';
+const VERSION = '1.10.0';
 
 const SESSION_MAX_MS = 24 * 60 * 60 * 1000;   // one day, hard cap
 const STAMP_AT  = 'eict.sessionAt';

@@ -22,7 +22,7 @@
 /* Shown in the corner of the sign-in card so you can tell at a glance which
    version a student is actually running. If this does not match what you just
    uploaded, their browser is still on a cached copy. */
-const VERSION = '1.9.0';
+const VERSION = '1.10.0';
 
 const SESSION_MAX_MS = 24 * 60 * 60 * 1000;
 const STAMP_AT  = 'eict.sessionAt';
@@ -1507,13 +1507,20 @@ let slipData = null;
 
 function renderPayHistory() {
   const box = $('#payList');
+  const setDot = (id, on) => { const el = $(id); if (el) el.hidden = !on; };
+
   if (!PAYMENTS.length) {
     box.innerHTML = `<div class="empty"><b>Nothing sent yet</b>
       <p>Slips you send appear here with what sir decided.</p></div>`;
-    $('#payDot').hidden = true;
+    setDot('#payDotLive', false);
+    setDot('#payDotRec', false);
     return;
   }
-  $('#payDot').hidden = !PAYMENTS.some(p => p.status === 'rejected');
+  // Each section's own dot reflects only its own rejected payments — a
+  // rejected recordings slip should not make the Live Class tab look like
+  // something needs attention there.
+  setDot('#payDotLive', PAYMENTS.some(p => p.status === 'rejected' && p.purpose !== 'season'));
+  setDot('#payDotRec', PAYMENTS.some(p => p.status === 'rejected' && p.purpose === 'season'));
 
   box.innerHTML = PAYMENTS.map(p => {
     const what = p.purpose === 'season'
@@ -1540,13 +1547,14 @@ function fillSeasonPicker() {
 }
 
 function syncPayForm() {
-  // A single-track student has an obvious answer to "what is this for",
-  // so the selector only earns its place for someone who actually has both.
-  const track = resolveTrack();
-  if (track === 'live') $('#pFor').value = 'live';
-  else if (track === 'rec') $('#pFor').value = 'season';
+  // Which half of the form shows is decided by which section's Payments
+  // button was clicked (PAY_CONTEXT), not by a dropdown inside the form —
+  // that ambiguity is now resolved by navigation. The selector element
+  // stays in the DOM only as internal state for sendSlip() to read; it is
+  // never shown.
+  $('#pFor').value = PAY_CONTEXT === 'season' ? 'season' : 'live';
+  const forSeason = PAY_CONTEXT === 'season';
 
-  const forSeason = $('#pFor').value === 'season';
   // `hidden` alone loses to the stylesheet's display rule on .f label, so set
   // display directly as well. Otherwise the season picker stays on screen
   // during a live-class payment and can attach a unit to it by mistake.
@@ -1556,7 +1564,7 @@ function syncPayForm() {
     el.hidden = !on;
     el.style.display = on ? '' : 'none';
   };
-  show('#pForWrap', track === 'both' || track === null);
+  show('#pForWrap', false);
   show('#pMonthWrap', !forSeason);
   show('#pSeasonWrap', forSeason);
   $('#pAmount').value = forSeason ? FEE_SEASON : FEE_LIVE;
@@ -1734,21 +1742,44 @@ function resolveTrack() {
 }
 
 /** Hide whatever section does not apply, and land on a tab that exists. */
+let PAY_CONTEXT = 'live';        // which section's Payments was opened: 'live' or 'season'
+let CURRENT_SECTION = 'live';    // which top-level section is showing, meaningful only when track === 'both'
+
+/**
+ * Reshapes the whole nav around what this student actually has.
+ * A single-track student never sees a section switcher at all — their one
+ * section's own tabs sit where the switcher would have been. A both-track
+ * student gets the switcher, and My details lives in the header regardless,
+ * since account settings are not a course section.
+ */
 function applyTrackToNav() {
   const track = resolveTrack();
-  const showsLive = track === 'live' || track === 'both' || track === null;
-  const showsRec  = track === 'rec'  || track === 'both' || track === null;
+  const both = track === 'both' || track === null;
 
-  $$('.tab').forEach((b) => {
-    const sec = b.dataset.section;
-    if (!sec) return;                              // Payments and My details always show
-    b.hidden = sec === 'live' ? !showsLive : !showsRec;
-  });
+  $('#sectionTabs').hidden = !both;
 
-  const current = $('.tab.on:not([hidden])');
-  if (!current) {
-    switchTab(showsLive ? 'live' : 'rec');
+  if (both) {
+    switchSection(CURRENT_SECTION || 'live');
+  } else {
+    CURRENT_SECTION = track;
+    $('#subLive').hidden = track !== 'live';
+    $('#subRec').hidden = track !== 'rec';
+    const row = $(track === 'live' ? '#subLive' : '#subRec');
+    const active = row.querySelector('.subtab.on') || row.querySelector('.subtab');
+    if (active) switchTab(active.dataset.tab, active.dataset.paycontext);
   }
+}
+
+/** Switching sections shows that section's own sub-nav and lands on its
+ * first (or last-active) sub-tab. Only ever called for a both-track student. */
+function switchSection(sec) {
+  CURRENT_SECTION = sec;
+  $$('#sectionTabs .tab[data-section]').forEach(b => b.classList.toggle('on', b.dataset.section === sec));
+  $('#subLive').hidden = sec !== 'live';
+  $('#subRec').hidden = sec !== 'rec';
+  const row = $(sec === 'live' ? '#subLive' : '#subRec');
+  const active = row.querySelector('.subtab.on') || row.querySelector('.subtab');
+  if (active) switchTab(active.dataset.tab, active.dataset.paycontext);
 }
 
 function trackChooseGate() {
@@ -1774,24 +1805,47 @@ function paintTop() {
   setTx('#avatar', (P.name || 'S').trim()[0].toUpperCase());
 }
 
-function switchTab(t) {
+/**
+ * @param t          which view to show
+ * @param payContext when t === 'pay', which section it was opened from —
+ *                    'live' or 'season'. Payments is one view underneath,
+ *                    but which half of it shows is entirely decided by
+ *                    which section's Payments button was actually clicked,
+ *                    not by a dropdown inside the form.
+ */
+function switchTab(t, payContext) {
   ['live','rec','papers','pay','me'].forEach(k => { $('#v-' + k).hidden = k !== t; });
-  $$('.tab').forEach(b => b.classList.toggle('on', b.dataset.tab === t));
+  $$('.subtab').forEach(b => b.classList.toggle('on', b.dataset.tab === t &&
+    (t !== 'pay' || b.dataset.paycontext === (payContext || PAY_CONTEXT))));
+
   if (t === 'me') renderMe();
   if (t === 'rec') renderRec();
   if (t === 'papers') renderPapers();
+  if (t === 'pay') {
+    if (payContext) PAY_CONTEXT = payContext;
+    syncPayForm();
+    renderPayHistory();
+  }
+  window.scrollTo({ top: 0 });
+}
+
+/** My details sits outside the section system entirely, in the header. */
+function openMe() {
+  ['live','rec','papers','pay','me'].forEach(k => { $('#v-' + k).hidden = k !== 'me'; });
+  renderMe();
   window.scrollTo({ top: 0 });
 }
 
 /* --------------------------------------------------------------- events */
 
 document.addEventListener('click', (e) => {
-  const t = e.target.closest('[data-tab],[data-season],[data-ep],[data-jump],[data-go-pay],[data-close-sheet],[data-filter],[data-submit],[data-book],[data-slot],[data-catchup],[data-pick-track]');
+  const t = e.target.closest('[data-tab],[data-section],[data-season],[data-ep],[data-jump],[data-go-pay],[data-close-sheet],[data-filter],[data-submit],[data-book],[data-slot],[data-catchup],[data-pick-track]');
   if (!t) return;
   const d = t.dataset;
 
   if (d.pickTrack) return pickTrack(d.pickTrack);
-  if (d.tab) return switchTab(d.tab);
+  if (d.section) return switchSection(d.section);
+  if (d.tab) return switchTab(d.tab, d.paycontext);
   if ('closeSheet' in d) return closeSheet();
 
   if (d.filter) {
@@ -1814,15 +1868,17 @@ document.addEventListener('click', (e) => {
   if (d.slot) return bookSlot(d.slot, Number(d.term));
 
   if (d.goPay) {
-    switchTab('pay');
-    $('#pFor').value = d.goPay;
-    syncPayForm();
+    // d.goPay is 'live' or 'season' — the same vocabulary a section uses.
+    const track = resolveTrack();
+    if (track === 'both') switchSection(d.goPay === 'season' ? 'rec' : 'live');
+    switchTab('pay', d.goPay);
     if (d.goPay === 'season' && d.n) $('#pSeason').value = d.n;
     if (d.goPay === 'live') $('#pMonth').value = thisMonth();
     closeSheet();
     return;
   }
 });
+$('#meBtn')?.addEventListener('click', openMe);
 
 $('#recQ').addEventListener('input', renderSeasons);
 $('#viewMode').addEventListener('click', () => {
@@ -1841,7 +1897,8 @@ document.addEventListener('keydown', e => {
   if (!$('#sheet').hidden) return closeSheet();
 });
 
-$('#pFor').addEventListener('change', syncPayForm);
+// #pFor is internal state now, set by syncPayForm() from PAY_CONTEXT — no
+// listener needed since nothing user-facing can change it anymore.
 $('#pFile').addEventListener('change', e => pickSlip(e.target.files[0]));
 $('#pSend').addEventListener('click', sendSlip);
 $('#meSave').addEventListener('click', saveMe);
