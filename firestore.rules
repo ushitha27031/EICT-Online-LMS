@@ -164,6 +164,30 @@ service cloud.firestore {
       allow update, delete: if isTeacher();
     }
 
+    /* ------------------------------------------------------------ term tests */
+
+    // The exam definitions: which units, the booking window, the timing
+    // structure, paper clues. Every active student needs to read these to
+    // know what is coming and to book a sitting; only sir writes them.
+    match /termTests/{id} {
+      allow read:  if isTeacher() || isActiveStudent();
+      allow write: if isTeacher();
+    }
+
+    // One booking per student per term test, id {uid}_{termTestId}. The
+    // schedule is frozen onto this document the moment it is created, so a
+    // later edit to the term test's default timing never reshuffles a
+    // sitting someone already has. A student can book once; only sir can
+    // reschedule or clear a booking after that — the paper has already gone
+    // in the post by then.
+    match /termBookings/{id} {
+      allow read:   if isTeacher() || (signedIn() && resource.data.uid == request.auth.uid);
+      allow create: if isActiveStudent()
+                    && request.resource.data.uid == request.auth.uid
+                    && id == request.auth.uid + '_' + request.resource.data.termTestId;
+      allow update, delete: if isTeacher();
+    }
+
     /* -------------------------------------------------------------- papers */
 
     // Answer papers. The file itself stays in the student's own Drive; this

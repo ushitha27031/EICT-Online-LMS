@@ -1349,51 +1349,56 @@ html[data-theme="light"] .sn-card__thumb::after{
 
 /* -------------------------------------------------------------- home ---- */
 
-#v-home{padding-top:8px}
+#v-home{
+  padding-top:8px;
+  min-height:calc(100vh - var(--bar) - 40px);
+  display:flex;align-items:center;justify-content:center;
+}
 
 .home-cards{
-  display:grid;grid-template-columns:1fr 1fr;gap:16px;
-  max-width:840px;margin:0 auto;
+  display:grid;grid-template-columns:1fr 1fr;gap:20px;
+  max-width:920px;width:100%;margin:0 auto;
 }
 @media (max-width:720px){.home-cards{grid-template-columns:1fr}}
 
 .home-card{
-  position:relative;display:flex;align-items:center;gap:18px;
+  position:relative;display:flex;flex-direction:column;align-items:flex-start;gap:16px;
   text-align:left;cursor:pointer;overflow:hidden;
-  background:var(--panel);border:1px solid var(--wire);border-radius:18px;
-  padding:26px 22px;transition:transform .18s cubic-bezier(.2,.8,.3,1),border-color .18s;
+  background:var(--panel);border:1px solid var(--wire);border-radius:22px;
+  padding:36px 30px;transition:transform .18s cubic-bezier(.2,.8,.3,1),border-color .18s;
   animation:cardIn .4s cubic-bezier(.2,.8,.3,1) both;
+  min-height:220px;
 }
 .home-card:nth-child(2){animation-delay:.06s}
-.home-card:hover{transform:translateY(-4px);border-color:var(--wire-2)}
+.home-card:hover{transform:translateY(-5px);border-color:var(--wire-2)}
 .home-card::after{
-  content:'';position:absolute;right:-40px;top:-40px;width:160px;height:160px;
+  content:'';position:absolute;right:-50px;top:-50px;width:200px;height:200px;
   border-radius:50%;background:var(--glow-gold);pointer-events:none;
   transition:transform .3s;
 }
 .home-card:hover::after{transform:scale(1.15)}
 
 .home-card__icon{
-  position:relative;z-index:1;flex:none;width:56px;height:56px;border-radius:14px;
+  position:relative;z-index:1;flex:none;width:64px;height:64px;border-radius:16px;
   display:grid;place-items:center;color:var(--on-gold);
   background:linear-gradient(150deg,var(--gold),#E08A2B);
 }
-.home-card__icon svg{width:26px;height:26px}
+.home-card__icon svg{width:30px;height:30px}
 
-.home-card__body{position:relative;z-index:1;flex:1;min-width:0}
+.home-card__body{position:relative;z-index:1;flex:1;min-width:0;width:100%}
 .home-card__body h2{
-  font-family:var(--d);font-size:19px;font-weight:700;letter-spacing:-.02em;margin:0 0 4px;
+  font-family:var(--d);font-size:24px;font-weight:700;letter-spacing:-.02em;margin:0 0 6px;
 }
-.home-card__body p{margin:0;font-size:13px;color:var(--dim)}
+.home-card__body p{margin:0;font-size:14px;color:var(--dim);line-height:1.5}
 
 .home-card__arrow{
-  position:relative;z-index:1;flex:none;width:20px;height:20px;color:var(--dimmer);
+  position:absolute;right:26px;bottom:26px;z-index:1;width:22px;height:22px;color:var(--dimmer);
   transition:transform .18s,color .18s;
 }
-.home-card:hover .home-card__arrow{transform:translateX(3px);color:var(--gold)}
+.home-card:hover .home-card__arrow{transform:translateX(4px);color:var(--gold)}
 
 .home-card__dot{
-  position:absolute;right:16px;top:16px;z-index:2;width:9px;height:9px;
+  position:absolute;right:20px;top:20px;z-index:2;width:10px;height:10px;
   border-radius:50%;background:var(--signal);
 }
 .home-card__dot[hidden]{display:none}
@@ -1421,3 +1426,106 @@ html[data-theme="light"] .space{background:rgba(244,241,232,.9)}
 .space.is-only .space__back{display:none}
 .space.is-only .space__title{padding-left:0;border-left:0}
 
+
+/* ==========================================================================
+   v1.12.0 — the scheduled term test: bar, timeline, phase card
+   ========================================================================== */
+
+/* ---------------------------------------------------------- exam bar ---- */
+
+.exambar{
+  position:sticky;top:0;z-index:60;display:flex;align-items:center;gap:11px;
+  padding:9px 18px;background:var(--gold);color:var(--on-gold);
+  font-weight:700;font-size:13px;
+}
+.exambar.is-urgent{background:var(--signal);color:#fff;animation:examPulse 1.1s ease-in-out infinite}
+@keyframes examPulse{0%,100%{filter:brightness(1)}50%{filter:brightness(1.18)}}
+.exambar__dot{width:7px;height:7px;border-radius:50%;background:currentColor;flex:none;animation:dotBeat 1.4s ease-in-out infinite}
+@keyframes dotBeat{0%,100%{opacity:1}50%{opacity:.35}}
+.exambar__label{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.exambar__time{font-family:var(--m);font-variant-numeric:tabular-nums;font-size:14px;letter-spacing:.02em}
+.exambar__go{
+  background:rgba(10,16,36,.16);border:0;border-radius:7px;color:inherit;
+  padding:5px 12px;font-weight:700;font-size:12.5px;cursor:pointer;flex:none;
+}
+.exambar__go:hover{background:rgba(10,16,36,.26)}
+
+/* ------------------------------------------------------------- timeline -- */
+/* The "nice attractive way" to show the whole day at a glance: a single
+   horizontal strip, proportioned to real minutes, colour-coded by what
+   each stretch actually is. */
+
+.tt-line{
+  display:flex;height:46px;border-radius:10px;overflow:hidden;
+  border:1px solid var(--wire);margin:16px 0 10px;
+}
+.tt-seg{
+  display:flex;flex-direction:column;align-items:center;justify-content:center;
+  font-family:var(--m);font-size:10px;font-weight:600;line-height:1.3;
+  border-right:1px solid rgba(0,0,0,.12);white-space:nowrap;overflow:hidden;
+}
+.tt-seg:last-child{border-right:0}
+.tt-seg--prep{background:rgba(142,164,255,.14);color:var(--dim)}
+.tt-seg--mcq{background:var(--glow-gold);color:var(--gold)}
+.tt-seg--break{background:rgba(142,164,255,.08);color:var(--dimmer)}
+.tt-seg--essay{background:var(--glow-live);color:var(--live)}
+.tt-seg--final{background:rgba(255,46,67,.10);color:#FF8A94}
+.tt-seg b{font-size:11px}
+
+.tt-key{display:flex;flex-wrap:wrap;gap:12px;font-size:11px;color:var(--dimmer);margin-bottom:18px}
+.tt-key span{display:flex;align-items:center;gap:5px}
+.tt-key i{width:9px;height:9px;border-radius:2px;display:inline-block}
+
+/* ------------------------------------------------------- booking picker -- */
+
+.tt-picker{display:grid;gap:14px}
+.tt-preview{
+  background:var(--sunk);border:1px dashed var(--wire-2);border-radius:var(--r);
+  padding:14px 16px;
+}
+.tt-preview__empty{color:var(--dimmer);font-size:13px;text-align:center;padding:10px 0}
+.tt-preview__date{font-family:var(--d);font-size:16px;font-weight:700;margin-bottom:10px}
+
+/* ------------------------------------------------------ the booked card -- */
+
+.exam-card{
+  background:var(--panel);border:1px solid var(--wire);border-radius:var(--r);
+  padding:22px;margin-bottom:18px;position:relative;overflow:hidden;
+}
+.exam-card.is-active{border-color:var(--gold)}
+.exam-card.is-urgent{border-color:var(--signal)}
+.exam-card__top{display:flex;align-items:flex-start;gap:12px;margin-bottom:4px}
+.exam-card__n{
+  width:44px;height:44px;flex:none;border-radius:12px;display:grid;place-items:center;
+  background:linear-gradient(150deg,var(--gold),#E08A2B);color:var(--on-gold);
+  font-family:var(--d);font-weight:700;font-size:15px;
+}
+.exam-card__title{font-family:var(--d);font-size:17px;font-weight:700;margin:0}
+.exam-card__when{color:var(--dim);font-size:13px;margin:2px 0 0}
+
+.exam-card__phase{
+  margin-top:16px;padding:16px;border-radius:12px;
+  background:var(--sunk);border:1px solid var(--wire);
+  display:flex;align-items:center;gap:14px;
+}
+.exam-card__phase.is-urgent{background:rgba(255,46,67,.08);border-color:rgba(255,46,67,.3)}
+.exam-card__phaselabel{flex:1;min-width:0}
+.exam-card__phaselabel b{display:block;font-size:14px}
+.exam-card__phaselabel small{color:var(--dimmer);font-size:12px}
+.exam-card__countdown{
+  font-family:var(--m);font-size:22px;font-weight:700;letter-spacing:.01em;
+  font-variant-numeric:tabular-nums;color:var(--gold);
+}
+.exam-card__phase.is-urgent .exam-card__countdown{color:var(--signal)}
+
+.exam-card__clues{
+  margin-top:14px;padding:13px 15px;border-radius:10px;
+  background:rgba(142,164,255,.06);font-size:13px;color:var(--dim);line-height:1.6;
+  white-space:pre-wrap;
+}
+.exam-card__clues b{color:var(--paper);display:block;font-family:var(--m);font-size:10px;
+  letter-spacing:.12em;text-transform:uppercase;margin-bottom:5px}
+
+@media (prefers-reduced-motion:reduce){
+  .exambar.is-urgent,.exambar__dot{animation:none!important}
+}

@@ -22,7 +22,7 @@
 /* Shown in the corner of the sign-in card so you can tell at a glance which
    version a student is actually running. If this does not match what you just
    uploaded, their browser is still on a cached copy. */
-const VERSION = '1.11.0';
+const VERSION = '1.12.0';
 
 const SESSION_MAX_MS = 24 * 60 * 60 * 1000;
 const STAMP_AT  = 'eict.sessionAt';
@@ -183,10 +183,10 @@ let GATE = null;
 const isPaid    = (n) => unlocked().includes(Number(n));
 const isOpen    = (n) => {
   if (!GATE) return isPaid(n);
-  const st = GATE.unitState(Number(n), unlocked(), PAPERS);
+  const st = GATE.unitState(Number(n), unlocked(), PAPERS, TERM_TESTS);
   return st.open;
 };
-const blockOn   = (n) => GATE ? GATE.unitState(Number(n), unlocked(), PAPERS).blockedBy : null;
+const blockOn   = (n) => GATE ? GATE.unitState(Number(n), unlocked(), PAPERS, TERM_TESTS).blockedBy : null;
 const watched   = () => new Set(P?.watched || []);
 const hasMonth  = (m) => ACCESS.has(m);
 
@@ -227,13 +227,31 @@ function seedDemo() {
   PAPERS = {
     'unit-1': { key:'unit-1', kind:'unit', n:1, status:'accepted', marks:'72/100',
                 feedback:'Good work. Watch the units in question 4.',
-                driveId:'demo1', driveUrl:'#', at:new Date(Date.now()-9*86400000) }
+                driveId:'demo1', driveUrl:'#', at:new Date(Date.now()-9*86400000) },
+    'unit-2': { key:'unit-2', kind:'unit', n:2, status:'accepted',
+                driveId:'demo2', driveUrl:'#', at:new Date(Date.now()-4*86400000) }
   };
-  SLOTS = [
-    { id:'s1', term:1, kind:'mcq',   at:new Date(Date.now()+10*86400000).toISOString(), capacity:30, taken:11 },
-    { id:'s2', term:1, kind:'essay', at:new Date(Date.now()+12*86400000).toISOString(), capacity:30, taken:4 },
-    { id:'s3', term:1, kind:'mcq',   at:new Date(Date.now()+3*86400000).toISOString(),  capacity:30, taken:2 }
+  TERM_TESTS = [
+    { id:'tt1', n:1, title:'Term Test 1', units:[1,2],
+      clues:'Bring a calculator. Section B covers chapters 1–4 only this time.',
+      bookFrom: new Date(Date.now()-10*86400000).toISOString().slice(0,10),
+      bookTo:   new Date(Date.now()+80*86400000).toISOString().slice(0,10),
+      dayStart:'07:00', dayEnd:'13:00',
+      prepMins:10, mcqMins:120, breakMins:30, essayMins:180, finalMins:10 }
   ];
+  {
+    // Mirrors papers.js's computeSchedule() — kept inline here so the demo
+    // does not need an async import just to seed one sample booking.
+    const MINU = 60000;
+    const mcqStart = Date.now() + 20*86400000;
+    const mcqEnd = mcqStart + 120*MINU, breakEnd = mcqEnd + 30*MINU;
+    const essayEnd = breakEnd + 180*MINU;
+    MY_BOOKINGS = { tt1: {
+      uid:'demo', termTestId:'tt1', n:1,
+      prepStart: mcqStart - 10*MINU, mcqStart, mcqEnd, breakEnd,
+      essayStart: breakEnd, essayEnd, finalEnd: essayEnd + 10*MINU
+    }};
+  }
   PROG = {
     '1-1': { seen: '1'.repeat(240), furthest: 2400, dur: 2400, done: true },
     '2-1': { seen: '1'.repeat(120) + '0'.repeat(60), furthest: 1500, dur: 2200, done: false }
@@ -1094,9 +1112,9 @@ function stepEpisode(dir) {
    because the paper has to reach the house first.
    ====================================================================== */
 
-let PAPERS = {};        // "unit-3" / "term-1" -> submission
-let SLOTS  = [];        // sittings offered by sir
-let BOOKINGS = {};      // "term-1" -> booking
+let PAPERS = {};        // "unit-3" / "term-1-mcq" / "term-1-essay" -> submission
+let TERM_TESTS = [];    // exam definitions sir has created
+let MY_BOOKINGS = {};   // termTestId -> this student's own booking
 let PP = null;          // papers.js, loaded on first use
 
 async function papersLib() {
@@ -1104,7 +1122,7 @@ async function papersLib() {
   return PP;
 }
 
-/* Papers, sittings and bookings are extras: if the rules for them have not
+/* Papers, term tests and bookings are extras: if the rules for them have not
    been published yet the class must still open. A student locked out of their
    recordings because a collection they have never used is missing would be a
    far worse fault than a Papers tab that is briefly empty. */
@@ -1117,15 +1135,19 @@ async function loadPapers(uid) {
     return null;
   };
 
-  const [subs, slots, books] = await Promise.all([
+  const [subs, tests, bookings] = await Promise.all([
     FB.getDocs(FB.query(FB.collection(FB.db, 'papers'), FB.where('uid', '==', uid))).catch(soft('papers')),
-    FB.getDocs(FB.collection(FB.db, 'slots')).catch(soft('slots')),
-    FB.getDocs(FB.query(FB.collection(FB.db, 'bookings'), FB.where('uid', '==', uid))).catch(soft('bookings'))
+    FB.getDocs(FB.collection(FB.db, 'termTests')).catch(soft('termTests')),
+    // A query, not a direct getDoc by guessed id — a document that does not
+    // exist yet (this student has never booked anything) would otherwise
+    // fail the ownership check in the rules before it even gets to "not
+    // found", denying the read outright instead of returning nothing.
+    FB.getDocs(FB.query(FB.collection(FB.db, 'termBookings'), FB.where('uid', '==', uid))).catch(soft('termBookings'))
   ]);
 
   PAPERS = {}; subs && subs.forEach(d => { const v = d.data(); PAPERS[v.key] = { id: d.id, ...v }; });
-  SLOTS = []; slots && slots.forEach(d => SLOTS.push({ id: d.id, ...d.data() }));
-  BOOKINGS = {}; books && books.forEach(d => { const v = d.data(); BOOKINGS[`term-${v.term}`] = { id: d.id, ...v }; });
+  TERM_TESTS = []; tests && tests.forEach(d => TERM_TESTS.push({ id: d.id, ...d.data() }));
+  MY_BOOKINGS = {}; bookings && bookings.forEach(d => { const v = d.data(); MY_BOOKINGS[v.termTestId] = { id: d.id, ...v }; });
 }
 
 async function renderPapers() {
@@ -1158,7 +1180,7 @@ async function renderPapers() {
     return;
   }
 
-  const terms = L.visibleTerms(paid, PAPERS);
+  const terms = L.visibleTerms(paid, PAPERS, TERM_TESTS);
   const dueUnits = paid.filter(u => !L.isIn(PAPERS, 'unit', u));
   $('#paperDot').hidden = !dueUnits.length && !terms.some(t => t.ready && !t.done && t.blocking);
 
@@ -1180,8 +1202,8 @@ async function renderPapers() {
         <div class="card__h">
           <div>
             <h2>Term tests</h2>
-            <p>Six through the syllabus. Book a sitting at least a week ahead —
-               the paper is posted to you.</p>
+            <p>Book a sitting at least a week ahead — the paper goes out by post,
+               sealed, for that day.</p>
           </div>
         </div>
         ${terms.map(t => termRow(L, t)).join('')}
@@ -1198,7 +1220,7 @@ function paperStatusTag(p) {
 function unitPaperRow(L, u) {
   const s = SEASONS.find(x => x.n === u);
   const p = PAPERS[`unit-${u}`];
-  const st = L.unitState(u, unlocked(), PAPERS);
+  const st = L.unitState(u, unlocked(), PAPERS, TERM_TESTS);
   return `
     <div class="paper-row">
       <div class="paper-row__n">${pad(u)}</div>
@@ -1217,129 +1239,306 @@ function unitPaperRow(L, u) {
 }
 
 function termRow(L, t) {
-  const p = t.paper;
-  const b = BOOKINGS[`term-${t.n}`];
   const locked = !t.ready;
+  const booking = MY_BOOKINGS[t.id];
+
+  if (booking) return examCard(L, t, booking);
 
   return `
     <div class="paper-row ${locked ? 'is-locked' : ''}">
       <div class="paper-row__n">T${t.n}</div>
       <div class="paper-row__t">
-        <b>${esc(t.name)}${t.blocking ? '' : ' <span class="tag tag--off" style="font-size:10.5px">optional</span>'}</b>
+        <b>${esc(t.title || `Term test ${t.n}`)}${t.blocking ? '' : ' <span class="tag tag--off" style="font-size:10.5px">optional</span>'}</b>
         <small>Units ${t.units.map(u => pad(u)).join(', ')}${
           locked ? ' · finish those unit papers first' : ''}</small>
-        ${b ? `<span class="paper-row__ok">Sitting ${esc(fmtSlot(b))}</span>` : ''}
+        ${t.clues ? `<span class="paper-row__ok" style="white-space:pre-wrap">${esc(t.clues)}</span>` : ''}
       </div>
-      ${paperStatusTag(p)}
-      ${locked ? ''
-        : !b ? `<button class="btn btn--sm btn--gold" data-book="${t.n}">Choose a time</button>`
-        : `<button class="btn btn--sm ${p && p.status !== 'redo' ? '' : 'btn--gold'}"
-             data-submit="term-${t.n}">${p && p.status !== 'redo' ? 'Change' : 'Send paper'}</button>`}
+      ${locked ? '' : `<button class="btn btn--sm btn--gold" data-book="${t.id}">Choose your time</button>`}
     </div>`;
 }
 
-const fmtSlot = (b) => {
-  const d = new Date(b.at);
-  return `${d.toLocaleDateString('en', { weekday: 'short', day: 'numeric', month: 'short' })}, ${
-    d.toLocaleTimeString('en', { hour: 'numeric', minute: '2-digit' })} · ${b.kindLabel || ''}`;
-};
+/* The full scheduled sitting once booked — this is the card that stays put
+ * until the paper is done, showing the timeline, the live phase, and
+ * whichever upload button the current moment actually calls for. */
+function examCard(L, t, booking) {
+  const now = Date.now();
+  const ph = L.phaseNow(booking, now);
+  const active = !['ahead', 'over'].includes(ph.phase);
+  const d = new Date(booking.mcqStart);
 
-/* ------------------------------------------------------- booking a slot */
+  return `
+    <div class="exam-card ${active ? 'is-active' : ''} ${ph.urgent ? 'is-urgent' : ''}" data-exam="${t.id}">
+      <div class="exam-card__top">
+        <span class="exam-card__n">T${t.n}</span>
+        <div>
+          <h3 class="exam-card__title">${esc(t.title || `Term test ${t.n}`)}</h3>
+          <p class="exam-card__when">
+            ${esc(d.toLocaleDateString('en', { weekday: 'long', day: 'numeric', month: 'long' }))} ·
+            starts ${esc(d.toLocaleTimeString('en', { hour: 'numeric', minute: '2-digit' }))}
+          </p>
+        </div>
+      </div>
 
-async function bookSheet(termN) {
-  const L = await papersLib().catch(() => null);
-  if (!L) return toast('Term tests are not ready yet', 'bad');
-  const t = L.TERMS.find(x => x.n === termN);
-  const free = L.bookableSlots(SLOTS.filter(s => Number(s.term) === termN));
+      ${timelineHtml(booking)}
 
-  if (!free.length) {
-    sheet(`<h3>${esc(t.name)}</h3>
-      <p style="color:var(--dim);margin:0 0 18px">
-        No sittings are open yet. Sir puts them up at least a week before, so
-        the paper has time to reach you. Check back in a few days.</p>
-      <button class="btn btn--wide" data-close-sheet>Close</button>`);
-    return;
-  }
+      ${ph.phase === 'over' ? overRow(t, booking) : `
+        <div class="exam-card__phase ${ph.urgent ? 'is-urgent' : ''}" data-exam-phase="${t.id}">
+          <div class="exam-card__phaselabel">
+            <b data-exam-label="${t.id}">${esc(ph.label)}</b>
+            <small>${phaseSmallPrint(ph.phase)}</small>
+          </div>
+          <div class="exam-card__countdown" data-exam-count="${t.id}">
+            ${ph.next ? esc(L.fmtCountdown(ph.next - now)) : '—'}
+          </div>
+        </div>
+        ${uploadRow(ph.phase, t)}
+      `}
 
-  sheet(`
-    <h3>${esc(t.name)} — choose a time</h3>
-    <p style="color:var(--dim);margin:0 0 4px">
-      Units ${t.units.map(u => pad(u)).join(', ')}.</p>
-    <p style="color:var(--dim);margin:0 0 18px;font-size:13px">
-      Everything here is at least a week away, because the paper goes to your
-      house by post.</p>
-    <div class="slots">
-      ${free.map(s => {
-        const d = new Date(s.at);
-        const k = L.PAPER_KINDS[s.kind] || { label: s.kind, mins: 0 };
-        return `<button class="slot" data-slot="${s.id}" data-term="${termN}">
-          <span class="slot__day">
-            <b>${d.toLocaleDateString('en', { day: 'numeric' })}</b>
-            <small>${d.toLocaleDateString('en', { month: 'short' })}</small>
-          </span>
-          <span class="slot__t">
-            <b>${d.toLocaleDateString('en', { weekday: 'long' })}, ${
-              d.toLocaleTimeString('en', { hour: 'numeric', minute: '2-digit' })}</b>
-            <small>${esc(k.label)} · ${Math.round(k.mins / 60)} hours</small>
-          </span>
-          <span class="slot__left">${Math.max(0, (s.capacity || 0) - (s.taken || 0))} left</span>
-        </button>`;
-      }).join('')}
-    </div>
-    <button class="btn btn--ghost btn--wide" data-close-sheet style="margin-top:14px">Not now</button>`);
+      ${t.clues ? `<div class="exam-card__clues"><b>Notes from sir</b>${esc(t.clues)}</div>` : ''}
+    </div>`;
 }
 
-async function bookSlot(slotId, termN) {
+function phaseSmallPrint(phase) {
+  return {
+    ahead: 'Nothing to do yet — this card will update itself on the day.',
+    prep:  'Have your things ready. The envelope stays sealed until the clock above reaches zero.',
+    mcq:   'Write the MCQ paper now.',
+    break: 'Upload the MCQ as soon as you finish — whatever this takes comes out of the break, not on top of it.',
+    essay: 'Write the structured and essay paper now.',
+    final: 'Scan and upload the essay paper — this is free time, on top of the essay.'
+  }[phase] || '';
+}
+
+function uploadRow(phase, t) {
+  if (phase === 'break') {
+    const done = PAPERS[`term-${t.n}-mcq`] && PAPERS[`term-${t.n}-mcq`].status !== 'redo';
+    return done
+      ? `<p class="paper-row__ok" style="margin-top:12px">MCQ received. Get ready — the essay starts on the clock above, automatically.</p>`
+      : `<button class="btn btn--gold btn--wide" style="margin-top:12px" data-submit="term-${t.n}-mcq">Upload the MCQ paper now</button>`;
+  }
+  if (phase === 'final') {
+    const done = PAPERS[`term-${t.n}-essay`] && PAPERS[`term-${t.n}-essay`].status !== 'redo';
+    return done
+      ? `<p class="paper-row__ok" style="margin-top:12px">Essay received. This sitting is complete.</p>`
+      : `<button class="btn btn--gold btn--wide" style="margin-top:12px" data-submit="term-${t.n}-essay">Upload the essay paper now</button>`;
+  }
+  return '';
+}
+
+function overRow(t, booking) {
+  const mcq = PAPERS[`term-${t.n}-mcq`], essay = PAPERS[`term-${t.n}-essay`];
+  const mcqOk = mcq && mcq.status !== 'redo', essayOk = essay && essay.status !== 'redo';
+  if (mcqOk && essayOk) {
+    return `<div class="exam-card__phase"><div class="exam-card__phaselabel">
+      <b>Both papers received</b><small>Sir will mark these and write back here.</small>
+    </div></div>`;
+  }
+  return `<div class="exam-card__phase is-urgent"><div class="exam-card__phaselabel">
+      <b>This sitting has ended</b>
+      <small>${!mcqOk && !essayOk ? 'Neither paper came in.' : !mcqOk ? 'The MCQ paper never arrived.' : 'The essay paper never arrived.'}
+        Message sir on WhatsApp.</small>
+    </div></div>
+    <div style="display:flex;gap:8px;margin-top:12px">
+      ${!mcqOk ? `<button class="btn btn--sm" data-submit="term-${t.n}-mcq">Send MCQ late</button>` : ''}
+      ${!essayOk ? `<button class="btn btn--sm" data-submit="term-${t.n}-essay">Send essay late</button>` : ''}
+    </div>`;
+}
+
+/* The proportioned strip — the "nice attractive way" to see the whole
+ * sitting at once, each stretch sized to its real minutes. */
+function timelineHtml(sched) {
+  const total = sched.finalEnd - sched.prepStart;
+  const pct = (a, b) => Math.max(0, ((b - a) / total) * 100);
+  const t = (ms) => new Date(ms).toLocaleTimeString('en', { hour: 'numeric', minute: '2-digit' });
+
+  const segs = [
+    ['prep',  sched.prepStart,  sched.mcqStart,  'Prep'],
+    ['mcq',   sched.mcqStart,   sched.mcqEnd,    'MCQ'],
+    ['break', sched.mcqEnd,     sched.breakEnd,  'Break'],
+    ['essay', sched.essayStart, sched.essayEnd,  'Essay'],
+    ['final', sched.essayEnd,   sched.finalEnd,  'Upload']
+  ];
+
+  return `
+    <div class="tt-line">
+      ${segs.map(([cls, a, b, label]) => `
+        <div class="tt-seg tt-seg--${cls}" style="width:${pct(a, b)}%">
+          <b>${label}</b><span>${t(a)}</span>
+        </div>`).join('')}
+    </div>
+    <div class="tt-key">
+      <span><i style="background:rgba(142,164,255,.5)"></i>Prep (free)</span>
+      <span><i style="background:var(--gold)"></i>MCQ · 2h</span>
+      <span><i style="background:rgba(142,164,255,.3)"></i>Break · uploads here</span>
+      <span><i style="background:var(--live)"></i>Essay · 3h</span>
+      <span><i style="background:#FF8A94"></i>Upload (free)</span>
+    </div>`;
+}
+
+/* -------------------------------------------------------- booking a time */
+
+let bookPick = null;   // { termTestId, startMs } — the sheet's current selection
+
+async function bookSheet(termTestId) {
+  const L = await papersLib().catch(() => null);
+  if (!L) return toast('Term tests are not ready yet', 'bad');
+  const t = TERM_TESTS.find(x => x.id === termTestId);
+  if (!t) return;
+  bookPick = null;
+
+  const todayIso = new Date().toISOString().slice(0, 10);
+  const minDate = new Date(Date.now() + L.MIN_NOTICE_DAYS * 86400000).toISOString().slice(0, 10);
+  const from = t.bookFrom && t.bookFrom > minDate ? t.bookFrom : minDate;
+
+  sheet(`
+    <h3>${esc(t.title || `Term test ${t.n}`)} — choose your time</h3>
+    <p style="color:var(--dim);margin:0 0 4px">Units ${t.units.map(u => pad(u)).join(', ')}.</p>
+    <p style="color:var(--dim);margin:0 0 18px;font-size:13px">
+      At least ${L.MIN_NOTICE_DAYS} days from now, between ${esc(t.dayStart || '07:00')} and
+      ${esc(t.dayEnd || '13:00')} — the sealed paper has to reach you by post first.</p>
+
+    <div class="tt-picker">
+      <div class="f__row">
+        <label><span>Date</span>
+          <input type="date" id="btDate" min="${from}" max="${t.bookTo || ''}"></label>
+        <label><span>Start time</span>
+          <input type="time" id="btTime" value="${t.dayStart || '09:00'}"></label>
+      </div>
+
+      <div class="tt-preview" id="btPreview">
+        <p class="tt-preview__empty">Pick a date and time to see the whole day laid out.</p>
+      </div>
+
+      <button class="btn btn--gold btn--wide" id="btConfirm" disabled>Confirm this sitting</button>
+      <button class="btn btn--ghost btn--wide" data-close-sheet>Not now</button>
+    </div>
+  `);
+
+  const refresh = async () => {
+    const dv = $('#btDate').value, tv = $('#btTime').value;
+    const btn = $('#btConfirm');
+    if (!dv || !tv) { bookPick = null; btn.disabled = true; return; }
+
+    const startMs = new Date(`${dv}T${tv}:00`).getTime();
+    const v = L.validateStart(t, startMs);
+    if (!v.ok) {
+      bookPick = null;
+      btn.disabled = true;
+      $('#btPreview').innerHTML = `<p class="tt-preview__empty" style="color:#FFB4BB">${esc(v.why)}</p>`;
+      return;
+    }
+
+    bookPick = { termTestId, startMs };
+    btn.disabled = false;
+    const sched = L.computeSchedule(t, startMs);
+    const dObj = new Date(startMs);
+    $('#btPreview').innerHTML = `
+      <div class="tt-preview__date">
+        ${esc(dObj.toLocaleDateString('en', { weekday: 'long', day: 'numeric', month: 'long' }))}
+      </div>
+      ${timelineHtml(sched)}`;
+  };
+
+  $('#btDate').addEventListener('input', refresh);
+  $('#btTime').addEventListener('input', refresh);
+  $('#btConfirm').onclick = () => confirmBooking(t);
+}
+
+async function confirmBooking(t) {
+  if (!bookPick) return;
   const L = await papersLib().catch(() => null);
   if (!L) return;
-  const slot = SLOTS.find(s => s.id === slotId);
-  if (!slot) return;
-  const k = L.PAPER_KINDS[slot.kind] || { label: slot.kind };
+
+  busy('#btConfirm', true, 'Booking…');
+  const sched = L.computeSchedule(t, bookPick.startMs);
+  const rec = { uid: ME.uid, studentNo: P.studentNo || null, name: P.name || '', termTestId: t.id, n: t.n, ...sched };
 
   try {
     if (!DEMO) {
-      await FB.setDoc(FB.doc(FB.db, 'bookings', `${ME.uid}_term-${termN}`), {
-        uid: ME.uid, studentNo: P.studentNo || null, name: P.name || '',
-        term: termN, slotId, at: slot.at, kind: slot.kind,
-        address: P.address || '', bookedAt: FB.serverTimestamp()
-      });
+      await FB.setDoc(FB.doc(FB.db, 'termBookings', `${ME.uid}_${t.id}`),
+        { ...rec, at: FB.serverTimestamp() });
     }
-    BOOKINGS[`term-${termN}`] = { term: termN, slotId, at: slot.at, kind: slot.kind, kindLabel: k.label };
+    MY_BOOKINGS[t.id] = rec;
     closeSheet();
-    postingSheet(slot, k, termN);
+    bookedConfirmSheet(t, sched);
     renderPapers();
   } catch (err) {
+    busy('#btConfirm', false);
     toast(err.code === 'permission-denied'
       ? 'That sitting could not be booked. Refresh and try again.'
       : 'Could not book. Check your connection.', 'bad');
   }
 }
 
-/* The paper is now in the post, so say so with the parcel on its way. */
-function postingSheet(slot, k, termN) {
-  const d = new Date(slot.at);
+/* The paper is now committed to going out by post, so say so plainly, with
+ * the full day laid out one more time before the sheet closes. */
+function bookedConfirmSheet(t, sched) {
+  const d = new Date(sched.mcqStart);
   sheet(`
     <div style="text-align:center">
       <h3 style="margin-bottom:4px">Booked</h3>
-      <p style="color:var(--dim);margin:0 0 16px">
-        ${esc(d.toLocaleDateString('en', { weekday: 'long', day: 'numeric', month: 'long' }))},
-        ${esc(d.toLocaleTimeString('en', { hour: 'numeric', minute: '2-digit' }))}<br>
-        ${esc(k.label)} · ${Math.round(k.mins / 60)} hours</p>
-      ${courierNote('Your paper is being posted',
-        `The sealed paper for term test ${termN} goes out by courier to
-         ${P.address ? P.address : 'your address'}. Open it only at the time
-         you booked, and start the clock yourself.`)}
-      <button class="btn btn--gold btn--wide" data-close-sheet>Got it</button>
-    </div>`);
+      <p style="color:var(--dim);margin:0 0 4px">
+        ${esc(d.toLocaleDateString('en', { weekday: 'long', day: 'numeric', month: 'long' }))}</p>
+      <p style="color:var(--dim);margin:0 0 4px;font-size:13px">
+        This is now permanent on your Papers tab until the paper is done.</p>
+    </div>
+    ${timelineHtml(sched)}
+    ${courierNote('Your paper is being posted',
+      `The sealed paper for this term test goes out by courier to
+       ${P.address ? P.address : 'your address'}. It stays sealed until the
+       clock reaches your start time — this page will tell you exactly when.`)}
+    <button class="btn btn--gold btn--wide" data-close-sheet>Got it</button>`);
 }
 
+/* ---------------------------------------------------------- the ticker --
+ * One interval, started once at sign-in, doing nothing expensive when
+ * nothing is happening. The moment any booking enters an active phase, the
+ * sticky bar appears from anywhere in the app, and the exam card's own
+ * countdown updates in place without a full re-render.
+ * -------------------------------------------------------------------- */
 
-/* ------------------------------------------------- submitting a paper --
-   The link is checked before it can be sent. The student sees the very
-   preview sir will see; if it does not appear, the file is still private and
-   the button stays off. This is what stops "I submitted it" / "I can't open
-   it" arguments, which were most of the trouble on the old site.
-   ---------------------------------------------------------------------- */
+let examTicker = null;
+
+function startExamTicker() {
+  clearInterval(examTicker);
+  examTicker = setInterval(tickExams, 1000);
+  tickExams();
+}
+
+async function tickExams() {
+  const ids = Object.keys(MY_BOOKINGS);
+  if (!ids.length) return;
+  const L = await papersLib().catch(() => null);
+  if (!L) return;
+  const now = Date.now();
+
+  let leader = null;   // the most pressing active booking, for the sticky bar
+  for (const id of ids) {
+    const b = MY_BOOKINGS[id];
+    const ph = L.phaseNow(b, now);
+    if (['prep', 'mcq', 'break', 'essay', 'final'].includes(ph.phase)) {
+      if (!leader || ph.urgent) leader = { id, b, ph };
+    }
+
+    // Update this booking's own countdown in place, if its card is on screen.
+    const countEl = $(`[data-exam-count="${id}"]`);
+    if (countEl && ph.next) countEl.textContent = L.fmtCountdown(ph.next - now);
+    const phaseBox = $(`[data-exam-phase="${id}"]`);
+    if (phaseBox) phaseBox.classList.toggle('is-urgent', ph.urgent);
+  }
+
+  const bar = $('#exambar');
+  if (!leader) { bar.hidden = true; return; }
+  bar.hidden = false;
+  bar.classList.toggle('is-urgent', leader.ph.urgent);
+  setTx('#exambarLabel', leader.ph.label);
+  setTx('#exambarTime', leader.ph.next ? L.fmtCountdown(leader.ph.next - now) : '');
+}
+
+$('#exambarGo')?.addEventListener('click', () => {
+  if (resolveTrack() !== 'live') enterSpace('rec', resolveTrack() !== 'both');
+  switchTab('papers');
+});
 
 let ART = null, artRequested = false;
 async function artLib() {
@@ -1354,13 +1553,16 @@ async function artLib() {
 
 let checkSeq = 0;
 
+
 async function submitSheet(key) {
   const L = await papersLib().catch(() => null);
   if (!L) return toast('Sending papers is not ready yet', 'bad');
   const isTerm = key.startsWith('term-');
   const n = Number(key.split('-')[1]);
+  const part = isTerm ? key.split('-')[2] : null;   // 'mcq' or 'essay'
+  const termTitle = isTerm ? (TERM_TESTS.find(t => t.n === n) || {}).title || `Term test ${n}` : null;
   const title = isTerm
-    ? (L.TERMS.find(t => t.n === n) || {}).name
+    ? `${termTitle} — ${part === 'mcq' ? 'MCQ paper' : 'Structured and essay paper'}`
     : `Unit ${pad(n)} paper`;
   const existing = PAPERS[key];
 
@@ -1461,14 +1663,15 @@ async function submitSheet(key) {
       .find(([k, v]) => k !== key && v.driveId === found.id);
     if (clash && !confirm(
       `That is the same file you sent for ${clash[0].startsWith('term')
-        ? 'a term test' : 'unit ' + pad(Number(clash[0].split('-')[1]))}. Send it anyway?`))
+        ? `term test ${clash[0].split('-')[1]}'s ${clash[0].endsWith('mcq') ? 'MCQ' : 'essay'} paper`
+        : 'unit ' + pad(Number(clash[0].split('-')[1]))}. Send it anyway?`))
       return;
 
     busy('#dSend', true, 'Sending…');
     const rec = {
       uid: ME.uid, studentNo: P.studentNo || null, name: P.name || '',
       batch: P.batch || BATCH, key,
-      kind: isTerm ? 'term' : 'unit', n,
+      kind: isTerm ? 'term' : 'unit', n, part,
       driveId: found.id, driveKind: found.kind,
       driveUrl: L.viewUrl(found.id, found.kind),
       status: 'submitted', feedback: '', marks: null
@@ -1481,7 +1684,7 @@ async function submitSheet(key) {
       }
       PAPERS[key] = { ...rec, at: new Date() };
       closeSheet();
-      sentSheet(title, isTerm, n);
+      sentSheet(title, isTerm, n, part);
       renderPapers();
       renderRec();
     } catch (err) {
@@ -1493,7 +1696,7 @@ async function submitSheet(key) {
   };
 }
 
-function sentSheet(title, isTerm, n) {
+function sentSheet(title, isTerm, n, part) {
   const next = isTerm ? null : SEASONS.find(x => x.n === n + 1);
   const opensNext = next && isOpen(next.n);
   sheet(`
@@ -1889,7 +2092,7 @@ function openMe() {
 /* --------------------------------------------------------------- events */
 
 document.addEventListener('click', (e) => {
-  const t = e.target.closest('[data-tab],[data-enter],[data-leave],[data-season],[data-ep],[data-jump],[data-go-pay],[data-close-sheet],[data-filter],[data-submit],[data-book],[data-slot],[data-catchup],[data-pick-track]');
+  const t = e.target.closest('[data-tab],[data-enter],[data-leave],[data-season],[data-ep],[data-jump],[data-go-pay],[data-close-sheet],[data-filter],[data-submit],[data-book],[data-catchup],[data-pick-track]');
   if (!t) return;
   const d = t.dataset;
 
@@ -1915,8 +2118,7 @@ document.addEventListener('click', (e) => {
   if (d.ep) return openEpisode(...d.ep.split('-').map(Number));
   if (d.submit) { closeSheet(); return submitSheet(d.submit); }
   if (d.catchup) return openCatchup(d.catchup);
-  if (d.book) return bookSheet(Number(d.book));
-  if (d.slot) return bookSlot(d.slot, Number(d.term));
+  if (d.book) return bookSheet(d.book);
 
   if (d.goPay) {
     // Every button that carries data-go-pay only ever appears inside the
@@ -2508,6 +2710,7 @@ function enterContent() {
   renderLive();
   renderRec();
   renderPayHistory();
+  startExamTicker();
 
   // Everything is drawn behind the intro; only now do the panels open.
   openIntro(() => { welcomeCard(); announceNew(); });

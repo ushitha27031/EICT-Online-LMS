@@ -13,7 +13,7 @@
 
 /* Shown in the sidebar. If this does not match what you just uploaded, your
    browser is still running a cached copy — hard refresh with Ctrl+Shift+R. */
-const VERSION = '1.10.0';
+const VERSION = '1.12.0';
 
 const SESSION_MAX_MS = 24 * 60 * 60 * 1000;   // one day, hard cap
 const STAMP_AT  = 'eict.sessionAt';
@@ -264,6 +264,27 @@ function seedDemo() {
   });
   DB.students[0].progress = { '1-1': { furthest: 2400, dur: 2400, done: true } };
   DB.students[0].watched = ['1-1','1-2','1-3','1-4','1-5','1-6','1-7','2-1','2-2','3-1'];
+
+  TERM_TESTS = [
+    { id: 'tt1', n: 1, title: 'Term Test 1', units: [1, 2],
+      clues: 'Bring a calculator. Section B covers chapters 1–4 only this time.',
+      bookFrom: new Date(now - 10 * 86400000).toISOString().slice(0, 10),
+      bookTo:   new Date(now + 80 * 86400000).toISOString().slice(0, 10),
+      dayStart: '07:00', dayEnd: '13:00', ...DEFAULT_TIMING },
+    { id: 'tt2', n: 2, title: 'Term Test 2', units: [3, 4],
+      clues: '', bookFrom: '', bookTo: '', dayStart: '07:00', dayEnd: '13:00', ...DEFAULT_TIMING }
+  ];
+  {
+    const MINU = 60000, mcqStart = now + 20 * 86400000;
+    const mcqEnd = mcqStart + 120 * MINU, breakEnd = mcqEnd + 30 * MINU;
+    const essayEnd = breakEnd + 180 * MINU;
+    TT_BOOKINGS = [{
+      id: 'demo1_tt1', uid: 'demo1', studentNo: 'EICT-0001', name: 'Nimesha Perera',
+      termTestId: 'tt1', n: 1,
+      prepStart: mcqStart - 10 * MINU, mcqStart, mcqEnd, breakEnd,
+      essayStart: breakEnd, essayEnd, finalEnd: essayEnd + 10 * MINU
+    }];
+  }
 }
 
 /* ------------------------------------------------------------ data reads */
@@ -291,14 +312,14 @@ async function loadAll() {
   DB.access   = []; acc.forEach(d => DB.access.push(d.id));
   if (live && live.exists()) DB.live = { ...DB.live, ...live.data() };
 
-  const [paperDocs, slotDocs, bookDocs] = await Promise.all([
+  const [paperDocs, testDocs, bookDocs] = await Promise.all([
     f.getDocs(f.query(f.collection(f.db, 'papers'), f.orderBy('at', 'desc'), f.limit(300))).catch(() => null),
-    f.getDocs(f.collection(f.db, 'slots')).catch(() => null),
-    f.getDocs(f.collection(f.db, 'bookings')).catch(() => null)
+    f.getDocs(f.collection(f.db, 'termTests')).catch(() => null),
+    f.getDocs(f.collection(f.db, 'termBookings')).catch(() => null)
   ]);
   PAPERS = []; paperDocs && paperDocs.forEach(d => PAPERS.push({ id: d.id, ...d.data() }));
-  SLOTS = [];  slotDocs && slotDocs.forEach(d => SLOTS.push({ id: d.id, ...d.data() }));
-  BOOKINGS = []; bookDocs && bookDocs.forEach(d => BOOKINGS.push({ id: d.id, ...d.data() }));
+  TERM_TESTS = [];  testDocs && testDocs.forEach(d => TERM_TESTS.push({ id: d.id, ...d.data() }));
+  TT_BOOKINGS = []; bookDocs && bookDocs.forEach(d => TT_BOOKINGS.push({ id: d.id, ...d.data() }));
 
   const seasonDocs = await f.getDocs(f.collection(f.db, 'seasons'));
   DB.seasons = {};
@@ -510,24 +531,20 @@ function note(text) {
    opens the file in a new tab, so nothing has to be downloaded or filed.
    ====================================================================== */
 
-let PAPERS = [], SLOTS = [], BOOKINGS = [];
-
-const TERMS = [
-  { n: 1, units: [1, 2],      name: 'Term test 1' },
-  { n: 2, units: [3, 4],      name: 'Term test 2' },
-  { n: 3, units: [5, 6],      name: 'Term test 3' },
-  { n: 4, units: [7, 8],      name: 'Term test 4' },
-  { n: 5, units: [9, 10, 11], name: 'Term test 5' },
-  { n: 6, units: [12, 13],    name: 'Term test 6' }
-];
-const KINDS = { mcq: 'MCQ paper', essay: 'Structured and essay' };
+let PAPERS = [], TERM_TESTS = [], TT_BOOKINGS = [];
 
 const pendingPapers = () => PAPERS.filter(p => p.status === 'submitted');
 
+function termTitle(n) {
+  return (TERM_TESTS.find(t => t.n === n) || {}).title || `Term test ${n}`;
+}
+
 function paperTitle(p) {
-  return p.kind === 'term'
-    ? (TERMS.find(t => t.n === p.n) || {}).name || `Term test ${p.n}`
-    : `Unit ${pad(p.n)} paper`;
+  if (p.kind === 'term') {
+    const part = p.part === 'mcq' ? 'MCQ paper' : p.part === 'essay' ? 'Structured and essay paper' : 'paper';
+    return `${termTitle(p.n)} — ${part}`;
+  }
+  return `Unit ${pad(p.n)} paper`;
 }
 
 async function reviewPaper(id, decision, feedback, marks) {
@@ -611,78 +628,197 @@ function markSheet(id) {
     <button class="btn" data-close>Cancel</button>`);
 }
 
-/* ------------------------------------------------------------ sittings */
+/* ==================================================== term tests ========
+   Sir defines the exam once — which units, the booking window, the timing
+   structure, the clues — and every later marker in a student's sitting
+   (when MCQ ends, when the break ends, when the essay ends) is computed
+   from their one chosen start time and frozen onto their booking. Editing
+   a term test's defaults here only ever affects sittings booked from now
+   on; nobody already scheduled is silently reshuffled.
+   ====================================================================== */
 
-function slotSheet() {
-  const upcoming = SLOTS
-    .slice()
-    .sort((a, b) => new Date(a.at) - new Date(b.at));
+const DEFAULT_TIMING = { prepMins: 10, mcqMins: 120, breakMins: 30, essayMins: 180, finalMins: 10 };
 
-  openModal('Term test sittings', `
+function termTestsSheet() {
+  const rows = TERM_TESTS.slice().sort((a, b) => a.n - b.n);
+
+  openModal('Term tests', `
     <p class="hint" style="margin:0 0 16px">
-      Students can only pick a sitting that is more than a week away, because
-      the paper goes to them by post. Put them up early.</p>
+      Every field here is yours to set — the numbers below are the usual
+      shape (2 hour MCQ, 30 minute break, 3 hour essay) but nothing is fixed.</p>
 
-    <div class="form" style="background:#FBFAF7;border:1px solid var(--line-2);
-         border-radius:8px;padding:14px;margin-bottom:18px">
-      <div class="form__row">
-        <label><span>Term test</span>
-          <select id="slTerm">${TERMS.map(t =>
-            `<option value="${t.n}">${t.name} — units ${t.units.map(u => pad(u)).join(', ')}</option>`).join('')}</select></label>
-        <label><span>Paper</span>
-          <select id="slKind">
-            <option value="mcq">MCQ — 2 hours</option>
-            <option value="essay">Structured and essay — 3 hours</option>
-          </select></label>
-      </div>
-      <div class="form__row">
-        <label><span>Date and time</span><input id="slAt" type="datetime-local"></label>
-        <label><span>How many students</span><input id="slCap" type="number" value="30" min="1"></label>
-      </div>
-      <button class="btn btn--primary" data-add-slot="1" style="justify-self:start">Add this sitting</button>
-    </div>
+    <div id="ttForm"></div>
 
-    ${upcoming.length ? `<table class="table" style="border:1px solid var(--line-2);border-radius:6px">
-      <thead><tr><th>When</th><th>Test</th><th>Paper</th><th>Booked</th><th></th></tr></thead>
-      <tbody>${upcoming.map(s => {
-        const d = new Date(s.at);
-        const past = d < new Date();
-        return `<tr style="${past ? 'opacity:.5' : ''}">
-          <td class="num">${d.toLocaleDateString('en', { day:'numeric', month:'short' })},
-            ${d.toLocaleTimeString('en', { hour:'numeric', minute:'2-digit' })}</td>
-          <td>T${s.term}</td>
-          <td>${esc(KINDS[s.kind] || s.kind)}</td>
-          <td class="num">${s.taken || 0} of ${s.capacity || 0}</td>
-          <td class="right"><button class="btn btn--sm btn--bad" data-del-slot="${s.id}">Remove</button></td>
+    <div class="rec__eyebrow" style="margin:22px 0 9px">Existing term tests</div>
+    ${rows.length ? `<table class="table" style="border:1px solid var(--line-2);border-radius:6px">
+      <thead><tr><th>Test</th><th>Units</th><th>Window</th><th class="right">Booked</th><th></th></tr></thead>
+      <tbody>${rows.map(t => {
+        const count = TT_BOOKINGS.filter(b => b.termTestId === t.id).length;
+        return `<tr>
+          <td><b>${esc(t.title || `Term test ${t.n}`)}</b></td>
+          <td class="num">${(t.units || []).map(u => pad(u)).join(', ')}</td>
+          <td class="num" style="color:var(--text-3)">${esc(t.bookFrom || '—')} → ${esc(t.bookTo || '—')}</td>
+          <td class="right num">${count}</td>
+          <td class="actions">
+            <button class="btn btn--sm" data-edit-tt="${t.id}">Edit</button>
+            <button class="btn btn--sm" data-tt-bookings="${t.id}">Bookings</button>
+          </td>
         </tr>`;
       }).join('')}</tbody></table>`
-      : '<p style="color:var(--text-3);font-size:13px">No sittings yet.</p>'}
+      : '<p style="color:var(--text-3);font-size:13px">None yet — add the first one above.</p>'}
   `, '<button class="btn" data-close>Done</button>', true);
+
+  renderTermForm(null);
 }
 
-async function addSlot() {
-  const at = $('#slAt').value;
-  if (!at) return toast('Pick a date and time', 'bad');
-  const rec = {
-    term: Number($('#slTerm').value), kind: $('#slKind').value,
-    at: new Date(at).toISOString(), capacity: Number($('#slCap').value || 30), taken: 0
+/** The create/edit form. Passing an existing term test switches it into
+ * edit mode; passing null starts a fresh one. */
+function renderTermForm(existing) {
+  const t = existing || {
+    n: (Math.max(0, ...TERM_TESTS.map(x => x.n)) + 1), title: '', units: [],
+    clues: '', bookFrom: '', bookTo: '', dayStart: '07:00', dayEnd: '13:00',
+    ...DEFAULT_TIMING
   };
-  if (!DEMO) {
-    const ref = await FB.addDoc(FB.collection(FB.db, 'slots'), rec);
-    rec.id = ref.id;
-  } else rec.id = 's' + Date.now();
-  SLOTS.push(rec);
-  toast('Sitting added');
-  slotSheet();
+
+  $('#ttForm').innerHTML = `
+    <div class="form" style="background:#FBFAF7;border:1px solid var(--line-2);border-radius:8px;padding:16px">
+      <div class="form__row">
+        <label><span>Number</span><input id="ttN" type="number" min="1" value="${t.n}"></label>
+        <label><span>Title</span><input id="ttTitle" value="${esc(t.title)}" placeholder="Term Test 1"></label>
+      </div>
+
+      <label><span>Units this test covers</span>
+        <div style="display:flex;flex-wrap:wrap;gap:6px" id="ttUnits">
+          ${Array.from({ length: 13 }, (_, i) => i + 1).map(u => `
+            <button type="button" class="btn btn--sm" data-tt-unit="${u}"
+              style="${(t.units || []).includes(u) ? 'background:var(--accent);border-color:var(--accent);color:#fff' : ''}">
+              ${pad(u)}</button>`).join('')}
+        </div>
+      </label>
+
+      <label><span>Clues for students (shown on their exam card)</span>
+        <textarea id="ttClues" placeholder="Bring a calculator. Section B covers chapters 1–4 only.">${esc(t.clues || '')}</textarea></label>
+
+      <div class="form__row">
+        <label><span>Booking window opens</span><input id="ttFrom" type="date" value="${t.bookFrom || ''}"></label>
+        <label><span>Booking window closes</span><input id="ttTo" type="date" value="${t.bookTo || ''}"></label>
+      </div>
+      <div class="form__row">
+        <label><span>Earliest daily start</span><input id="ttDayStart" type="time" value="${t.dayStart || '07:00'}"></label>
+        <label><span>Latest daily start</span><input id="ttDayEnd" type="time" value="${t.dayEnd || '13:00'}"></label>
+      </div>
+
+      <div class="rec__eyebrow" style="margin-top:4px">Timing, in minutes</div>
+      <div class="form__row">
+        <label><span>Prep (free, before MCQ)</span><input id="ttPrep" type="number" min="0" value="${t.prepMins ?? DEFAULT_TIMING.prepMins}"></label>
+        <label><span>MCQ paper</span><input id="ttMcq" type="number" min="1" value="${t.mcqMins ?? DEFAULT_TIMING.mcqMins}"></label>
+      </div>
+      <div class="form__row">
+        <label><span>Break (upload MCQ + start essay)</span><input id="ttBreak" type="number" min="1" value="${t.breakMins ?? DEFAULT_TIMING.breakMins}"></label>
+        <label><span>Essay paper</span><input id="ttEssay" type="number" min="1" value="${t.essayMins ?? DEFAULT_TIMING.essayMins}"></label>
+      </div>
+      <label><span>Final upload (free, after essay)</span><input id="ttFinal" type="number" min="0" value="${t.finalMins ?? DEFAULT_TIMING.finalMins}"></label>
+
+      <p class="hint" id="ttPreview" style="margin:2px 0 0"></p>
+
+      <div style="display:flex;gap:8px">
+        <button class="btn btn--primary" data-save-tt="${existing ? existing.id : ''}">${existing ? 'Save changes' : 'Add this term test'}</button>
+        ${existing ? '<button class="btn" data-new-tt="1">New term test instead</button>' : ''}
+      </div>
+    </div>`;
+
+  const selected = new Set(t.units || []);
+  $$('#ttUnits [data-tt-unit]').forEach(b => b.addEventListener('click', () => {
+    const u = Number(b.dataset.ttUnit);
+    if (selected.has(u)) { selected.delete(u); b.style.cssText = ''; }
+    else { selected.add(u); b.style.cssText = 'background:var(--accent);border-color:var(--accent);color:#fff'; }
+    $('#ttUnits').dataset.selected = JSON.stringify([...selected]);
+    paintTiming();
+  }));
+  $('#ttUnits').dataset.selected = JSON.stringify([...selected]);
+
+  const paintTiming = () => {
+    const prep = Number($('#ttPrep').value || 0), mcq = Number($('#ttMcq').value || 0);
+    const brk = Number($('#ttBreak').value || 0), essay = Number($('#ttEssay').value || 0);
+    const fin = Number($('#ttFinal').value || 0);
+    const total = prep + mcq + brk + essay + fin;
+    const h = Math.floor(total / 60), m = total % 60;
+    $('#ttPreview').textContent = `Whole sitting, start to finish: ${h}h ${m}m.`;
+  };
+  ['ttPrep','ttMcq','ttBreak','ttEssay','ttFinal'].forEach(id => $('#' + id).addEventListener('input', paintTiming));
+  paintTiming();
+
+  $('[data-new-tt]')?.addEventListener('click', () => renderTermForm(null));
 }
 
-async function delSlot(id) {
-  if (!DEMO) await FB.deleteDoc(FB.doc(FB.db, 'slots', id));
-  SLOTS = SLOTS.filter(s => s.id !== id);
-  toast('Sitting removed', 'bad');
-  slotSheet();
+async function saveTermTest(existingId) {
+  const units = JSON.parse($('#ttUnits').dataset.selected || '[]').sort((a, b) => a - b);
+  if (!units.length) return toast('Pick at least one unit', 'bad');
+
+  const rec = {
+    n: Number($('#ttN').value || 1),
+    title: $('#ttTitle').value.trim() || `Term Test ${$('#ttN').value}`,
+    units,
+    clues: $('#ttClues').value.trim(),
+    bookFrom: $('#ttFrom').value || '',
+    bookTo: $('#ttTo').value || '',
+    dayStart: $('#ttDayStart').value || '07:00',
+    dayEnd: $('#ttDayEnd').value || '13:00',
+    prepMins: Number($('#ttPrep').value || DEFAULT_TIMING.prepMins),
+    mcqMins: Number($('#ttMcq').value || DEFAULT_TIMING.mcqMins),
+    breakMins: Number($('#ttBreak').value || DEFAULT_TIMING.breakMins),
+    essayMins: Number($('#ttEssay').value || DEFAULT_TIMING.essayMins),
+    finalMins: Number($('#ttFinal').value || DEFAULT_TIMING.finalMins)
+  };
+
+  try {
+    if (existingId) {
+      if (!DEMO) await FB.updateDoc(FB.doc(FB.db, 'termTests', existingId), { ...rec, updatedAt: FB.serverTimestamp() });
+      Object.assign(TERM_TESTS.find(t => t.id === existingId), rec);
+      toast('Term test updated');
+    } else {
+      let id;
+      if (!DEMO) {
+        const ref = await FB.addDoc(FB.collection(FB.db, 'termTests'), { ...rec, updatedAt: FB.serverTimestamp() });
+        id = ref.id;
+      } else id = 'tt' + Date.now();
+      TERM_TESTS.push({ id, ...rec });
+      toast('Term test added');
+    }
+  } catch (err) {
+    return toast(err.code === 'permission-denied'
+      ? 'Could not save — publish the Firestore rules for termTests.' : 'Could not save.', 'bad');
+  }
+  termTestsSheet();
 }
 
+function termBookingsSheet(termTestId) {
+  const t = TERM_TESTS.find(x => x.id === termTestId);
+  if (!t) return;
+  const rows = TT_BOOKINGS
+    .filter(b => b.termTestId === termTestId)
+    .sort((a, b) => a.mcqStart - b.mcqStart);
+
+  // Grouped by date, so it reads like a printing-and-posting schedule.
+  const byDate = {};
+  rows.forEach(b => {
+    const key = new Date(b.mcqStart).toLocaleDateString('en', { weekday: 'long', day: 'numeric', month: 'long' });
+    (byDate[key] = byDate[key] || []).push(b);
+  });
+
+  openModal(`${t.title || `Term test ${t.n}`} — who is sitting it`, `
+    ${rows.length ? Object.entries(byDate).map(([date, list]) => `
+      <div class="rec__eyebrow" style="margin:16px 0 6px">${esc(date)} · ${list.length} student${list.length === 1 ? '' : 's'}</div>
+      <table class="table" style="border:1px solid var(--line-2);border-radius:6px;margin-bottom:6px">
+        <tbody>${list.map(b => `<tr>
+          <td>${snChip(b.studentNo)}</td>
+          <td><b>${esc(b.name)}</b></td>
+          <td class="num">${new Date(b.mcqStart).toLocaleTimeString('en', { hour: 'numeric', minute: '2-digit' })}</td>
+        </tr>`).join('')}</tbody>
+      </table>`).join('')
+      : '<p style="color:var(--text-3);font-size:13px">Nobody has booked this one yet.</p>'}
+  `, '<button class="btn" data-close>Close</button>', true);
+}
 
 /* ================================================================== attendance
    Two collections, on purpose. `liveSessions/{uid}_{month}` is one document
@@ -1596,7 +1732,7 @@ document.addEventListener('click', async (e) => {
     '[data-season-open],[data-save-season],[data-zoom],[data-close],[data-suspend],' +
     '[data-unsuspend],[data-give],[data-revoke],[data-toggle-season],[data-drop-slip],' +
     '[data-manual-pay],[data-save-manual],[data-mark],[data-accept],[data-redo],' +
-    '[data-add-slot],[data-del-slot],[data-edit-date],[data-save-track]');
+    '[data-edit-date],[data-save-track],[data-edit-tt],[data-save-tt],[data-tt-bookings]');
   if (!t) return;
   const d = t.dataset;
 
@@ -1633,8 +1769,9 @@ document.addEventListener('click', async (e) => {
     if (!fb && !confirm('Send it back without telling them what to fix?')) return;
     closeModal(); return reviewPaper(d.redo, 'redo', fb, null);
   }
-  if ('addSlot' in d) return addSlot();
-  if (d.delSlot) return delSlot(d.delSlot);
+  if (d.editTt) return renderTermForm(TERM_TESTS.find(x => x.id === d.editTt));
+  if (d.saveTt !== undefined) return saveTermTest(d.saveTt || null);
+  if (d.ttBookings) return termBookingsSheet(d.ttBookings);
   if (d.editDate) { $('#attDate').value = d.editDate; renderAttendance();
     $('#v-attendance').scrollIntoView?.({ behavior: 'smooth' }); return; }
   if (d.saveTrack) {
@@ -1728,7 +1865,7 @@ document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeModal
   $(s)?.addEventListener('input', renderPayments));
 ['#paperSeen', '#paperKind'].forEach(s =>
   $(s)?.addEventListener('input', renderPapers));
-$('#slotBtn')?.addEventListener('click', slotSheet);
+$('#slotBtn')?.addEventListener('click', termTestsSheet);
 
 $('#attDate')?.addEventListener('change', renderAttendance);
 $('#attSearch')?.addEventListener('input', () => renderRegister($('#attDate').value || todayStr()));

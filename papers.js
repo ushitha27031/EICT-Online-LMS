@@ -34,27 +34,26 @@
    ------------------
    Paying for three units at once does not open all three. Unit 2 opens when
    unit 1's paper is in, and so on. A term test blocks everything after it
-   until that paper is in too. Term tests only appear once a student has all
-   the units that test covers, so somebody who bought two units never sees one.
+   until BOTH its papers are in. Term tests only appear once a student has
+   all the units that test covers, so somebody who bought two units never
+   sees one they cannot sit.
+
+   TERM TESTS ARE NOW A SCHEDULED EXAM, NOT JUST A PAPER
+   -------------------------------------------------------
+   Sir defines a term test — which units it covers, a booking window, and a
+   timing structure (prep time, MCQ length, break, essay length, final
+   upload time). A student picks one start time inside that window; every
+   later marker — when MCQ ends, when the break ends, when the essay ends —
+   is computed from that single choice and frozen onto their booking. If sir
+   later edits the default timing for future bookings, nobody already
+   scheduled is silently reshuffled.
+
+   Only the first ten minutes (before MCQ starts) and the last ten minutes
+   (after the essay ends) are free time. The thirty-minute gap in between
+   has to cover both uploading the MCQ paper and getting ready for the
+   essay — neither gets its own allowance, on purpose, matching how the
+   exam is meant to run in one continuous 5 hour 50 minute sitting.
    ========================================================================== */
-
-/* Which units each term test covers. Thirteen units, six tests. */
-export const TERMS = [
-  { n: 1, units: [1, 2],        name: 'Term test 1' },
-  { n: 2, units: [3, 4],        name: 'Term test 2' },
-  { n: 3, units: [5, 6],        name: 'Term test 3' },
-  { n: 4, units: [7, 8],        name: 'Term test 4' },
-  { n: 5, units: [9, 10, 11],   name: 'Term test 5' },
-  { n: 6, units: [12, 13],      name: 'Term test 6' }
-];
-
-export const PAPER_KINDS = {
-  mcq:   { label: 'MCQ paper',                mins: 120 },
-  essay: { label: 'Structured and essay',     mins: 180 }
-};
-
-/** Slots must be booked this far ahead, because the paper goes by post. */
-export const BOOK_AHEAD_DAYS = 7;
 
 /* ====================================================== drive link ====== */
 
@@ -139,19 +138,33 @@ export const viewUrl = (id, kind) => kind === 'folder'
   ? `https://drive.google.com/drive/folders/${id}`
   : `https://drive.google.com/file/d/${id}/view`;
 
-/* ====================================================== the gate ======== */
+/* ================================================================ keys === */
 
-const key = (kind, n) => kind === 'term' ? `term-${n}` : `unit-${n}`;
+const unitKey = (n) => `unit-${n}`;
+const termMcqKey   = (n) => `term-${n}-mcq`;
+const termEssayKey = (n) => `term-${n}-essay`;
 
 /** Has this paper been handed in and not sent back? */
 export function isIn(papers, kind, n) {
-  const p = papers[key(kind, n)];
+  const p = papers[unitKey(n)];
+  if (kind !== 'unit') return false;   // term-test completeness uses isTermDone, not this
   return !!p && p.status !== 'redo';
 }
 
-/** Which term test, if any, sits between two units. */
-export function termAfter(unit) {
-  return TERMS.find(t => t.units[t.units.length - 1] === unit) || null;
+/** A term test needs both halves in, and neither sent back, to count as done. */
+export function isTermDone(papers, n) {
+  const mcq = papers[termMcqKey(n)];
+  const essay = papers[termEssayKey(n)];
+  return !!mcq && mcq.status !== 'redo' && !!essay && essay.status !== 'redo';
+}
+
+export { unitKey, termMcqKey, termEssayKey };
+
+/* ============================================================ the gate === */
+
+/** Which term test, if any, sits right after a given unit. */
+export function termAfter(unit, termTests) {
+  return (termTests || []).find(t => Math.max(...t.units) === unit) || null;
 }
 
 /**
@@ -161,19 +174,17 @@ export function termAfter(unit) {
  * open      — they can actually watch it now
  * blockedBy — what is in the way: a unit paper, or a term test
  */
-export function unitState(unit, paidUnits, papers) {
+export function unitState(unit, paidUnits, papers, termTests) {
   const paid = paidUnits.includes(unit);
   if (!paid) return { paid: false, open: false, blockedBy: null };
 
-  // Every earlier unit they have paid for must have its paper in.
   const earlier = paidUnits.filter(u => u < unit).sort((a, b) => a - b);
   for (const u of earlier) {
     if (!isIn(papers, 'unit', u))
       return { paid: true, open: false, blockedBy: { kind: 'unit', n: u } };
 
-    // And any term test that falls due at that point.
-    const t = termAfter(u);
-    if (t && t.units.every(x => paidUnits.includes(x)) && !isIn(papers, 'term', t.n))
+    const t = termAfter(u, termTests);
+    if (t && t.units.every(x => paidUnits.includes(x)) && !isTermDone(papers, t.n))
       return { paid: true, open: false, blockedBy: { kind: 'term', n: t.n } };
   }
   return { paid: true, open: true, blockedBy: null };
@@ -184,33 +195,121 @@ export function unitState(unit, paidUnits, papers) {
  * unit it covers has been paid for, so somebody taking two units never has one
  * shown to them.
  */
-export function visibleTerms(paidUnits, papers) {
-  return TERMS
+export function visibleTerms(paidUnits, papers, termTests) {
+  return (termTests || [])
     .filter(t => t.units.every(u => paidUnits.includes(u)))
     .map(t => {
       const watchedAll = t.units.every(u => isIn(papers, 'unit', u));
-      const last = t.units[t.units.length - 1];
+      const last = Math.max(...t.units);
       // If they own nothing past this test, it blocks nothing — so it is
       // offered rather than demanded. A student taking two units should not
       // be told they are stuck behind an exam they never signed up for.
       const blocking = paidUnits.some(u => u > last);
       return {
         ...t,
-        ready: watchedAll,                 // all unit papers in, may sit the test
-        done: isIn(papers, 'term', t.n),
+        ready: watchedAll,                 // all unit papers in, may book the sitting
+        done: isTermDone(papers, t.n),
         blocking,
-        paper: papers[key('term', t.n)] || null
+        mcqPaper: papers[termMcqKey(t.n)] || null,
+        essayPaper: papers[termEssayKey(t.n)] || null
       };
     });
 }
 
-/** Slots a student may still choose: far enough ahead, and not full. */
-export function bookableSlots(slots, now = Date.now()) {
-  const earliest = now + BOOK_AHEAD_DAYS * 86400000;
-  return slots
-    .filter(s => new Date(s.at).getTime() >= earliest)
-    .filter(s => (s.taken || 0) < (s.capacity || 999))
-    .sort((a, b) => new Date(a.at) - new Date(b.at));
+/* ===================================================== the scheduled exam */
+
+/** Sane defaults matching a standard sitting — every field editable per test. */
+export const DEFAULT_TIMING = {
+  prepMins: 10,     // free time before MCQ starts — get ready, do not open yet
+  mcqMins: 120,
+  breakMins: 30,    // must cover BOTH uploading the MCQ and starting the essay
+  essayMins: 180,
+  finalMins: 10      // free time after the essay ends — scan and upload
+};
+
+/** The same physical-mail reasoning as everywhere else on the site: a
+ * sitting has to be booked far enough ahead for the sealed paper to
+ * actually arrive by post. */
+export const MIN_NOTICE_DAYS = 7;
+
+const MIN = 60000;
+const isoDate = (ms) => new Date(ms).toISOString().slice(0, 10);
+
+/**
+ * Every phase boundary, computed once from a chosen start time. This is
+ * frozen onto the booking at the moment it is made — sir editing a term
+ * test's default timing afterward must never reshuffle a sitting someone
+ * already has scheduled.
+ */
+export function computeSchedule(timing, startAtMs) {
+  const t = { ...DEFAULT_TIMING, ...(timing || {}) };
+  const mcqStart   = startAtMs;
+  const prepStart  = mcqStart - t.prepMins * MIN;
+  const mcqEnd     = mcqStart + t.mcqMins * MIN;
+  const breakEnd   = mcqEnd + t.breakMins * MIN;    // essay starts here, no exceptions
+  const essayStart = breakEnd;
+  const essayEnd   = essayStart + t.essayMins * MIN;
+  const finalEnd   = essayEnd + t.finalMins * MIN;
+  return { prepStart, mcqStart, mcqEnd, breakEnd, essayStart, essayEnd, finalEnd };
 }
 
-export { key as paperKey };
+/**
+ * Is this a legal moment to start a sitting? Checks the booking window, the
+ * allowed time of day (so a sitting cannot be started at 11pm and run past
+ * midnight), and that there is enough notice for the paper to arrive.
+ */
+export function validateStart(termTest, startAtMs, now = Date.now()) {
+  if (!startAtMs || Number.isNaN(startAtMs)) return { ok: false, why: 'Pick a date and time.' };
+
+  const notice = startAtMs - now;
+  if (notice < MIN_NOTICE_DAYS * 86400000)
+    return { ok: false, why: `Needs at least ${MIN_NOTICE_DAYS} days' notice — the paper goes out by post.` };
+
+  const dateStr = isoDate(startAtMs);
+  if (termTest.bookFrom && dateStr < termTest.bookFrom)
+    return { ok: false, why: `Sittings for this term test open from ${termTest.bookFrom}.` };
+  if (termTest.bookTo && dateStr > termTest.bookTo)
+    return { ok: false, why: `Sittings for this term test close after ${termTest.bookTo}.` };
+
+  const d = new Date(startAtMs);
+  const startMin = d.getHours() * 60 + d.getMinutes();
+  const ds = termTest.dayStart || '07:00', de = termTest.dayEnd || '13:00';
+  const [dsH, dsM] = ds.split(':').map(Number);
+  const [deH, deM] = de.split(':').map(Number);
+  if (startMin < dsH * 60 + dsM || startMin > deH * 60 + deM)
+    return { ok: false, why: `Pick a start time between ${ds} and ${de}, so the sitting finishes the same day.` };
+
+  return { ok: true };
+}
+
+/**
+ * Which phase a sitting is in right now, in plain language, and what time
+ * it next changes. This is the single source of truth the student-facing
+ * timer reads from every second — nothing about "what to show" lives
+ * anywhere else, so the phase logic cannot drift out of sync with itself.
+ */
+export function phaseNow(sched, now = Date.now()) {
+  if (now < sched.prepStart)
+    return { phase: 'ahead', label: 'Booked', next: sched.prepStart, urgent: false };
+  if (now < sched.mcqStart)
+    return { phase: 'prep', label: 'Get ready — do not open the envelope yet', next: sched.mcqStart, urgent: false };
+  if (now < sched.mcqEnd)
+    return { phase: 'mcq', label: 'MCQ paper', next: sched.mcqEnd, urgent: sched.mcqEnd - now < 10 * MIN };
+  if (now < sched.breakEnd)
+    return { phase: 'break', label: 'Upload the MCQ — essay starts automatically', next: sched.breakEnd, urgent: sched.breakEnd - now < 8 * MIN };
+  if (now < sched.essayEnd)
+    return { phase: 'essay', label: 'Structured and essay paper', next: sched.essayEnd, urgent: sched.essayEnd - now < 15 * MIN };
+  if (now < sched.finalEnd)
+    return { phase: 'final', label: 'Upload the essay now', next: sched.finalEnd, urgent: true };
+  return { phase: 'over', label: 'This sitting has ended', next: null, urgent: false };
+}
+
+/** m:ss under an hour, h:mm:ss over it — always exact, never rounds up past zero. */
+export function fmtCountdown(ms) {
+  if (ms <= 0) return '0:00';
+  const s = Math.floor(ms / 1000);
+  const h = Math.floor(s / 3600), m = Math.floor((s % 3600) / 60), sec = s % 60;
+  return h > 0
+    ? `${h}:${String(m).padStart(2, '0')}:${String(sec).padStart(2, '0')}`
+    : `${m}:${String(sec).padStart(2, '0')}`;
+}
