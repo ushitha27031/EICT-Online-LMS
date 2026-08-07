@@ -1354,6 +1354,11 @@ html[data-theme="light"] .sn-card__thumb::after{
   min-height:calc(100vh - var(--bar) - 40px);
   display:flex;align-items:center;justify-content:center;
 }
+/* An ID selector beats .view[hidden]{display:none} on specificity alone, so
+   without this the rule above wins even while the hidden attribute is set —
+   the home screen would never actually go away, no matter what the click
+   handler correctly did underneath. This has to out-rank the rule above it. */
+#v-home[hidden]{display:none}
 
 .home-cards{
   display:grid;grid-template-columns:1fr 1fr;gap:20px;
