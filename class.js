@@ -22,7 +22,7 @@
 /* Shown in the corner of the sign-in card so you can tell at a glance which
    version a student is actually running. If this does not match what you just
    uploaded, their browser is still on a cached copy. */
-const VERSION = '1.12.0';
+const VERSION = '1.13.0';
 
 const SESSION_MAX_MS = 24 * 60 * 60 * 1000;
 const STAMP_AT  = 'eict.sessionAt';
@@ -297,6 +297,7 @@ function leftText(ms) {
 }
 
 async function signOutNow(reason) {
+  stopChatListeners();
   clearStamp();
   sessionStorage.removeItem('eict.greeted');
   if (FB) { try { await FB.signOut(FB.auth); } catch(_) {} }
@@ -1978,11 +1979,12 @@ function applyTrackToNav() {
 /** Two big cards, painted with a live snapshot of each — not just a label,
  * so a both-track student knows which one actually needs them right now. */
 function showHome() {
+  stopChatListeners();
   CURRENT_SPACE = null;
   $('#v-home').hidden = false;
   $('#spaceRec').hidden = true;
   $('#spaceLive').hidden = true;
-  ['live','rec','papers','pay','me','livecatchup'].forEach(k => { $('#v-' + k).hidden = true; });
+  ['live','rec','papers','pay','me','livecatchup','chat'].forEach(k => { $('#v-' + k).hidden = true; });
 
   const open = SEASONS.filter(s => isOpen(s.n));
   const totalEps = open.reduce((a, s) => a + s.episodes.length, 0);
@@ -2059,7 +2061,8 @@ function paintTop() {
  *                    control inside the form itself.
  */
 function switchTab(t, payContext) {
-  ['live','rec','papers','pay','me','livecatchup'].forEach(k => { $('#v-' + k).hidden = k !== t; });
+  stopChatListeners();
+  ['live','rec','papers','pay','me','livecatchup','chat'].forEach(k => { $('#v-' + k).hidden = k !== t; });
   $$('.subtab').forEach(b => b.classList.toggle('on', b.dataset.tab === t &&
     (t !== 'pay' || b.dataset.paycontext === (payContext || PAY_CONTEXT))));
 
@@ -2077,13 +2080,191 @@ function switchTab(t, payContext) {
   window.scrollTo({ top: 0 });
 }
 
-/** My details sits outside the home/space system entirely, reached from
- * the header — it is account settings, not a course section. */
-function openMe() {
+/* ==================================================================== chat
+   The one place on the site that genuinely needs to update itself, so it is
+   the one place that uses a live Firestore listener instead of a one-time
+   read — everywhere else on the site deliberately avoids that, to keep
+   reads cheap and predictable. Chat only costs anything while a student
+   actually has it open: the listener starts when the Chat view opens and
+   is torn down the moment they navigate anywhere else, including signing
+   out. A class of thirty checking in a few times a day stays nowhere near
+   the free plan's daily read limit.
+   ====================================================================== */
+
+let chatUnsubGroup = null, chatUnsubDm = null;
+let CHAT_TAB = 'group';
+
+function stopChatListeners() {
+  if (chatUnsubGroup) { chatUnsubGroup(); chatUnsubGroup = null; }
+  if (chatUnsubDm)    { chatUnsubDm();    chatUnsubDm = null; }
+}
+
+/** A single cheap document read each, at sign-in, so the header dot is
+ * right from the moment the class loads — without keeping a listener
+ * running before the student has shown any interest in chat at all. */
+async function checkChatUnread() {
+  if (DEMO) { $('#chatDot').hidden = false; return; }
+  try {
+    const [g, m] = await Promise.all([
+      FB.getDoc(FB.doc(FB.db, 'classChat', BATCH)).catch(() => null),
+      FB.getDoc(FB.doc(FB.db, 'dmThreads', ME.uid)).catch(() => null)
+    ]);
+    const gAt = g && g.exists() ? (g.data().lastAt?.toMillis?.() || 0) : 0;
+    const mAt = m && m.exists() ? (m.data().lastAt?.toMillis?.() || 0) : 0;
+    const seenG = Number(localStorage.getItem('eict.chat.seen.group') || 0);
+    const seenM = Number(localStorage.getItem('eict.chat.seen.dm') || 0);
+    $('#chatDot').hidden = !(gAt > seenG || mAt > seenM);
+  } catch (err) {
+    console.warn('[class] chat unread check failed', err.code || err.message);
+  }
+}
+
+function openChat() {
   $('#v-home').hidden = true;
   $('#spaceRec').hidden = true;
   $('#spaceLive').hidden = true;
-  ['live','rec','papers','pay','livecatchup'].forEach(k => { $('#v-' + k).hidden = true; });
+  ['live','rec','papers','pay','livecatchup','me'].forEach(k => { $('#v-' + k).hidden = true; });
+  $('#v-chat').hidden = false;
+  $('#chatDot').hidden = true;
+  switchChatTab(CHAT_TAB);
+  window.scrollTo({ top: 0 });
+}
+
+function switchChatTab(tab) {
+  CHAT_TAB = tab;
+  $$('#chatSubnav .subtab').forEach(b => b.classList.toggle('on', b.dataset.chatTab === tab));
+  $('#chatGroupPane').hidden = tab !== 'group';
+  $('#chatDmPane').hidden = tab !== 'dm';
+  stopChatListeners();
+  if (DEMO) return renderDemoChat(tab);
+  tab === 'group' ? startGroupChat() : startDmChat();
+}
+
+function startGroupChat() {
+  const q = FB.query(FB.collection(FB.db, 'classChat', BATCH, 'messages'), FB.orderBy('at', 'desc'), FB.limit(50));
+  chatUnsubGroup = FB.onSnapshot(q, (snap) => {
+    const msgs = []; snap.forEach(d => msgs.push({ id: d.id, ...d.data() }));
+    renderChat('#chatGroupList', msgs.reverse());
+    localStorage.setItem('eict.chat.seen.group', String(Date.now()));
+  }, (err) => {
+    console.warn('[class] class chat unavailable', err.code || err.message);
+    setHt('#chatGroupList', `<div class="empty"><b>Chat is not ready yet</b>
+      <p>Ask sir to publish the Firestore rules.</p></div>`);
+  });
+}
+
+function startDmChat() {
+  const q = FB.query(FB.collection(FB.db, 'dmThreads', ME.uid, 'messages'), FB.orderBy('at', 'desc'), FB.limit(50));
+  chatUnsubDm = FB.onSnapshot(q, (snap) => {
+    const msgs = []; snap.forEach(d => msgs.push({ id: d.id, ...d.data() }));
+    renderChat('#chatDmList', msgs.reverse());
+    localStorage.setItem('eict.chat.seen.dm', String(Date.now()));
+  }, (err) => {
+    console.warn('[class] dm chat unavailable', err.code || err.message);
+    setHt('#chatDmList', `<div class="empty"><b>Not ready yet</b>
+      <p>Ask sir to publish the Firestore rules.</p></div>`);
+  });
+}
+
+function fmtChatTime(ts) {
+  if (!ts) return '';
+  const d = ts.toDate ? ts.toDate() : new Date(ts);
+  return d.toLocaleTimeString('en', { hour: 'numeric', minute: '2-digit' });
+}
+
+function renderChat(sel, msgs) {
+  const box = $(sel);
+  if (!box) return;
+  if (!msgs.length) {
+    box.innerHTML = `<div class="empty"><b>No messages yet</b><p>Say hello.</p></div>`;
+    return;
+  }
+  box.innerHTML = msgs.map((m) => {
+    const self = m.uid === ME.uid;
+    const teacher = m.role === 'teacher';
+    return `<div class="bubble-row ${self ? 'is-self' : ''}">
+      <div class="bubble ${teacher ? 'is-teacher' : ''}">
+        ${!self ? `<b class="bubble__who">${esc(teacher ? 'Sir' : m.name || '')}</b>` : ''}
+        <span class="bubble__text">${esc(m.text)}</span>
+        <small class="bubble__time">${fmtChatTime(m.at)}</small>
+      </div>
+    </div>`;
+  }).join('');
+  box.scrollTop = box.scrollHeight;
+}
+
+async function sendGroupMessage(text) {
+  const clean = text.trim().slice(0, 1900);
+  if (!clean) return;
+  await FB.addDoc(FB.collection(FB.db, 'classChat', BATCH, 'messages'), {
+    uid: ME.uid, name: P.name || '', studentNo: P.studentNo || null,
+    role: 'student', text: clean, at: FB.serverTimestamp()
+  });
+  await FB.setDoc(FB.doc(FB.db, 'classChat', BATCH), {
+    lastAt: FB.serverTimestamp(), lastText: clean.slice(0, 80), lastFrom: P.name || ''
+  }, { merge: true });
+}
+
+async function sendDmMessage(text) {
+  const clean = text.trim().slice(0, 1900);
+  if (!clean) return;
+  await FB.addDoc(FB.collection(FB.db, 'dmThreads', ME.uid, 'messages'), {
+    uid: ME.uid, name: P.name || '', studentNo: P.studentNo || null,
+    role: 'student', text: clean, at: FB.serverTimestamp()
+  });
+  await FB.setDoc(FB.doc(FB.db, 'dmThreads', ME.uid), {
+    uid: ME.uid, studentNo: P.studentNo || null, name: P.name || '',
+    lastAt: FB.serverTimestamp(), lastText: clean.slice(0, 80), lastFrom: 'student'
+  }, { merge: true });
+}
+
+/* Sample conversation so the feature can be seen without a live database. */
+function renderDemoChat(tab) {
+  const groupDemo = [
+    { uid: 'demo2', name: 'Kasun Bandara', role: 'student', text: 'Anyone finished the unit 3 paper yet?', at: new Date(Date.now() - 3600000) },
+    { uid: 'teacher1', name: 'Sir', role: 'teacher', text: 'Due Friday — post if you get stuck on Q4.', at: new Date(Date.now() - 3000000) },
+    { uid: 'demo', name: 'You', role: 'student', text: 'Will do, thanks sir!', at: new Date(Date.now() - 2000000) }
+  ];
+  const dmDemo = [
+    { uid: 'demo', name: 'You', role: 'student', text: 'Sir, is the Sept 4 term test slot still open?', at: new Date(Date.now() - 5000000) },
+    { uid: 'teacher1', name: 'Sir', role: 'teacher', text: 'Yes, go ahead and book it.', at: new Date(Date.now() - 4800000) }
+  ];
+  renderChat('#chatGroupList', groupDemo);
+  renderChat('#chatDmList', dmDemo);
+}
+
+$('#chatBtn')?.addEventListener('click', openChat);
+$$('#chatSubnav [data-chat-tab]').forEach(b =>
+  b.addEventListener('click', () => switchChatTab(b.dataset.chatTab)));
+
+$('#chatGroupForm')?.addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const inp = $('#chatGroupInput');
+  if (!inp.value.trim()) return;
+  const text = inp.value; inp.value = '';
+  if (DEMO) return toast('Sample mode — nothing is really sent');
+  try { await sendGroupMessage(text); }
+  catch (err) { toast(err.code === 'permission-denied' ? 'Chat is not switched on yet' : 'Could not send', 'bad'); }
+});
+
+$('#chatDmForm')?.addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const inp = $('#chatDmInput');
+  if (!inp.value.trim()) return;
+  const text = inp.value; inp.value = '';
+  if (DEMO) return toast('Sample mode — nothing is really sent');
+  try { await sendDmMessage(text); }
+  catch (err) { toast(err.code === 'permission-denied' ? 'Chat is not switched on yet' : 'Could not send', 'bad'); }
+});
+
+/** My details sits outside the home/space system entirely, reached from
+ * the header — it is account settings, not a course section. */
+function openMe() {
+  stopChatListeners();
+  $('#v-home').hidden = true;
+  $('#spaceRec').hidden = true;
+  $('#spaceLive').hidden = true;
+  ['live','rec','papers','pay','livecatchup','chat'].forEach(k => { $('#v-' + k).hidden = true; });
   $('#v-me').hidden = false;
   renderMe();
   window.scrollTo({ top: 0 });
@@ -2711,6 +2892,7 @@ function enterContent() {
   renderRec();
   renderPayHistory();
   startExamTicker();
+  checkChatUnread();
 
   // Everything is drawn behind the intro; only now do the panels open.
   openIntro(() => { welcomeCard(); announceNew(); });

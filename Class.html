@@ -10,7 +10,7 @@
 <!-- The ?v= number is what forces browsers to fetch a fresh copy. Without it
      GitHub Pages keeps serving the old CSS for hours and changes look like
      they never happened. Bump it in BOTH places whenever a file changes. -->
-<link rel="stylesheet" href="class.css?v=1.12.0">
+<link rel="stylesheet" href="class.css?v=1.13.0">
 </head>
 
 <body class="checking">
@@ -208,6 +208,11 @@
       <button class="me-btn" id="meBtn" title="My details" aria-label="My details">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2M12 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8Z"/></svg>
         <span>My details</span>
+      </button>
+      <button class="me-btn" id="chatBtn" title="Chat" aria-label="Chat">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M21 11.5a8.38 8.38 0 0 1-4.5 7.5 8.5 8.5 0 0 1-8.9-.5L3 20l1.5-4.6a8.38 8.38 0 0 1-1-4A8.5 8.5 0 0 1 12 3a8.5 8.5 0 0 1 9 8.5Z"/></svg>
+        <span>Chat</span>
+        <i class="me-btn__dot" id="chatDot" hidden></i>
       </button>
       <span class="sn" id="myNo">EICT-0000</span>
       <button class="btn btn--sm btn--ghost" id="outBtn">Sign out</button>
@@ -428,6 +433,36 @@
   </section>
 
   <!-- ······································································ -->
+  <section class="view" id="v-chat" hidden>
+    <nav class="subtabs chat-subnav" id="chatSubnav">
+      <button class="subtab on" data-chat-tab="group">Class chat</button>
+      <button class="subtab" data-chat-tab="dm">Message sir
+        <i class="tab__dot" id="dmDot" hidden></i></button>
+    </nav>
+
+    <div class="chatpane" id="chatGroupPane">
+      <div class="chatpane__list" id="chatGroupList">
+        <div class="empty"><b>Loading</b><p>Connecting to the class chat.</p></div>
+      </div>
+      <form class="chatpane__send" id="chatGroupForm">
+        <input id="chatGroupInput" placeholder="Message the class…" maxlength="1900" autocomplete="off">
+        <button class="btn btn--gold" type="submit">Send</button>
+      </form>
+    </div>
+
+    <div class="chatpane" id="chatDmPane" hidden>
+      <p class="hint" style="margin:0 0 10px">Only sir can see this — nobody else in the class.</p>
+      <div class="chatpane__list" id="chatDmList">
+        <div class="empty"><b>Loading</b><p>Connecting.</p></div>
+      </div>
+      <form class="chatpane__send" id="chatDmForm">
+        <input id="chatDmInput" placeholder="Message sir…" maxlength="1900" autocomplete="off">
+        <button class="btn btn--gold" type="submit">Send</button>
+      </form>
+    </div>
+  </section>
+
+  <!-- ······································································ -->
   <section class="view" id="v-me" hidden>
     <div class="card">
       <div class="card__h">
@@ -503,9 +538,9 @@
 <div class="sheet" id="sheet" hidden><div class="sheet__box" id="sheetBox"></div></div>
 <div class="toasts" id="toasts"></div>
 
-<script src="netbg.js?v=1.12.0" defer></script>
+<script src="netbg.js?v=1.13.0" defer></script>
 <script src="firebase-config.js" onerror="void 0"></script>
 <script src="class-config.js" onerror="void 0"></script>
-<script type="module" src="class.js?v=1.12.0"></script>
+<script type="module" src="class.js?v=1.13.0"></script>
 </body>
 </html>

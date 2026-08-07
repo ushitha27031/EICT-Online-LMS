@@ -13,7 +13,7 @@
 
 /* Shown in the sidebar. If this does not match what you just uploaded, your
    browser is still running a cached copy — hard refresh with Ctrl+Shift+R. */
-const VERSION = '1.12.0';
+const VERSION = '1.13.0';
 
 const SESSION_MAX_MS = 24 * 60 * 60 * 1000;   // one day, hard cap
 const STAMP_AT  = 'eict.sessionAt';
@@ -285,6 +285,12 @@ function seedDemo() {
       essayStart: breakEnd, essayEnd, finalEnd: essayEnd + 10 * MINU
     }];
   }
+
+  DM_THREADS = [
+    { id: 'demo3', uid: 'demo3', studentNo: 'EICT-0003', name: 'Hiruni Silva',
+      lastText: 'Sir, is the Sept 4 term test slot still open?', lastFrom: 'student',
+      lastAt: new Date(now - 5000000) }
+  ];
 }
 
 /* ------------------------------------------------------------ data reads */
@@ -324,6 +330,13 @@ async function loadAll() {
   const seasonDocs = await f.getDocs(f.collection(f.db, 'seasons'));
   DB.seasons = {};
   seasonDocs.forEach(d => { DB.seasons[d.data().season] = d.data().episodes || {}; });
+
+  try {
+    const threadDocs = await f.getDocs(f.query(f.collection(f.db, 'dmThreads'), f.orderBy('lastAt', 'desc')));
+    DM_THREADS = []; threadDocs.forEach(d => DM_THREADS.push({ id: d.id, ...d.data() }));
+  } catch (err) {
+    console.warn('[admin] inbox unavailable:', err.code || err.message);
+  }
 }
 
 /* ------------------------------------------------------------- mutations */
@@ -1067,6 +1080,9 @@ function renderCounts() {
   };
   put('#cReg', r); put('#cPay', p); put('#cFree', f);
   put('#cPaper', pendingPapers().length);
+  const waiting = DM_THREADS.filter(t => t.lastFrom === 'student').length;
+  put('#cInbox', waiting);
+  put('#inboxCount', waiting);
 
   const q = (sel, n, card) => {
     const el = $(sel); if (el) el.textContent = n;
@@ -1705,6 +1721,7 @@ function seasonAudience(n) {
 /* ============================================================= wiring */
 
 function switchView(v) {
+  stopAdminChatListeners();
   $$('.view').forEach(x => x.hidden = true);
   const el = $('#v-' + v);
   if (el) el.hidden = false;
@@ -1718,21 +1735,211 @@ function switchView(v) {
     papers: ['Answer papers', 'opens in the student\'s own Drive'],
     live: ['Live class', ''],
     recorded: ['Recorded library', '13 seasons'],
-    attendance: ['Attendance', 'take the register and see who is keeping up']
+    attendance: ['Attendance', 'take the register and see who is keeping up'],
+    chat: ['Chat', 'the class conversation, and messages sent to you']
   };
   $('#viewTitle').textContent = (titles[v] || ['—'])[0];
   $('#viewSub').textContent = (titles[v] || ['', ''])[1] || '';
   document.body.classList.remove('nav-open');
   window.scrollTo({ top: 0 });
+  if (v === 'chat') openAdminChat();
+}
+
+/* ==================================================================== chat
+   The only live listener on the whole dashboard — everywhere else here
+   reads once and refreshes on demand, which is right for data that changes
+   a few times a day. Chat needs to feel alive while you are actually
+   looking at it, so it gets a real-time listener, started only when the
+   Chat view opens and torn down the instant you leave it or switch tabs
+   within it. Nothing runs in the background you are not looking at.
+   ====================================================================== */
+
+let chatUnsubGroup = null, chatUnsubThread = null;
+let DM_THREADS = [];
+let activeThreadUid = null;
+let CHAT_TAB_ADMIN = 'group';
+
+function stopAdminChatListeners() {
+  if (chatUnsubGroup)  { chatUnsubGroup();  chatUnsubGroup = null; }
+  if (chatUnsubThread) { chatUnsubThread(); chatUnsubThread = null; }
+}
+
+async function openAdminChat() {
+  switchChatTabAdmin(CHAT_TAB_ADMIN);
+  if (!DEMO) {
+    try {
+      const snap = await FB.getDocs(FB.query(FB.collection(FB.db, 'dmThreads'), FB.orderBy('lastAt', 'desc')));
+      DM_THREADS = []; snap.forEach(d => DM_THREADS.push({ id: d.id, ...d.data() }));
+    } catch (err) {
+      console.warn('[admin] inbox unavailable:', err.code || err.message);
+    }
+  }
+  renderThreadList();
+  renderCounts();
+}
+
+function switchChatTabAdmin(tab) {
+  CHAT_TAB_ADMIN = tab;
+  $$('.chat-subtab').forEach(b => b.classList.toggle('on', b.dataset.chatTab === tab));
+  $('#chatGroupWrap').hidden = tab !== 'group';
+  $('#chatInboxWrap').hidden = tab !== 'inbox';
+  stopAdminChatListeners();
+  if (tab === 'group') startAdminGroupChat();
+}
+
+function startAdminGroupChat() {
+  if (DEMO) return renderAdminDemoGroup();
+  const q = FB.query(FB.collection(FB.db, 'classChat', BATCH, 'messages'), FB.orderBy('at', 'desc'), FB.limit(50));
+  chatUnsubGroup = FB.onSnapshot(q, (snap) => {
+    const msgs = []; snap.forEach(d => msgs.push({ id: d.id, ...d.data() }));
+    renderAdminChat('#chatGroupListAdmin', msgs.reverse(), true);
+  }, (err) => {
+    console.warn('[admin] class chat unavailable', err.code || err.message);
+    $('#chatGroupListAdmin').innerHTML = `<div class="empty"><b>Not connected</b>
+      <p>Publish the Firestore rules for classChat.</p></div>`;
+  });
+}
+
+function fmtChatTimeAdmin(ts) {
+  if (!ts) return '';
+  const d = ts.toDate ? ts.toDate() : new Date(ts);
+  return d.toLocaleTimeString('en', { hour: 'numeric', minute: '2-digit' });
+}
+
+/** mine = written by the teacher — right-aligned, same convention as the
+ * student side just mirrored (there, "mine" means the student's own). */
+function renderAdminChat(sel, msgs, deletable) {
+  const box = $(sel);
+  if (!box) return;
+  if (!msgs.length) {
+    box.innerHTML = `<div class="empty"><b>No messages yet</b><p>Nothing sent here so far.</p></div>`;
+    return;
+  }
+  box.innerHTML = msgs.map((m) => {
+    const mine = m.role === 'teacher';
+    return `<div class="abubble-row ${mine ? 'is-mine' : ''}">
+      <div class="abubble">
+        ${deletable ? `<button class="abubble__del" data-del-msg="${m.id}" title="Remove">×</button>` : ''}
+        ${!mine ? `<b class="abubble__who">${esc(m.name || '')}${m.studentNo ? ' · ' + esc(m.studentNo) : ''}</b>` : ''}
+        <span class="abubble__text">${esc(m.text)}</span>
+        <small class="abubble__time">${fmtChatTimeAdmin(m.at)}</small>
+      </div>
+    </div>`;
+  }).join('');
+  box.scrollTop = box.scrollHeight;
+}
+
+function renderThreadList() {
+  const box = $('#threadList');
+  if (!DM_THREADS.length) {
+    box.innerHTML = `<div class="empty"><b>No messages yet</b><p>Conversations appear here once a student writes in.</p></div>`;
+    return;
+  }
+  box.innerHTML = DM_THREADS.map((t) => `
+    <div class="thread-row ${t.uid === activeThreadUid ? 'on' : ''}" data-open-thread="${t.uid}">
+      <span class="thread-row__av">${(t.name || '?').trim()[0].toUpperCase()}</span>
+      <span class="thread-row__body">
+        <b>${esc(t.name || 'Student')}</b>
+        <small>${esc(t.lastText || '')}</small>
+      </span>
+      ${t.lastFrom === 'student' ? '<span class="thread-row__dot" title="Waiting for a reply"></span>' : ''}
+    </div>`).join('');
+}
+
+function openThread(uid) {
+  activeThreadUid = uid;
+  renderThreadList();
+  const t = DM_THREADS.find(x => x.uid === uid);
+  const st = studentOf(uid);
+
+  $('#threadView').innerHTML = `
+    <div class="chatlist" id="chatThreadList"></div>
+    <form class="chatsend" id="chatThreadForm">
+      <input id="chatThreadInput" placeholder="Reply to ${esc(t?.name || 'student')}…" maxlength="1900" autocomplete="off">
+      <button class="btn btn--primary" type="submit">Send</button>
+    </form>`;
+
+  $('#chatThreadForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const inp = $('#chatThreadInput');
+    if (!inp.value.trim()) return;
+    const text = inp.value; inp.value = '';
+    try { await sendTeacherReply(uid, text); }
+    catch (err) { toast('Could not send', 'bad'); }
+  });
+
+  stopAdminChatListeners();
+  if (DEMO) return renderAdminDemoThread(uid);
+
+  const q = FB.query(FB.collection(FB.db, 'dmThreads', uid, 'messages'), FB.orderBy('at', 'desc'), FB.limit(50));
+  chatUnsubThread = FB.onSnapshot(q, (snap) => {
+    const msgs = []; snap.forEach(d => msgs.push({ id: d.id, ...d.data() }));
+    renderAdminChat('#chatThreadList', msgs.reverse(), false);
+  }, (err) => {
+    console.warn('[admin] thread unavailable', err.code || err.message);
+    $('#chatThreadList').innerHTML = `<div class="empty"><b>Not connected</b><p>Check the rules.</p></div>`;
+  });
+}
+
+async function sendGroupMessageAdmin(text) {
+  const clean = text.trim().slice(0, 1900);
+  if (!clean) return;
+  const me = FB.auth.currentUser;
+  await FB.addDoc(FB.collection(FB.db, 'classChat', BATCH, 'messages'), {
+    uid: me.uid, name: 'Sir', role: 'teacher', text: clean, at: FB.serverTimestamp()
+  });
+  await FB.setDoc(FB.doc(FB.db, 'classChat', BATCH), {
+    lastAt: FB.serverTimestamp(), lastText: clean.slice(0, 80), lastFrom: 'Sir'
+  }, { merge: true });
+}
+
+async function sendTeacherReply(uid, text) {
+  const clean = text.trim().slice(0, 1900);
+  if (!clean) return;
+  const me = FB.auth.currentUser;
+  await FB.addDoc(FB.collection(FB.db, 'dmThreads', uid, 'messages'), {
+    uid: me.uid, name: 'Sir', role: 'teacher', text: clean, at: FB.serverTimestamp()
+  });
+  await FB.setDoc(FB.doc(FB.db, 'dmThreads', uid), {
+    lastAt: FB.serverTimestamp(), lastText: clean.slice(0, 80), lastFrom: 'teacher'
+  }, { merge: true });
+  const t = DM_THREADS.find(x => x.uid === uid);
+  if (t) t.lastFrom = 'teacher';
+  renderThreadList();
+  renderCounts();
+}
+
+async function deleteMessage(collectionPath, id) {
+  if (!confirm('Remove this message for everyone?')) return;
+  if (!DEMO) await FB.deleteDoc(FB.doc(FB.db, ...collectionPath, id));
+  toast('Message removed', 'bad');
+}
+
+/* ------------------------------------------------------------ demo mode */
+
+function renderAdminDemoGroup() {
+  renderAdminChat('#chatGroupListAdmin', [
+    { id: 'g1', uid: 'demo2', name: 'Kasun Bandara', role: 'student', text: 'Anyone finished the unit 3 paper yet?', at: new Date(Date.now() - 3600000) },
+    { id: 'g2', uid: 'teacher1', name: 'Sir', role: 'teacher', text: 'Due Friday — post if you get stuck on Q4.', at: new Date(Date.now() - 3000000) }
+  ], true);
+}
+
+function renderAdminDemoThread(uid) {
+  renderAdminChat('#chatThreadList', [
+    { id: 'd1', uid, name: 'Student', role: 'student', text: 'Sir, is the Sept 4 term test slot still open?', at: new Date(Date.now() - 5000000) },
+    { id: 'd2', uid: 'teacher1', name: 'Sir', role: 'teacher', text: 'Yes, go ahead and book it.', at: new Date(Date.now() - 4800000) }
+  ], false);
 }
 
 document.addEventListener('click', async (e) => {
+
   const t = e.target.closest('[data-view],[data-approve],[data-reject],[data-open],[data-verify],' +
     '[data-reject-pay],[data-reopen],[data-free-ok],[data-free-no],[data-season-edit],' +
     '[data-season-open],[data-save-season],[data-zoom],[data-close],[data-suspend],' +
     '[data-unsuspend],[data-give],[data-revoke],[data-toggle-season],[data-drop-slip],' +
     '[data-manual-pay],[data-save-manual],[data-mark],[data-accept],[data-redo],' +
-    '[data-edit-date],[data-save-track],[data-edit-tt],[data-save-tt],[data-tt-bookings]');
+    '[data-edit-date],[data-save-track],[data-edit-tt],[data-save-tt],[data-tt-bookings],' +
+    '[data-chat-tab],[data-open-thread],[data-del-msg]');
   if (!t) return;
   const d = t.dataset;
 
@@ -1772,6 +1979,14 @@ document.addEventListener('click', async (e) => {
   if (d.editTt) return renderTermForm(TERM_TESTS.find(x => x.id === d.editTt));
   if (d.saveTt !== undefined) return saveTermTest(d.saveTt || null);
   if (d.ttBookings) return termBookingsSheet(d.ttBookings);
+  if (d.chatTab) return switchChatTabAdmin(d.chatTab);
+  if (d.openThread) return openThread(d.openThread);
+  if (d.delMsg) {
+    const path = CHAT_TAB_ADMIN === 'group'
+      ? ['classChat', BATCH, 'messages']
+      : ['dmThreads', activeThreadUid, 'messages'];
+    return deleteMessage(path, d.delMsg);
+  }
   if (d.editDate) { $('#attDate').value = d.editDate; renderAttendance();
     $('#v-attendance').scrollIntoView?.({ behavior: 'smooth' }); return; }
   if (d.saveTrack) {
@@ -1866,6 +2081,16 @@ document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeModal
 ['#paperSeen', '#paperKind'].forEach(s =>
   $(s)?.addEventListener('input', renderPapers));
 $('#slotBtn')?.addEventListener('click', termTestsSheet);
+
+$('#chatGroupFormAdmin')?.addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const inp = $('#chatGroupInputAdmin');
+  if (!inp.value.trim()) return;
+  const text = inp.value; inp.value = '';
+  if (DEMO) return toast('Sample mode — nothing is really sent');
+  try { await sendGroupMessageAdmin(text); }
+  catch (err) { toast(err.code === 'permission-denied' ? 'Chat is not switched on yet' : 'Could not send', 'bad'); }
+});
 
 $('#attDate')?.addEventListener('change', renderAttendance);
 $('#attSearch')?.addEventListener('input', () => renderRegister($('#attDate').value || todayStr()));

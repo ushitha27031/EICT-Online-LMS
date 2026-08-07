@@ -164,6 +164,47 @@ service cloud.firestore {
       allow update, delete: if isTeacher();
     }
 
+    /* -------------------------------------------------------------- class chat
+       One shared conversation per batch. The parent document holds only a
+       cheap summary (lastAt/lastText) so checking "is there anything new"
+       is a single document read, not a query — that is what drives the
+       unread dot before a student has ever opened Chat. The real messages
+       live in the subcollection underneath. */
+    match /classChat/{batch} {
+      allow read:  if isTeacher() || isActiveStudent();
+      allow write: if isTeacher() || isActiveStudent();
+
+      match /messages/{id} {
+        allow read:   if isTeacher() || isActiveStudent();
+        allow create: if (isTeacher() || isActiveStudent())
+                      && request.resource.data.uid == request.auth.uid
+                      && request.resource.data.text is string
+                      && request.resource.data.text.size() > 0
+                      && request.resource.data.text.size() < 2000;
+        allow update, delete: if isTeacher();     // moderation only
+      }
+    }
+
+    /* ---------------------------------------------------------- direct message
+       One thread per student, id equal to their own uid — so a student's
+       own thread is trivially theirs, no field to check, the path itself is
+       the ownership proof. Sir reads and writes every thread; a student
+       only ever their own. */
+    match /dmThreads/{uid} {
+      allow read:  if isTeacher() || (signedIn() && request.auth.uid == uid);
+      allow write: if isTeacher() || (signedIn() && request.auth.uid == uid);
+
+      match /messages/{id} {
+        allow read:   if isTeacher() || (signedIn() && request.auth.uid == uid);
+        allow create: if (isTeacher() || (isActiveStudent() && request.auth.uid == uid))
+                      && request.resource.data.uid == request.auth.uid
+                      && request.resource.data.text is string
+                      && request.resource.data.text.size() > 0
+                      && request.resource.data.text.size() < 2000;
+        allow update, delete: if isTeacher();
+      }
+    }
+
     /* ------------------------------------------------------------ term tests */
 
     // The exam definitions: which units, the booking window, the timing
