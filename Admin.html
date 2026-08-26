@@ -34,11 +34,11 @@ img{max-width:100%;display:block}
 .gate-box{width:min(380px,100%);text-align:center}
 .gate-box img{width:72px;margin:0 auto 22px}
 .gate-box h1{font-family:var(--d);font-weight:700;font-size:27px;text-transform:uppercase;margin:0 0 6px}
-.gate-box p{font-family:var(--m);font-size:11px;letter-spacing:.18em;text-transform:uppercase;color:var(--dimmer);margin:0 0 26px}
+.gate-box p{font-family:var(--m);font-size:12.5px;letter-spacing:.18em;text-transform:uppercase;color:var(--dimmer);margin:0 0 26px}
 .gate-box input{width:100%;padding:14px 16px;border-radius:12px;background:var(--sunk);border:1px solid var(--wire);
   color:var(--paper);font-family:var(--m);font-size:16px;text-align:center;letter-spacing:.3em}
 .gate-box input:focus{outline:none;border-color:var(--gold)}
-.gate-err{color:var(--signal);font-family:var(--m);font-size:11px;letter-spacing:.14em;text-transform:uppercase;
+.gate-err{color:var(--signal);font-family:var(--m);font-size:12.5px;letter-spacing:.14em;text-transform:uppercase;
   margin-top:14px;min-height:16px}
 
 /* shell */
@@ -47,75 +47,75 @@ img{max-width:100%;display:block}
   backdrop-filter:blur(14px);flex-wrap:wrap}
 .top .mark{width:34px;height:34px;object-fit:contain}
 .top h1{font-family:var(--d);font-weight:700;font-size:17px;text-transform:uppercase;letter-spacing:.06em;margin:0}
-.top .meta{font-family:var(--m);font-size:10px;letter-spacing:.16em;text-transform:uppercase;color:var(--dimmer)}
+.top .meta{font-family:var(--m);font-size:13px;letter-spacing:.16em;text-transform:uppercase;color:var(--dimmer)}
 .spacer{flex:1}
-.pill{font-family:var(--m);font-size:10px;letter-spacing:.14em;text-transform:uppercase;padding:6px 11px;
+.pill{font-family:var(--m);font-size:13px;letter-spacing:.14em;text-transform:uppercase;padding:6px 11px;
   border-radius:999px;border:1px solid var(--wire-2);color:var(--dim);white-space:nowrap}
 .pill.dirty{border-color:var(--gold);color:var(--gold)}
 .b{display:inline-flex;align-items:center;justify-content:center;gap:8px;padding:10px 16px;border-radius:10px;
-  font-family:var(--d);font-weight:600;font-size:12.5px;letter-spacing:.1em;text-transform:uppercase;
+  font-family:var(--d);font-weight:600;font-size:13.5px;letter-spacing:.1em;text-transform:uppercase;
   transition:transform .15s,border-color .15s,background .15s;white-space:nowrap}
 .b1{background:var(--signal);color:var(--on-signal)}
 .b2{border:1px solid var(--wire-2);color:var(--paper)}
-.b3{border:1px solid var(--wire);color:var(--dim);padding:8px 12px;font-size:11.5px}
+.b3{border:1px solid var(--wire);color:var(--dim);padding:8px 12px;font-size:13px}
 .b:hover{transform:translateY(-1px)}
 .b2:hover,.b3:hover{border-color:var(--gold);color:var(--gold)}
 
 .main{display:grid;grid-template-columns:236px minmax(0,1fr);gap:clamp(14px,2vw,26px);
   max-width:1240px;margin:0 auto;padding:clamp(16px,2.4vw,28px) clamp(14px,2.4vw,26px) 80px}
 .nav{position:sticky;top:74px;align-self:start;display:flex;flex-direction:column;gap:3px}
-.nav button{text-align:left;padding:10px 13px;border-radius:10px;font-family:var(--m);font-size:11.5px;
+.nav button{text-align:left;padding:10px 13px;border-radius:10px;font-family:var(--m);font-size:13px;
   letter-spacing:.12em;text-transform:uppercase;color:var(--dim);transition:.14s;display:flex;gap:10px;align-items:center}
 .nav button:hover{color:var(--paper);background:var(--hair)}
 .nav button.on{background:var(--signal);color:var(--on-signal)}
-.nav i{font-family:var(--m);font-style:normal;opacity:.55;font-size:10px}
+.nav i{font-family:var(--m);font-style:normal;opacity:.55;font-size:13px}
 .nav .warn{margin-top:16px;padding:12px;border:1px dashed var(--wire-2);border-radius:11px;
-  font-family:var(--m);font-size:10px;line-height:1.8;letter-spacing:.06em;color:var(--dimmer)}
+  font-family:var(--m);font-size:13px;line-height:1.8;letter-spacing:.06em;color:var(--dimmer)}
 
 .card{background:var(--panel);border:1px solid var(--wire);border-radius:18px;padding:clamp(18px,2.4vw,26px);margin-bottom:16px}
 .card>h2{font-family:var(--d);font-weight:700;font-size:21px;text-transform:uppercase;margin:0 0 4px}
-.card>.hint{font-family:var(--m);font-size:11px;letter-spacing:.06em;color:var(--dimmer);margin:0 0 20px;line-height:1.8}
+.card>.hint{font-family:var(--m);font-size:12.5px;letter-spacing:.06em;color:var(--dimmer);margin:0 0 20px;line-height:1.8}
 .grid2{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:14px}
 .fld{display:flex;flex-direction:column;gap:6px;margin-bottom:14px}
-.fld label{font-family:var(--m);font-size:9.5px;letter-spacing:.2em;text-transform:uppercase;color:var(--dim)}
+.fld label{font-family:var(--m);font-size:11px;letter-spacing:.2em;text-transform:uppercase;color:var(--dim)}
 .fld input,.fld select,.fld textarea{padding:11px 13px;border-radius:10px;background:var(--sunk);
   border:1px solid var(--wire);color:var(--paper);font-family:var(--b);font-size:14.5px;width:100%;resize:vertical}
 .fld textarea{min-height:84px;line-height:1.6}
 .fld input:focus,.fld select:focus,.fld textarea:focus{outline:none;border-color:var(--gold)}
 .fld select option{background:var(--solid);color:var(--paper)}
-.fld.mono input{font-family:var(--m);font-size:13px}
+.fld.mono input{font-family:var(--m);font-size:14px}
 
 .item{border:1px solid var(--wire);border-radius:14px;padding:16px;margin-bottom:12px;background:var(--sunk);position:relative}
 .item-h{display:flex;align-items:center;gap:10px;margin-bottom:12px}
-.item-h b{font-family:var(--m);font-size:10px;letter-spacing:.2em;text-transform:uppercase;color:var(--gold)}
-.del{margin-left:auto;color:var(--dimmer);font-family:var(--m);font-size:10px;letter-spacing:.14em;
+.item-h b{font-family:var(--m);font-size:13px;letter-spacing:.2em;text-transform:uppercase;color:var(--gold)}
+.del{margin-left:auto;color:var(--dimmer);font-family:var(--m);font-size:13px;letter-spacing:.14em;
   text-transform:uppercase;padding:5px 9px;border:1px solid var(--wire);border-radius:8px}
 .del:hover{color:var(--signal);border-color:var(--signal)}
 .add{width:100%;padding:12px;border:1px dashed var(--wire-2);border-radius:12px;color:var(--dim);
-  font-family:var(--m);font-size:11px;letter-spacing:.16em;text-transform:uppercase}
+  font-family:var(--m);font-size:12.5px;letter-spacing:.16em;text-transform:uppercase}
 .add:hover{color:var(--gold);border-color:var(--gold)}
 
 .img-fld{display:flex;gap:14px;align-items:flex-start;margin-bottom:14px;flex-wrap:wrap}
 .img-prev{width:88px;height:88px;flex:none;border-radius:12px;border:1px solid var(--wire);background:var(--hair);
-  display:grid;place-items:center;overflow:hidden;font-family:var(--m);font-size:9px;color:var(--dimmer);text-align:center}
+  display:grid;place-items:center;overflow:hidden;font-family:var(--m);font-size:11px;color:var(--dimmer);text-align:center}
 .img-prev img{width:100%;height:100%;object-fit:cover}
 .img-ctl{flex:1;min-width:200px}
 .up{display:inline-block;padding:8px 13px;border:1px solid var(--wire-2);border-radius:9px;font-family:var(--m);
-  font-size:10.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--dim);cursor:pointer;margin-top:8px}
+  font-size:13px;letter-spacing:.14em;text-transform:uppercase;color:var(--dim);cursor:pointer;margin-top:8px}
 .up:hover{color:var(--gold);border-color:var(--gold)}
 .up input{display:none}
 
 table.ed{width:100%;border-collapse:collapse;font-size:14px;margin-bottom:12px}
-table.ed th{font-family:var(--m);font-size:9.5px;letter-spacing:.18em;text-transform:uppercase;color:var(--dim);
+table.ed th{font-family:var(--m);font-size:11px;letter-spacing:.18em;text-transform:uppercase;color:var(--dim);
   text-align:left;padding:8px 6px;border-bottom:1px solid var(--wire)}
 table.ed td{padding:4px 4px;border-bottom:1px solid var(--hair)}
 table.ed input,table.ed select{padding:8px 9px;border-radius:8px;background:var(--sunk);border:1px solid var(--wire);
-  color:var(--paper);font-family:var(--b);font-size:13.5px;width:100%}
+  color:var(--paper);font-family:var(--b);font-size:14.5px;width:100%}
 table.ed input:focus,table.ed select:focus{outline:none;border-color:var(--gold)}
 table.ed .rm{color:var(--dimmer);font-size:18px;line-height:1;padding:0 6px}
 table.ed .rm:hover{color:var(--signal)}
 .tbl-box{overflow-x:auto}
-.sw{display:inline-flex;align-items:center;gap:10px;cursor:pointer;font-family:var(--m);font-size:11px;
+.sw{display:inline-flex;align-items:center;gap:10px;cursor:pointer;font-family:var(--m);font-size:12.5px;
   letter-spacing:.12em;text-transform:uppercase;color:var(--dim)}
 .sw input{appearance:none;width:40px;height:22px;border-radius:999px;background:var(--hair);
   border:1px solid var(--wire-2);position:relative;transition:.2s;cursor:pointer;margin:0}
@@ -125,7 +125,7 @@ table.ed .rm:hover{color:var(--signal)}
 .sw input:checked::after{left:20px;background:var(--live)}
 .toast{position:fixed;left:50%;bottom:26px;transform:translateX(-50%) translateY(90px);z-index:120;
   background:var(--live);color:#04160E;padding:12px 22px;border-radius:12px;font-family:var(--d);font-weight:600;
-  font-size:13px;letter-spacing:.08em;text-transform:uppercase;transition:transform .3s cubic-bezier(.2,.8,.2,1)}
+  font-size:14px;letter-spacing:.08em;text-transform:uppercase;transition:transform .3s cubic-bezier(.2,.8,.2,1)}
 .toast.on{transform:translateX(-50%) translateY(0)}
 @media(max-width:820px){
   .main{grid-template-columns:1fr}
@@ -145,7 +145,7 @@ table.ed .rm:hover{color:var(--signal)}
     <input id="em" type="email" placeholder="email" autocomplete="username" style="display:none;letter-spacing:0;margin-bottom:10px">
     <input id="pw" type="password" placeholder="passcode" autocomplete="current-password">
     <div class="gate-err" id="gateErr"></div>
-    <div id="gateMode" style="font-family:var(--m);font-size:9.5px;letter-spacing:.16em;text-transform:uppercase;color:var(--dimmer);margin-top:18px"></div>
+    <div id="gateMode" style="font-family:var(--m);font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:var(--dimmer);margin-top:18px"></div>
   </div>
 </div>
 
@@ -494,7 +494,7 @@ portal:{ n:'Class portal', r:()=>`
     ${CF('Student number prefix','codePrefix','mono','EICT')}
   </div>
   <button class="b b1" id="pubCourse" style="width:100%">Publish class portal</button>
-  <div style="font-family:var(--m);font-size:10.5px;color:var(--dimmer);margin-top:10px;line-height:1.8">
+  <div style="font-family:var(--m);font-size:13px;color:var(--dimmer);margin-top:10px;line-height:1.8">
     This is a separate record from the website content, so the two Publish buttons do not overwrite each other.</div>`},
 
 students:{ n:'Students', r:()=>`
@@ -504,9 +504,24 @@ students:{ n:'Students', r:()=>`
       in their portal straight away and you get a WhatsApp message ready to send.</p>
     <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:16px">
       <button class="b b2" id="stuAdd">+ Add a student by hand</button>
+      <button class="b b2" id="stuNumber">Give numbers to anyone missing one</button>
       <button class="b b3" id="stuRefresh">Refresh</button>
     </div>
+    <p class="hint" style="margin:-6px 0 18px">Nobody can see a password — not me, not you, not Google. They are stored
+      scrambled and cannot be turned back. If a student is locked out, press <b>Reset password</b> and they get an
+      email with a link to choose a new one.</p>
     <div id="stuList">Loading…</div>
+  </div>`},
+
+recordings:{ n:'Class recordings', r:()=>`
+  <div class="card"><h2>Recordings of live classes</h2>
+    <p class="hint">For students who missed a session. Add the date, a title and the YouTube id after each class.
+      Only students you have marked as <b>Live class paid</b> can see or play these.</p>
+    <div class="tbl-box"><div id="recTbl">Loading…</div></div>
+    <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:14px">
+      <button class="b b2" id="recAdd">+ Add a recording</button>
+      <button class="b b1" id="recSave">Save recordings</button>
+    </div>
   </div>`},
 
 videos:{ n:'Lesson videos', r:()=>`
@@ -660,7 +675,7 @@ const R = {
       ${F('Code','batches.'+i+'.code')}${F('Level','batches.'+i+'.top')}${F('Year','batches.'+i+'.year')}</div>
     <div style="margin:6px 0 14px">${SWI('Enrolment open','batches.'+i+'.open')}</div>
     ${IMG('Background photo','batches.'+i+'.photo')}
-    <div style="font-family:var(--m);font-size:9.5px;letter-spacing:.2em;text-transform:uppercase;color:var(--dim);margin:10px 0 8px">Details</div>
+    <div style="font-family:var(--m);font-size:11px;letter-spacing:.2em;text-transform:uppercase;color:var(--dim);margin:10px 0 8px">Details</div>
     ${metaTable(i)}<button class="add" data-add="batches.${i}.meta" style="margin-top:8px">+ Add a detail row</button>`,'Batch'),
   notes:()=>list('#noteList','notes',(o,i)=>`${IMG('Image','notes.'+i+'.src')}${F('Caption','notes.'+i+'.tag','text','A/L 2024')}`,'Photo'),
   posts:()=>list('#postList','posts',(o,i)=>`${IMG('Image','posts.'+i+'.src')}
@@ -728,40 +743,72 @@ let STU=[];
 async function loadStudents(){
   const el=$('#stuList'); if(!el)return;
   const fb=await window.FB_READY;
-  if(!fb||!fb.auth.currentUser){ el.innerHTML='<div style="font-family:var(--m);font-size:11.5px;color:var(--dimmer)">Sign in with Firebase to manage students.</div>'; return; }
+  if(!fb||!fb.auth.currentUser){ el.innerHTML='<div style="font-family:var(--m);font-size:13px;color:var(--dimmer)">Sign in with Firebase to manage students.</div>'; return; }
   try{
     const q=await fb.getDocs(fb.collection(fb.db,'students'));
     STU=[]; q.forEach(d=>STU.push({id:d.id,...d.data()}));
     drawStudents();
-  }catch(e){ el.innerHTML='<div style="font-family:var(--m);font-size:11.5px;color:var(--signal)">Could not read: '+(e.code||e.message)+'</div>'; }
+  }catch(e){ el.innerHTML='<div style="font-family:var(--m);font-size:13px;color:var(--signal)">Could not read: '+(e.code||e.message)+'</div>'; }
 }
 function drawStudents(){
   const el=$('#stuList'); if(!el)return;
-  if(!STU.length){ el.innerHTML='<div style="font-family:var(--m);font-size:11.5px;color:var(--dimmer)">Nobody has signed up yet.</div>'; return; }
+  if(!STU.length){ el.innerHTML='<div style="font-family:var(--m);font-size:13px;color:var(--dimmer)">Nobody has signed up yet.</div>'; return; }
   el.innerHTML=STU.map(st=>{
     const un=(st.unlocked||[]).map(Number);
     return `<div class="item"><div class="item-h">
-      <b>${esc(st.name||st.email||st.id)}</b>
-      <span style="font-family:var(--m);font-size:10.5px;color:var(--dimmer);margin-left:auto">${esc(st.batch||'')} · ${esc(st.track==='rec'?'recorded':st.track==='live'?'live':'not chosen')}</span></div>
-      <div style="font-family:var(--m);font-size:12px;color:var(--dim);line-height:1.9;margin-bottom:12px">
+      <b>${esc(st.code||'no number')}</b>
+      <span style="font-family:var(--b);font-size:16px;font-weight:600;color:var(--paper)">${esc(st.name||st.email||st.id)}</span>
+      <span style="font-family:var(--m);font-size:13px;color:var(--dimmer);margin-left:auto">${esc(st.batch||'')} · ${esc(st.track==='rec'?'recorded':st.track==='live'?'live':'not chosen')}</span></div>
+      <div style="font-family:var(--m);font-size:14px;color:var(--dim);line-height:1.9;margin-bottom:12px">
         <a href="https://wa.me/${esc(String(st.whatsapp||'').replace(/[^0-9]/g,''))}" style="color:var(--live)">${esc(st.whatsapp||'—')}</a>
-        ${st.school?' · '+esc(st.school):''}${st.address?'<br>'+esc(st.address):''}</div>
+        ${st.school?' · '+esc(st.school):''}<br>${esc(st.email||'no email')}
+        ${st.address?'<br><b style="color:var(--paper)">'+esc(st.address)+'</b>':'<br>no delivery address'}</div>
       <label class="sw" style="margin-bottom:12px"><input type="checkbox" data-paidlive="${st.id}" ${st.paidLive?'checked':''}> Live class paid</label>
-      <div style="font-family:var(--m);font-size:9.5px;letter-spacing:.2em;text-transform:uppercase;color:var(--dim);margin:6px 0 8px">Seasons unlocked</div>
+      <div style="font-family:var(--m);font-size:11px;letter-spacing:.2em;text-transform:uppercase;color:var(--dim);margin:6px 0 8px">Seasons unlocked</div>
       <div style="display:flex;flex-wrap:wrap;gap:6px">${SKELETON.seasons.map(x=>
         `<button class="del" style="padding:6px 10px;${un.includes(x.n)?'color:var(--on-gold);background:var(--gold);border-color:var(--gold)':''}"
           data-season-toggle="${st.id}" data-n="${x.n}">${String(x.n).padStart(2,'0')}</button>`).join('')}</div>
-      <div style="font-family:var(--m);font-size:9.5px;letter-spacing:.2em;text-transform:uppercase;color:var(--dim);margin:16px 0 8px">Deliveries</div>
-      ${(st.shipments||[]).length ? `<div style="font-family:var(--m);font-size:11.5px;color:var(--dim);line-height:1.9;margin-bottom:10px">
+      <div style="font-family:var(--m);font-size:11px;letter-spacing:.2em;text-transform:uppercase;color:var(--dim);margin:16px 0 8px">Deliveries</div>
+      ${(st.shipments||[]).length ? `<div style="font-family:var(--m);font-size:14px;color:var(--dim);line-height:1.9;margin-bottom:10px">
         ${(st.shipments||[]).slice().reverse().map(x=>`${esc(x.items||'Pack')} · <b style="color:var(--gold)">${esc(x.tracking||'—')}</b> · ${esc(String(x.at||'').slice(0,10))}`).join('<br>')}</div>`
-        : `<div style="font-family:var(--m);font-size:11.5px;color:var(--dimmer);margin-bottom:10px">Nothing posted yet.</div>`}
+        : `<div style="font-family:var(--m);font-size:13px;color:var(--dimmer);margin-bottom:10px">Nothing posted yet.</div>`}
       <div style="display:flex;gap:8px;flex-wrap:wrap">
         <button class="del" data-ship="${st.id}">Posted a pack</button>
+        <button class="del" data-reset="${esc(st.email||'')}">Reset password</button>
         <button class="del" data-remove="${st.id}">Remove student</button>
       </div>
-      <div style="font-family:var(--m);font-size:10.5px;color:var(--dimmer);margin-top:10px">${(st.watched||[]).length} episodes watched${st.code?' · '+esc(st.code):''}</div>
+      <div style="font-family:var(--m);font-size:13px;color:var(--dimmer);margin-top:10px">${(st.watched||[]).length} episodes watched${st.code?' · '+esc(st.code):''}</div>
     </div>`;}).join('');
 }
+async function resetPassword(email){
+  if(!email) return alert('No email on file for that student.');
+  const fb=await window.FB_READY; if(!fb) return;
+  try{
+    const { getAuth, sendPasswordResetEmail } = await import('https://www.gstatic.com/firebasejs/11.0.2/firebase-auth.js');
+    await sendPasswordResetEmail(getAuth(), email);
+    alert('Sent. '+email+' will get an email with a link to set a new password.');
+  }catch(e){ alert('Could not send: '+(e.code||e.message)); }
+}
+async function backfillNumbers(){
+  const fb=await window.FB_READY; if(!fb||!fb.auth.currentUser) return alert('Sign in first.');
+  const missing=STU.filter(x=>!x.code);
+  if(!missing.length) return toast('Everyone already has a number');
+  if(!confirm(`${missing.length} student(s) have no number. Give them the next ones in the sequence?`)) return;
+  for(const st of missing){
+    try{
+      const ref=fb.doc(fb.db,'meta','students');
+      const n=await fb.runTransaction(fb.db, async tx=>{
+        const d=await tx.get(ref);
+        const next=(d.exists()&&Number(d.data().next))?Number(d.data().next):1;
+        tx.set(ref,{next:next+1},{merge:true}); return next; });
+      const code=(CO.codePrefix||'EICT')+'-'+String(n).padStart(4,'0');
+      await fb.updateDoc(fb.doc(fb.db,'students',st.id),{code});
+      st.code=code;
+    }catch(e){ alert('Stopped at '+(st.name||st.id)+': '+(e.code||e.message)); break; }
+  }
+  drawStudents(); toast('Numbers assigned');
+}
+
 async function addShipment(id){
   const st=STU.find(x=>x.id===id); if(!st) return;
   const items=prompt('What did you post?','Season 1 tutes, past papers and short notes');
@@ -834,6 +881,41 @@ async function toggleSeason(id,n,btn){
   }catch(e){ alert('Could not update: '+(e.code||e.message)); }
 }
 
+/* ---------- live class recordings ---------- */
+let REC=null;
+async function loadRecordings(){
+  const box=$('#recTbl'); if(!box) return;
+  const fb=await window.FB_READY;
+  if(!fb||!fb.auth.currentUser){ box.innerHTML='<div style="font-family:var(--m);font-size:13px;color:var(--dimmer)">Sign in with Firebase first.</div>'; return; }
+  if(REC===null){
+    try{ const d=await fb.getDoc(fb.doc(fb.db,'liveRecordings',(CO.batch||'AL-27')));
+         REC=(d.exists()?d.data().list:[])||[]; }catch(e){ REC=[]; }
+  }
+  drawRecordings();
+}
+function drawRecordings(){
+  const box=$('#recTbl'); if(!box) return;
+  box.innerHTML=`<table class="ed"><thead><tr>
+      <th style="width:140px">Date</th><th>What the class covered</th>
+      <th style="width:190px">YouTube id</th><th style="width:80px">Minutes</th><th style="width:38px"></th></tr></thead><tbody>
+    ${(REC||[]).map((r,i)=>`<tr>
+      <td><input type="date" data-r="${i}" data-f="date" value="${esc(r.date||'')}"></td>
+      <td><input data-r="${i}" data-f="title" value="${esc(r.title||'')}" placeholder="Data representation — part 2"></td>
+      <td><input data-r="${i}" data-f="yt" value="${esc(r.yt||'')}" placeholder="dQw4w9WgXcQ"></td>
+      <td><input data-r="${i}" data-f="mins" value="${esc(r.mins||'')}" placeholder="120"></td>
+      <td><button class="rm" data-rdel="${i}">×</button></td></tr>`).join('')}
+  </tbody></table>${(REC||[]).length?'':'<div style="font-family:var(--m);font-size:13px;color:var(--dimmer);padding:10px 0">Nothing added yet.</div>'}`;
+}
+async function saveRecordings(){
+  const fb=await window.FB_READY;
+  if(!fb||!fb.auth.currentUser) return alert('Sign in with Firebase first.');
+  try{
+    await fb.setDoc(fb.doc(fb.db,'liveRecordings',(CO.batch||'AL-27')),
+      { list:(REC||[]).filter(r=>r.yt||r.title), updated:fb.serverTimestamp() });
+    toast('Recordings saved');
+  }catch(e){ alert('Could not save: '+(e.code||e.message)); }
+}
+
 /* ---------- lesson videos ---------- */
 async function loadVideos(){
   const box=$('#vidBox'); if(!box)return;
@@ -848,7 +930,7 @@ async function loadVideos(){
   box.innerHTML=`<div class="tbl-box"><table class="ed"><thead><tr>
       <th style="width:52px">Ep</th><th>Title</th><th style="width:38%">YouTube id</th></tr></thead><tbody>
       ${season.episodes.map(e=>`<tr><td style="font-family:var(--m);color:var(--gold)">${String(e.n).padStart(2,'0')}</td>
-        <td style="font-size:13px;color:var(--dim)">${esc(e.title)}</td>
+        <td style="font-size:14px;color:var(--dim)">${esc(e.title)}</td>
         <td><input data-vid="${e.n}" value="${esc(have[String(e.n)]||'')}" placeholder="dQw4w9WgXcQ"></td></tr>`).join('')}
     </tbody></table></div>
     <button class="b b1" id="vSave" style="margin-top:14px">Save season ${String(n).padStart(2,'0')} videos</button>`;
@@ -868,7 +950,7 @@ let HOLDS=[], REQS=[];
 async function loadInbox(){
   const fb=await window.FB_READY;
   if(!fb||!fb.auth.currentUser){
-    const m='<div style="font-family:var(--m);font-size:11.5px;color:var(--dimmer);line-height:1.9">Sign in with Firebase to see requests.<br>In local mode there is no database to read.</div>';
+    const m='<div style="font-family:var(--m);font-size:13px;color:var(--dimmer);line-height:1.9">Sign in with Firebase to see requests.<br>In local mode there is no database to read.</div>';
     if($('#holdList'))$('#holdList').innerHTML=m; if($('#reqList'))$('#reqList').innerHTML=m; return;
   }
   try{
@@ -880,7 +962,7 @@ async function loadInbox(){
     REQS=[];r.forEach(d=>REQS.push({id:d.id,...d.data()}));
     drawInbox();
   }catch(e){
-    const m='<div style="font-family:var(--m);font-size:11.5px;color:var(--signal)">Could not read: '+(e.code||e.message)+'<br>Update your Firestore rules (see FIREBASE-SETUP).</div>';
+    const m='<div style="font-family:var(--m);font-size:13px;color:var(--signal)">Could not read: '+(e.code||e.message)+'<br>Update your Firestore rules (see FIREBASE-SETUP).</div>';
     if($('#holdList'))$('#holdList').innerHTML=m; if($('#reqList'))$('#reqList').innerHTML=m;
   }
 }
@@ -890,18 +972,18 @@ function drawInbox(){
       <b>${esc(h.slot)}</b>
       <button class="del" data-hold-take="${h.id}" style="margin-left:auto">Mark taken</button>
       <button class="del" data-hold-free="${h.id}">Release</button></div>
-      <div style="font-family:var(--m);font-size:11.5px;color:var(--dim)">Waiting for you to confirm</div></div>`).join('')
-    : '<div style="font-family:var(--m);font-size:11.5px;color:var(--dimmer)">No slots on hold.</div>';
+      <div style="font-family:var(--m);font-size:14px;color:var(--dim)">Waiting for you to confirm</div></div>`).join('')
+    : '<div style="font-family:var(--m);font-size:13px;color:var(--dimmer)">No slots on hold.</div>';
   const rl=$('#reqList');
   rl.innerHTML = REQS.length ? REQS.map(r=>`<div class="item"><div class="item-h">
       <b>${esc(r.type==='one-to-one'?(r.slot||'One to one'):(r.batch||'Batch'))}</b>
-      <span style="font-family:var(--m);font-size:10.5px;color:var(--dimmer);margin-left:auto">${esc(String(r.at||'').slice(0,10))}</span>
+      <span style="font-family:var(--m);font-size:13px;color:var(--dimmer);margin-left:auto">${esc(String(r.at||'').slice(0,10))}</span>
       <button class="del" data-req-del="${r.id}">Delete</button></div>
       <div style="font-size:15px;font-weight:600">${esc(r.name)}</div>
       <div style="font-family:var(--m);font-size:12.5px;color:var(--dim);line-height:1.9">
         <a href="https://wa.me/${esc(String(r.whatsapp||'').replace(/[^0-9]/g,''))}" style="color:var(--live)">${esc(r.whatsapp)}</a>
         ${r.school?' · '+esc(r.school):''}${r.fee?' · '+esc(r.fee):''}</div></div>`).join('')
-    : '<div style="font-family:var(--m);font-size:11.5px;color:var(--dimmer)">No requests yet.</div>';
+    : '<div style="font-family:var(--m);font-size:13px;color:var(--dimmer)">No requests yet.</div>';
 }
 async function holdAction(id,take){
   const fb=await window.FB_READY; if(!fb)return;
@@ -934,6 +1016,7 @@ function draw(){
   if(cur==='students') loadStudents();
   if(cur==='portal' && !courseLoaded){ courseLoaded=true; loadCourse().then(()=>{ if(cur==='portal') draw(); }); }
   if(cur==='videos'){ loadVideos(); $('#vSeason').onchange=loadVideos; }
+  if(cur==='recordings') loadRecordings();
   size();
 }
 function boot(){ draw(); }
@@ -947,7 +1030,12 @@ document.addEventListener('click',e=>{
     mark(); draw(); return; }
   if(e.target.id==='vSave') return saveVideos();
   if(e.target.id==='pubCourse') return publishCourse();
+  if(e.target.id==='recAdd'){ REC=REC||[]; REC.push({date:new Date().toISOString().slice(0,10),title:'',yt:'',mins:''}); drawRecordings(); return; }
+  if(e.target.id==='recSave') return saveRecordings();
+  const rd2=e.target.closest('[data-rdel]'); if(rd2){ REC.splice(+rd2.dataset.rdel,1); drawRecordings(); return; }
   if(e.target.id==='stuAdd') return addStudentByHand();
+  if(e.target.id==='stuNumber') return backfillNumbers();
+  const rst=e.target.closest('[data-reset]'); if(rst) return resetPassword(rst.dataset.reset);
   if(e.target.id==='stuRefresh') return loadStudents();
   const shp=e.target.closest('[data-ship]'); if(shp) return addShipment(shp.dataset.ship);
   const rmv=e.target.closest('[data-remove]'); if(rmv) return removeStudent(rmv.dataset.remove);
@@ -963,6 +1051,7 @@ document.addEventListener('click',e=>{
   if(dl){ get(dl.dataset.del).splice(+dl.dataset.i,1); mark(); draw(); return; }
 });
 document.addEventListener('input',e=>{
+  if(e.target.dataset.r!==undefined && e.target.dataset.f){ REC[+e.target.dataset.r][e.target.dataset.f]=e.target.value; return; }
   if(e.target.dataset.c){ cset(e.target.dataset.c, e.target.value); return; }
   const t=e.target, p=t.dataset.p; if(!p)return;
   let v = t.type==='checkbox' ? t.checked : t.value;

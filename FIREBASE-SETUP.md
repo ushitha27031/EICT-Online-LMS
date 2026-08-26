@@ -40,36 +40,44 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    // Put YOUR email here. This is what separates you from your students,
-    // who now have accounts on the same project.
+    // You. This is what separates the teacher from the students,
+    // who now have accounts on the same Firebase project.
     function owner() {
-      return request.auth != null && request.auth.token.email == 'ushithasamudaya@gmail.com';
+      return request.auth != null
+             && request.auth.token.email == 'ushithasamudaya@gmail.com';
     }
-    function myUnlocked() {
-      return get(/databases/$(database)/documents/students/$(request.auth.uid)).data.unlocked;
+    function meDoc() {
+      return get(/databases/$(database)/documents/students/$(request.auth.uid)).data;
     }
 
-    // Site content: anyone reads, only you write.
+    // Website content: anyone reads, only you write.
     match /site/config {
       allow read: if true;
       allow write: if owner();
     }
 
-    // Join requests: anyone may send one, only you may read them.
+    // Class portal settings — Zoom link, schedule, fees, bank details.
+    match /site/course {
+      allow read: if true;
+      allow write: if owner();
+    }
+
+    // Join requests: anyone may send one, only you may read them back.
     match /requests/{id} {
       allow create: if true;
       allow read, update, delete: if owner();
     }
 
-    // Slot holds: no personal details, so the timetable can show them to everyone.
+    // Private-line slot holds. No personal details, so the timetable
+    // can show a slot as taken to everyone straight away.
     match /holds/{id} {
       allow read, create: if true;
       allow update, delete: if owner();
     }
 
-    // A student sees only their own record. They may change their own details,
-    // which track they picked and what they have watched — but NOT which seasons
-    // are unlocked and NOT whether they have paid. Only you can touch those.
+    // A student sees only their own record. They may edit their own details,
+    // the track they picked and what they have watched — but NOT which seasons
+    // are unlocked, NOT whether they have paid, and NOT their student number.
     match /students/{uid} {
       allow create: if request.auth != null && request.auth.uid == uid;
       allow read:   if owner() || (request.auth != null && request.auth.uid == uid);
@@ -77,29 +85,31 @@ service cloud.firestore {
                        && request.resource.data.diff(resource.data).affectedKeys()
                             .hasOnly(['name','whatsapp','school','address','track','watched']));
       allow delete: if owner();
-    }
-    match /students/{uid} { allow list: if owner(); }
-
-    // The YouTube ids. A student can only ever receive a season they have paid for.
-    // This is the wall — not the login screen.
-    match /seasons/{id} {
-      allow read:  if owner() || (request.auth != null && resource.data.season in myUnlocked());
-      allow write: if owner();
-    }
-
-    // Course settings for the portal — Zoom link, schedule, prices.
-    match /site/course {
-      allow read: if true;
-      allow write: if owner();
+      allow list:   if owner();
     }
 
     // Hands out student numbers one at a time. A student may only ever
     // move the counter forward by exactly one.
     match /meta/students {
-      allow read: if request.auth != null;
+      allow read:   if request.auth != null;
       allow create: if request.auth != null;
       allow update: if request.auth != null
                     && request.resource.data.next == resource.data.next + 1;
+    }
+
+    // The YouTube ids for the recorded series. A student can only ever
+    // receive a season they have paid for. This is the wall, not the login.
+    match /seasons/{id} {
+      allow read:  if owner() || (request.auth != null
+                      && resource.data.season in meDoc().unlocked);
+      allow write: if owner();
+    }
+
+    // Recordings of the live classes, for anyone who missed a session.
+    // Only students you have marked as paid can read them.
+    match /liveRecordings/{id} {
+      allow read:  if owner() || (request.auth != null && meDoc().paidLive == true);
+      allow write: if owner();
     }
 
     // Play log, so you can spot one account being used by half a class.
