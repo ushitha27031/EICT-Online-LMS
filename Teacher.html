@@ -1,0 +1,332 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>EICT — teacher</title>
+<meta name="version" content="1.8.0">
+<meta name="robots" content="noindex,nofollow">
+<meta name="theme-color" content="#0B1020">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icon-192.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="EICT">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@600;700&family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --ink:#0B1020;--panel:#141C33;--sunk:#101728;--wire:rgba(150,170,220,.18);--wire-2:rgba(150,170,220,.34);
+  --hair:rgba(150,170,220,.12);--signal:#FF4A5E;--gold:#FFC24B;--live:#3FD99A;
+  --paper:#EAEEF8;--dim:#9AA6BF;--dimmer:#7C8AA6;
+  --d:'Chakra Petch',system-ui,sans-serif;--b:'IBM Plex Sans',system-ui,sans-serif;--m:'IBM Plex Mono',ui-monospace,monospace;
+}
+*,*::before,*::after{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{margin:0;background:var(--ink);color:var(--paper);font-family:var(--b);font-size:16px;line-height:1.55;
+  padding-bottom:calc(84px + env(safe-area-inset-bottom));-webkit-font-smoothing:antialiased}
+button{font:inherit;color:inherit;border:0;background:none;cursor:pointer}
+a{color:inherit;text-decoration:none}
+img{display:block;max-width:100%}
+
+.bar{position:sticky;top:0;z-index:20;display:flex;align-items:center;gap:12px;
+  padding:calc(12px + env(safe-area-inset-top)) 16px 12px;background:rgba(11,16,32,.94);
+  backdrop-filter:blur(14px);border-bottom:1px solid var(--wire)}
+.mk{width:40px;height:40px;border-radius:11px;background:#fff;padding:5px;flex:none;display:grid;place-items:center}
+.mk img{width:100%;height:100%;object-fit:contain}
+.bar h1{font-family:var(--d);font-weight:700;font-size:18px;margin:0}
+.bar .v{font-family:var(--m);font-size:10px;color:var(--dimmer)}
+.spacer{flex:1}
+.icobtn{width:42px;height:42px;border-radius:12px;border:1px solid var(--wire-2);display:grid;place-items:center;position:relative}
+.icobtn svg{width:19px;height:19px;fill:var(--dim)}
+.icobtn.on svg{fill:var(--live)}
+.dotb{position:absolute;top:-5px;right:-5px;min-width:20px;height:20px;border-radius:10px;background:var(--signal);
+  color:#fff;font-family:var(--m);font-size:11px;display:grid;place-items:center;padding:0 5px}
+
+.wrap{padding:16px;max-width:760px;margin:0 auto}
+.card{background:var(--panel);border:1px solid var(--wire);border-radius:16px;padding:16px;margin-bottom:12px}
+.k{font-family:var(--m);font-size:11px;letter-spacing:.18em;text-transform:uppercase;color:var(--dim);margin:0 0 10px}
+h2{font-family:var(--d);font-weight:700;font-size:22px;margin:0 0 12px}
+
+.row{display:grid;grid-template-columns:52px 1fr;gap:13px;align-items:center;padding:13px 0;border-bottom:1px solid var(--hair)}
+.row:last-child{border-bottom:0}
+.when{border-radius:12px;padding:8px 4px;text-align:center;background:var(--sunk);border:1px solid var(--wire)}
+.when b{display:block;font-family:var(--d);font-weight:700;font-size:14px}
+.when s{text-decoration:none;font-family:var(--m);font-size:10px;color:var(--dim)}
+.who{font-weight:600;font-size:16px}
+.meta{font-family:var(--m);font-size:12px;color:var(--dim);margin-top:2px}
+.acts{display:flex;gap:8px;margin-top:10px;grid-column:1/-1;flex-wrap:wrap}
+.btn{flex:1;min-width:110px;padding:13px;border-radius:12px;font-weight:600;font-size:15px;text-align:center}
+.ok{background:var(--live);color:#04160E}
+.no{background:transparent;border:1px solid var(--wire-2);color:var(--paper)}
+.wa{background:var(--gold);color:#241700}
+.pill{display:inline-block;font-family:var(--m);font-size:10.5px;letter-spacing:.12em;text-transform:uppercase;
+  padding:5px 10px;border-radius:999px;margin-top:6px}
+.p-wait{background:rgba(255,194,75,.16);color:var(--gold)}
+.p-ok{background:rgba(63,217,154,.16);color:var(--live)}
+.empty{color:var(--dim);font-family:var(--m);font-size:13px;padding:14px 0}
+
+.tabs{position:fixed;left:0;right:0;bottom:0;z-index:30;display:grid;grid-template-columns:repeat(4,1fr);
+  background:rgba(11,16,32,.97);border-top:1px solid var(--wire);
+  padding:8px 6px calc(8px + env(safe-area-inset-bottom));backdrop-filter:blur(14px)}
+.tab{display:flex;flex-direction:column;align-items:center;gap:4px;padding:7px 2px;border-radius:12px;
+  font-family:var(--m);font-size:10.5px;letter-spacing:.06em;color:var(--dimmer);position:relative}
+.tab svg{width:21px;height:21px;fill:currentColor}
+.tab.on{color:var(--signal)}
+.tab .n{position:absolute;top:2px;right:calc(50% - 24px);min-width:18px;height:18px;border-radius:9px;
+  background:var(--signal);color:#fff;font-size:10px;display:grid;place-items:center;padding:0 4px}
+
+.gate{min-height:100vh;display:grid;place-items:center;padding:26px}
+.gate .card{width:min(400px,100%)}
+input{width:100%;padding:14px;border-radius:12px;background:var(--sunk);border:1px solid var(--wire);
+  color:var(--paper);font-size:16px;margin-top:8px}
+input:focus{outline:none;border-color:var(--gold)}
+.err{color:var(--signal);font-family:var(--m);font-size:13px;min-height:18px;margin-top:10px}
+.big{width:100%;padding:15px;border-radius:12px;background:var(--signal);color:#fff;font-weight:600;font-size:16px;margin-top:14px}
+.note{font-family:var(--m);font-size:12px;color:var(--dim);line-height:1.8}
+.hide{display:none!important}
+.new{animation:flash 1.4s ease-out}
+@keyframes flash{0%{background:rgba(255,74,94,.28)}100%{background:transparent}}
+</style>
+</head>
+<body>
+
+<div class="gate" id="gate">
+  <div class="card">
+    <div class="mk" style="margin:0 auto 16px"><img src="icon-192.png" alt=""></div>
+    <h2 style="text-align:center">EICT teacher</h2>
+    <p class="note" style="text-align:center;margin:0 0 18px">Sign in with your owner account.</p>
+    <input id="em" type="email" placeholder="email" autocomplete="email">
+    <input id="pw" type="password" placeholder="password" autocomplete="current-password">
+    <button class="big" id="go">Sign in</button>
+    <div class="err" id="err"></div>
+  </div>
+</div>
+
+<div id="app" class="hide">
+  <header class="bar">
+    <span class="mk"><img src="icon-192.png" alt="EICT"></span>
+    <div><h1>Teacher</h1><div class="v" id="ver"></div></div>
+    <div class="spacer"></div>
+    <button class="icobtn" id="bell" title="Alerts">
+      <svg viewBox="0 0 24 24"><path d="M12 22a2.5 2.5 0 0 0 2.5-2.5h-5A2.5 2.5 0 0 0 12 22zm7-6v-5a7 7 0 0 0-5.5-6.8V3a1.5 1.5 0 0 0-3 0v1.2A7 7 0 0 0 5 11v5l-2 2v1h18v-1z"/></svg>
+      <span class="dotb hide" id="bellN">0</span>
+    </button>
+    <button class="icobtn" id="out" title="Sign out">
+      <svg viewBox="0 0 24 24"><path d="M16 13v-2H7V8l-5 4 5 4v-3zM20 3h-8v2h8v14h-8v2h8a2 2 0 0 0 2-2V5a2 2 0 0 0-2-2z"/></svg>
+    </button>
+  </header>
+
+  <div class="wrap">
+    <section id="vBook"></section>
+    <section id="vToday" class="hide"></section>
+    <section id="vAsk" class="hide"></section>
+    <section id="vSet" class="hide"></section>
+  </div>
+
+  <nav class="tabs">
+    <button class="tab on" data-t="Book"><svg viewBox="0 0 24 24"><path d="M19 4h-1V2h-2v2H8V2H6v2H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2zm0 16H5V10h14z"/></svg>Bookings<span class="n hide" id="nBook">0</span></button>
+    <button class="tab" data-t="Today"><svg viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm1 11H7v-2h4V6h2z"/></svg>Today</button>
+    <button class="tab" data-t="Ask"><svg viewBox="0 0 24 24"><path d="M20 2H4a2 2 0 0 0-2 2v18l4-4h14a2 2 0 0 0 2-2V4a2 2 0 0 0-2-2z"/></svg>Requests<span class="n hide" id="nAsk">0</span></button>
+    <button class="tab" data-t="Set"><svg viewBox="0 0 24 24"><path d="M12 8a4 4 0 1 0 0 8 4 4 0 0 0 0-8zm9 4a7 7 0 0 0-.1-1.2l2-1.6-2-3.4-2.4 1a7 7 0 0 0-2-1.2L16 3H8l-.5 2.6a7 7 0 0 0-2 1.2l-2.4-1-2 3.4 2 1.6a7.6 7.6 0 0 0 0 2.4l-2 1.6 2 3.4 2.4-1a7 7 0 0 0 2 1.2L8 21h8l.5-2.6a7 7 0 0 0 2-1.2l2.4 1 2-3.4-2-1.6c.1-.4.1-.8.1-1.2z"/></svg>Alerts</button>
+  </nav>
+</div>
+
+<audio id="ping" preload="auto"></audio>
+
+<script>window.FB_READY=new Promise(r=>{window.__fbDone=r;setTimeout(()=>r(null),8000)});</script>
+<script src="firebase-config.js" onerror="void 0"></script>
+<script type="module">
+(async()=>{
+  const cfg=window.FIREBASE_CONFIG;
+  if(!cfg||!cfg.projectId) return null;
+  try{
+    const {initializeApp}=await import('https://www.gstatic.com/firebasejs/11.0.2/firebase-app.js');
+    const {getFirestore,doc,getDoc,setDoc,updateDoc,onSnapshot,collection,query,orderBy,limit}=
+      await import('https://www.gstatic.com/firebasejs/11.0.2/firebase-firestore.js');
+    const {getAuth,signInWithEmailAndPassword,onAuthStateChanged,signOut}=
+      await import('https://www.gstatic.com/firebasejs/11.0.2/firebase-auth.js');
+    const app=initializeApp(cfg);
+    return {db:getFirestore(app),auth:getAuth(app),doc,getDoc,setDoc,updateDoc,onSnapshot,
+            collection,query,orderBy,limit,signInWithEmailAndPassword,onAuthStateChanged,signOut};
+  }catch(e){ console.warn('firebase',e.message); return null; }
+})().then(window.__fbDone);
+</script>
+<script>
+const $=(s,r=document)=>r.querySelector(s), $$=(s,r=document)=>[...r.querySelectorAll(s)];
+const esc=s=>String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const VERSION=document.querySelector('meta[name=version]').content;
+$('#ver').textContent='v'+VERSION;
+let FB=null, BK=[], REQ=[], COURSE={}, tab='Book', seen=new Set(), firstLoad=true;
+
+/* ---------- a short chime, made in the browser ---------- */
+function chime(){
+  try{
+    const A=new (window.AudioContext||window.webkitAudioContext)();
+    [880,1320].forEach((f,i)=>{
+      const o=A.createOscillator(), g=A.createGain();
+      o.type='sine'; o.frequency.value=f;
+      g.gain.setValueAtTime(0,A.currentTime+i*.16);
+      g.gain.linearRampToValueAtTime(.35,A.currentTime+i*.16+.02);
+      g.gain.exponentialRampToValueAtTime(.001,A.currentTime+i*.16+.34);
+      o.connect(g); g.connect(A.destination);
+      o.start(A.currentTime+i*.16); o.stop(A.currentTime+i*.16+.36);
+    });
+  }catch(e){}
+}
+function buzz(){ if(navigator.vibrate) navigator.vibrate([120,60,120]); }
+function popup(title,body){
+  try{ if('Notification' in window && Notification.permission==='granted')
+    new Notification(title,{body,icon:'icon-192.png',badge:'icon-192.png',tag:'eict'});
+  }catch(e){}
+}
+function alertMe(title,body){ chime(); buzz(); popup(title,body); }
+
+/* ---------- sign in ---------- */
+(async()=>{
+  FB=await window.FB_READY;
+  if(!FB){ $('#err').textContent='firebase-config.js is missing next to this file.'; return; }
+  FB.onAuthStateChanged(FB.auth,u=>{
+    if(!u){ $('#gate').classList.remove('hide'); $('#app').classList.add('hide'); return; }
+    $('#gate').classList.add('hide'); $('#app').classList.remove('hide');
+    listen();
+  });
+})();
+$('#go').onclick=async()=>{
+  const e=$('#em').value.trim(), p=$('#pw').value;
+  if(!e||!p) return $('#err').textContent='Fill in both boxes.';
+  $('#err').textContent='Checking…';
+  try{ await FB.signInWithEmailAndPassword(FB.auth,e,p); $('#err').textContent=''; }
+  catch(err){ $('#err').textContent=/invalid|wrong|credential/i.test(err.code||'')?'Wrong email or password':(err.code||err.message); }
+};
+$('#pw').addEventListener('keydown',e=>{if(e.key==='Enter')$('#go').click();});
+$('#out').onclick=async()=>{ await FB.signOut(FB.auth); location.reload(); };
+
+/* ---------- live data ---------- */
+function listen(){
+  FB.onSnapshot(FB.collection(FB.db,'bookings'),snap=>{
+    const fresh=[];
+    BK=[]; snap.forEach(d=>{ const b={id:d.id,...d.data()}; BK.push(b);
+      if(b.status==='pending'&&!b.cancelled&&!seen.has(b.id)){ seen.add(b.id); if(!firstLoad) fresh.push(b); } });
+    if(fresh.length){
+      const b=fresh[0];
+      alertMe('New booking request', `${b.name||'A student'} wants ${b.day} at ${b.time}`);
+    }
+    firstLoad=false; paint();
+  },e=>console.warn('bookings',e.message));
+
+  try{
+    FB.onSnapshot(FB.query(FB.collection(FB.db,'requests'),FB.orderBy('at','desc'),FB.limit(40)),snap=>{
+      REQ=[]; snap.forEach(d=>REQ.push({id:d.id,...d.data()})); paint();
+    },e=>console.warn('requests',e.message));
+  }catch(e){}
+
+  FB.getDoc(FB.doc(FB.db,'site','course')).then(d=>{
+    if(d.exists()&&d.data().json){ try{ COURSE=JSON.parse(d.data().json); }catch(e){} } paint();
+  }).catch(()=>{});
+}
+
+/* ---------- painting ---------- */
+const pend=()=>BK.filter(b=>b.status==='pending'&&!b.cancelled);
+const okd=()=>BK.filter(b=>b.status==='approved'&&!b.cancelled);
+const DAY=['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
+
+function paint(){
+  const p=pend();
+  badge('#nBook',p.length); badge('#bellN',p.length);
+  $('#bell').classList.toggle('on',('Notification' in window)&&Notification.permission==='granted');
+
+  $('#vBook').innerHTML=`
+    <div class="card"><p class="k">Waiting for you</p>
+      ${p.length? p.map(b=>card(b,true)).join('') : '<div class="empty">Nothing waiting. All caught up.</div>'}</div>
+    <div class="card"><p class="k">Confirmed hours</p>
+      ${okd().length? okd().map(b=>card(b,false)).join('') : '<div class="empty">No confirmed hours yet.</div>'}</div>`;
+
+  const today=DAY[new Date().getDay()];
+  const mine=okd().filter(b=>String(b.day).toLowerCase()===today.toLowerCase());
+  $('#vToday').innerHTML=`<div class="card"><p class="k">${today}</p>
+    <h2>${mine.length} class${mine.length===1?'':'es'} today</h2>
+    ${mine.length? mine.map(b=>card(b,false)).join('') : '<div class="empty">Nothing booked for today.</div>'}
+    ${COURSE.live&&COURSE.live.zoom?`<a class="btn ok" style="display:block;margin-top:12px" href="${esc(COURSE.live.zoom)}" target="_blank" rel="noopener">Open Zoom</a>`:''}</div>`;
+
+  $('#vAsk').innerHTML=`<div class="card"><p class="k">Requests from the website</p>
+    ${REQ.length? REQ.slice(0,25).map(r=>`<div class="row"><div class="when"><b>${esc(String(r.type||'').slice(0,4).toUpperCase()||'REQ')}</b><s>${esc(String(r.at||'').slice(5,10))}</s></div>
+      <div><div class="who">${esc(r.name||'')}</div>
+        <div class="meta">${esc(r.slot||r.batch||'')}</div>
+        <a class="pill p-ok" href="https://wa.me/${esc(String(r.whatsapp||'').replace(/[^0-9]/g,'').replace(/^0/,'94'))}" target="_blank" rel="noopener">${esc(r.whatsapp||'')}</a></div></div>`).join('')
+      : '<div class="empty">No requests yet.</div>'}</div>`;
+  badge('#nAsk',0);
+
+  $('#vSet').innerHTML=`
+    <div class="card"><p class="k">Alerts on this phone</p>
+      <h2>${('Notification' in window)?(Notification.permission==='granted'?'On':'Off'):'Not supported'}</h2>
+      <p class="note">While this app is open you get a chime, a buzz and a banner the moment a student books.
+        Turn the banner on below — you only have to do it once.</p>
+      <button class="big" id="askPerm">Turn banners on</button>
+      <button class="big" style="background:var(--gold);color:#241700" id="testAlert">Test the chime and buzz</button>
+    </div>
+    <div class="card"><p class="k">When the app is closed</p>
+      <p class="note">A web page cannot wake your phone on its own. For alerts when this is shut,
+        set up <b>Telegram</b> in the dashboard under <b>Reserved times → Tell me when a student books</b>.
+        That reaches you anywhere, free.</p>
+      <a class="big" style="display:block;text-align:center;background:transparent;border:1px solid var(--wire-2)" href="Admin.html">Open the full dashboard</a>
+    </div>
+    <div class="card"><p class="k">Install</p>
+      <p class="note">On Android: menu → <b>Add to Home screen</b>.<br>
+        On iPhone: Share → <b>Add to Home Screen</b>.<br>
+        It then opens like an app, without the browser bars.</p>
+      <button class="big hide" id="install">Add to home screen</button>
+    </div>`;
+}
+function card(b,act){
+  return `<div class="row ${act?'new':''}">
+    <div class="when"><b>${esc(String(b.day||'').slice(0,3))}</b><s>${esc(b.time||'')}</s></div>
+    <div><div class="who">${esc(b.name||'Student')}</div>
+      <div class="meta">${esc(b.code||'')} · ${esc(b.whatsapp||'')}</div>
+      <span class="pill ${b.status==='approved'?'p-ok':'p-wait'}">${esc(b.status)}</span></div>
+    ${act?`<div class="acts">
+      <button class="btn ok" data-ok="${esc(b.id)}">Approve</button>
+      <button class="btn no" data-no="${esc(b.id)}">Decline</button>
+      <a class="btn wa" href="https://wa.me/${esc(String(b.whatsapp||'').replace(/[^0-9]/g,'').replace(/^0/,'94'))}" target="_blank" rel="noopener">WhatsApp</a>
+    </div>`:''}</div>`;
+}
+function badge(sel,n){ const e=$(sel); if(!e)return; e.textContent=n; e.classList.toggle('hide',!n); }
+
+/* ---------- actions ---------- */
+document.addEventListener('click',async e=>{
+  const t=e.target.closest('[data-t]');
+  if(t){ tab=t.dataset.t; $$('.tab').forEach(x=>x.classList.toggle('on',x===t));
+    ['Book','Today','Ask','Set'].forEach(k=>$('#v'+k).classList.toggle('hide',k!==tab));
+    window.scrollTo({top:0,behavior:'smooth'}); return; }
+
+  const ok=e.target.closest('[data-ok]'), no=e.target.closest('[data-no]');
+  if(ok||no){
+    const id=(ok||no).dataset.ok||(ok||no).dataset.no, yes=!!ok;
+    const b=BK.find(x=>x.id===id); if(!b) return;
+    try{
+      await FB.updateDoc(FB.doc(FB.db,'bookings',id),{status:yes?'approved':'declined',decidedAt:new Date().toISOString()});
+      const n=String(b.whatsapp||'').replace(/[^0-9]/g,'').replace(/^0/,'94');
+      if(n) window.open(`https://wa.me/${n}?text=`+encodeURIComponent(yes
+        ? `Hi ${b.name||''}, your private class on ${b.day} at ${b.time} is confirmed. — EICT`
+        : `Hi ${b.name||''}, I cannot do ${b.day} ${b.time}. Please pick another free hour in your class portal. — EICT`),'_blank');
+    }catch(err){ alert('Could not save: '+(err.code||err.message)); }
+    return;
+  }
+  if(e.target.id==='askPerm'){
+    if(!('Notification' in window)) return alert('This browser cannot show banners.');
+    const r=await Notification.requestPermission();
+    if(r==='granted'){ popup('EICT','Banners are on. You will see requests here.'); }
+    paint(); return;
+  }
+  if(e.target.id==='testAlert'){ alertMe('EICT test','This is what a new booking will look like.'); return; }
+  if(e.target.id==='install' && deferred){ deferred.prompt(); deferred=null; $('#install').classList.add('hide'); }
+});
+
+let deferred=null;
+addEventListener('beforeinstallprompt',e=>{ e.preventDefault(); deferred=e;
+  const b=$('#install'); if(b) b.classList.remove('hide'); });
+
+if('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(()=>{});
+</script>
+</body>
+</html>
