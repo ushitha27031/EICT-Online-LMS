@@ -83,7 +83,7 @@ service cloud.firestore {
       allow read:   if owner() || (request.auth != null && request.auth.uid == uid);
       allow update: if owner() || (request.auth != null && request.auth.uid == uid
                        && request.resource.data.diff(resource.data).affectedKeys()
-                            .hasOnly(['name','whatsapp','school','address','track','watched']));
+                            .hasOnly(['name','whatsapp','school','address','track','watched','progress','lastWatched','shipments']));
       allow delete: if owner();
       allow list:   if owner();
     }
@@ -110,6 +110,30 @@ service cloud.firestore {
     match /liveRecordings/{id} {
       allow read:  if owner() || (request.auth != null && meDoc().paidLive == true);
       allow write: if owner();
+    }
+
+    // Answer sheets. A student may send their own and read their own back,
+    // but never see anyone else's. Only you can mark or delete.
+    match /submissions/{id} {
+      allow create, update: if request.auth != null
+                            && request.resource.data.uid == request.auth.uid;
+      allow read: if owner() || (request.auth != null && resource.data.uid == request.auth.uid);
+      allow delete: if owner();
+      allow list: if owner();
+    }
+
+    // Private class bookings. Everyone signed in can see which hours are taken
+    // (day and time only reveals nothing private), a student may create and
+    // cancel their own, but only you may approve or decline one.
+    match /bookings/{id} {
+      allow read: if request.auth != null;
+      allow create: if request.auth != null
+                    && request.resource.data.uid == request.auth.uid
+                    && request.resource.data.status == 'pending';
+      allow update: if owner() || (request.auth != null
+                    && resource.data.uid == request.auth.uid
+                    && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['cancelled']));
+      allow delete: if owner();
     }
 
     // Play log, so you can spot one account being used by half a class.
