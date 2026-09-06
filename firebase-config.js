@@ -1,13 +1,12 @@
 /* ============================================================
-   EICT — Firebase project keys.
+   EICT — the two settings the whole site reads from a file.
 
-   These keys are safe to be public. They only identify your
-   project; they grant no access on their own. What actually
-   protects your data is the Firestore rules you published.
-
-   If this file is missing or wrong, the site simply runs on the
-   content built into EICT.html. Nothing breaks.
+   Upload this to your repository next to EICT.html. Both blocks
+   below are safe to be public: they identify your project and
+   your alert topic, nothing more. What protects your data is
+   the Firestore rules.
    ============================================================ */
+
 window.FIREBASE_CONFIG = {
   apiKey:            "AIzaSyBi5RuRaKiiu5vjF-12WZwgx5rBWJkvanM",
   authDomain:        "eict-60955.firebaseapp.com",
@@ -15,4 +14,14 @@ window.FIREBASE_CONFIG = {
   storageBucket:     "eict-60955.firebasestorage.app",
   messagingSenderId: "418172511743",
   appId:             "1:418172511743:web:7cb9807ee881f68eb6b3ca"
+};
+
+/* Where a student's browser sends you an alert when they book an hour,
+   cancel one, send a payment slip, or confirm a parcel arrived.
+   This needs no publishing — it works the moment this file is uploaded. */
+window.EICT_ALERTS = {
+  ntfyTopic:     "eict-jj11mf521r",   // the name you subscribed to in the ntfy app
+  web3formsKey:  "",                  // optional: key from web3forms.com, alerts to your Gmail
+  telegramToken: "",                  // optional, only if you use Telegram
+  telegramChatId:""
 };
