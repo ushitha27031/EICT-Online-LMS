@@ -20,7 +20,7 @@ window.FIREBASE_CONFIG = {
    cancel one, send a payment slip, or confirm a parcel arrived.
    This needs no publishing — it works the moment this file is uploaded. */
 window.EICT_ALERTS = {
-  ntfyTopic:     "eict-jj11mf521r",   // the name you subscribed to in the ntfy app
+  ntfyTopic:     "eictonline",         // the topic that is proven to work on your phone
   web3formsKey:  "",                  // optional: key from web3forms.com, alerts to your Gmail
   telegramToken: "",                  // optional, only if you use Telegram
   telegramChatId:""
