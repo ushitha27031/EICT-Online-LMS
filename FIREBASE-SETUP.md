@@ -83,7 +83,7 @@ service cloud.firestore {
       allow read:   if owner() || (request.auth != null && request.auth.uid == uid);
       allow update: if owner() || (request.auth != null && request.auth.uid == uid
                        && request.resource.data.diff(resource.data).affectedKeys()
-                            .hasOnly(['name','whatsapp','school','address','track','watched','progress','lastWatched','shipments']));
+                            .hasOnly(['name','whatsapp','school','address','track','watched','progress','lastWatched','shipments','claimedClasses']));
       allow delete: if owner();
       allow list:   if owner();
     }
@@ -132,8 +132,25 @@ service cloud.firestore {
                     && request.resource.data.status == 'pending';
       allow update: if owner() || (request.auth != null
                     && resource.data.uid == request.auth.uid
-                    && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['cancelled']));
+                    && request.resource.data.uid == request.auth.uid
+                    && request.resource.data.diff(resource.data)
+                         .affectedKeys().hasOnly(['cancelled','day','time','status','at','week']));
       allow delete: if owner();
+    }
+
+    // A student saying they have paid. They may say it; only you confirm it.
+    match /payments/{id} {
+      allow create: if request.auth != null && request.resource.data.uid == request.auth.uid;
+      allow read: if owner() || (request.auth != null && resource.data.uid == request.auth.uid);
+      allow update, delete, list: if owner();
+    }
+
+    // Free trial bookings from the public site. Anyone may ask for one and
+    // see which hours are gone; only you can read the personal details back.
+    match /trials/{id} {
+      allow read: if true;
+      allow create: if true;
+      allow update, delete, list: if owner();
     }
 
     // Play log, so you can spot one account being used by half a class.
