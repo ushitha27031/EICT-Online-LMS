@@ -1,0 +1,510 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<!-- Google Tag Manager -->
+<script>(function(w,d,s,l,i){w[l]=w[l]||[];w[l].push({'gtm.start':
+new Date().getTime(),event:'gtm.js'});var f=d.getElementsByTagName(s)[0],
+j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
+'https://www.googletagmanager.com/gtm.js?id='+i+dl;f.parentNode.insertBefore(j,f);
+})(window,document,'script','dataLayer','GTM-N6G3XV6G');</script>
+<!-- End Google Tag Manager -->
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>EICT — The Long Road</title>
+<meta name="version" content="3.2.0">
+<meta name="theme-color" content="#0A0A1A">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700&family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --night:#0A0A1A; --deep:#111028; --mist:#1A1936;
+  --ember:#FF6B35; --gold:#F2C14E; --moon:#8FD6FF; --leaf:#5FD3A0;
+  --ink:#F3EFE7; --dim:#9A93B8; --dimmer:#6E6890;
+  --edge:rgba(242,193,78,.22); --edge2:rgba(242,193,78,.45);
+  --f:'Cinzel',Georgia,serif; --b:'IBM Plex Sans',system-ui,sans-serif; --m:'IBM Plex Mono',monospace;
+}
+*,*::before,*::after{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%;scroll-behavior:smooth}
+body{margin:0;background:var(--night);color:var(--ink);font-family:var(--b);
+  font-size:16px;line-height:1.6;overflow-x:hidden;-webkit-font-smoothing:antialiased}
+button{font:inherit;color:inherit;border:0;background:none;cursor:pointer}
+:focus-visible{outline:2px solid var(--gold);outline-offset:3px;border-radius:6px}
+.hide{display:none!important}
+
+/* ---------- sky ---------- */
+#sky{position:fixed;inset:0;z-index:0;pointer-events:none}
+.veil{position:fixed;inset:0;z-index:0;pointer-events:none;
+  background:radial-gradient(900px 600px at 15% -5%,rgba(143,214,255,.10),transparent 60%),
+             radial-gradient(800px 620px at 88% 12%,rgba(255,107,53,.12),transparent 62%),
+             radial-gradient(1000px 700px at 50% 108%,rgba(242,193,78,.08),transparent 60%)}
+
+/* ---------- gate ---------- */
+.gate{position:relative;z-index:2;min-height:100svh;display:grid;place-items:center;padding:24px}
+.gate-in{width:min(430px,100%);text-align:center}
+.crest{width:120px;height:120px;margin:0 auto 26px;position:relative}
+.crest svg{position:absolute;inset:0}
+.crest .r{fill:none;stroke:var(--gold);transform-origin:50% 50%}
+.crest .r1{animation:spin 26s linear infinite}
+.crest .r2{animation:spin 18s linear infinite reverse}
+.crest .core{fill:var(--ember);animation:beat 2.6s ease-in-out infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+@keyframes beat{0%,100%{opacity:.95;transform:scale(1)}50%{opacity:.55;transform:scale(1.18)}}
+.gate h1{font-family:var(--f);font-weight:700;font-size:clamp(30px,7vw,44px);
+  letter-spacing:.02em;margin:0 0 10px;line-height:1.1}
+.gate p{color:var(--dim);margin:0 0 28px;font-size:15.5px}
+.idbox{display:flex;gap:10px}
+.idbox input{flex:1;padding:16px 18px;border-radius:14px;background:rgba(26,25,54,.8);
+  border:1px solid var(--edge);color:var(--ink);font-family:var(--m);font-size:17px;
+  letter-spacing:.18em;text-align:center;text-transform:uppercase}
+.idbox input:focus{outline:none;border-color:var(--gold);box-shadow:0 0 0 4px rgba(242,193,78,.12)}
+.enter{padding:16px 24px;border-radius:14px;background:var(--ember);color:#150A04;
+  font-weight:700;font-size:16px;white-space:nowrap;box-shadow:0 14px 34px -14px var(--ember)}
+.enter:hover{transform:translateY(-2px)}
+.gerr{color:var(--ember);font-family:var(--m);font-size:13px;min-height:18px;margin-top:14px}
+.hintline{margin-top:22px;font-size:13.5px;color:var(--dimmer)}
+
+/* opening ---------- */
+.open{position:fixed;inset:0;z-index:60;display:none;pointer-events:none;background:var(--night)}
+.open.on{display:block}
+.open.go{clip-path:circle(0% at 50% 50%);transition:clip-path 1.5s cubic-bezier(.6,.02,.2,1)}
+.open svg{position:absolute;left:50%;top:50%;width:min(70vmin,460px);height:min(70vmin,460px);
+  transform:translate(-50%,-50%);overflow:visible}
+.open.go svg{opacity:0;transform:translate(-50%,-50%) scale(1.6);transition:all 1.2s ease}
+
+/* ---------- world ---------- */
+.world{position:relative;z-index:2;max-width:1120px;margin:0 auto;padding:26px clamp(14px,3vw,30px) 90px}
+.crown{display:flex;align-items:center;gap:16px;flex-wrap:wrap;margin-bottom:26px}
+.who b{display:block;font-family:var(--f);font-size:clamp(21px,3.4vw,28px);line-height:1.2}
+.who span{font-family:var(--m);font-size:12px;color:var(--dim);letter-spacing:.14em}
+.spacer{flex:1}
+.rank{display:flex;align-items:center;gap:13px;padding:11px 17px;border-radius:999px;
+  border:1px solid var(--edge);background:rgba(26,25,54,.6)}
+.rank .ring{width:44px;height:44px;position:relative;flex:none}
+.rank .ring svg{transform:rotate(-90deg)}
+.rank .ring circle{fill:none;stroke-width:5}
+.rank .bg{stroke:rgba(255,255,255,.09)}
+.rank .fg{stroke:var(--gold);stroke-linecap:round;transition:stroke-dashoffset 1.2s cubic-bezier(.2,.7,.2,1)}
+.rank .ring b{position:absolute;inset:0;display:grid;place-items:center;font-size:12px;font-family:var(--m)}
+.rank .t{font-family:var(--f);font-size:15px;line-height:1.2}
+.rank .s{font-family:var(--m);font-size:11px;color:var(--dim)}
+.leave{font-family:var(--m);font-size:11.5px;color:var(--dimmer);letter-spacing:.12em}
+.leave:hover{color:var(--ember)}
+
+/* this week */
+.now{position:relative;border-radius:22px;overflow:hidden;margin-bottom:30px;
+  border:1px solid var(--edge2);background:linear-gradient(150deg,rgba(255,107,53,.14),rgba(26,25,54,.92) 58%)}
+.now-in{position:relative;z-index:1;padding:clamp(20px,3.4vw,32px)}
+.now .k{font-family:var(--m);font-size:11px;letter-spacing:.26em;text-transform:uppercase;color:var(--gold)}
+.now h2{font-family:var(--f);font-weight:700;font-size:clamp(24px,4.4vw,36px);margin:10px 0 2px;line-height:1.12}
+.now .sub{color:var(--dim);font-size:14.5px;margin-bottom:18px}
+.task{display:flex;gap:13px;align-items:flex-start;padding:13px 0;border-top:1px solid rgba(255,255,255,.07);cursor:pointer}
+.task:first-of-type{border-top:0}
+.box{width:24px;height:24px;flex:none;border-radius:8px;border:1.5px solid var(--edge2);
+  background:rgba(10,10,26,.6);display:grid;place-items:center;transition:.18s;margin-top:1px}
+.task.on .box{background:var(--leaf);border-color:var(--leaf)}
+.box svg{width:13px;height:13px;fill:none;stroke:#06281B;stroke-width:3.4;stroke-linecap:round;
+  stroke-linejoin:round;stroke-dasharray:22;stroke-dashoffset:22}
+.task.on .box svg{stroke-dashoffset:0;transition:stroke-dashoffset .32s .04s}
+.task .tx{font-size:15.4px;line-height:1.5}
+.task.on .tx{color:var(--dimmer);text-decoration:line-through}
+.task .tg{display:block;font-family:var(--m);font-size:10.5px;letter-spacing:.14em;
+  text-transform:uppercase;color:var(--dimmer);margin-top:3px}
+
+/* map */
+.mapwrap{position:relative;margin-top:10px}
+.maph{display:flex;align-items:baseline;justify-content:space-between;gap:14px;flex-wrap:wrap;margin-bottom:18px}
+.maph h3{font-family:var(--f);font-size:clamp(19px,3vw,25px);margin:0}
+.maph span{font-family:var(--m);font-size:11.5px;color:var(--dim);letter-spacing:.1em}
+.realms{display:grid;gap:14px}
+.realm{position:relative;display:grid;grid-template-columns:64px 1fr auto;gap:16px;align-items:center;
+  padding:16px 18px;border-radius:18px;border:1px solid rgba(255,255,255,.08);
+  background:rgba(26,25,54,.5);text-align:left;transition:transform .2s,border-color .2s,background .2s}
+.realm::before{content:'';position:absolute;left:45px;top:-15px;width:2px;height:15px;
+  background:linear-gradient(180deg,transparent,var(--edge))}
+.realm:first-child::before{display:none}
+.realm:hover{transform:translateX(4px);border-color:var(--edge2)}
+.sigil{width:64px;height:64px;border-radius:16px;display:grid;place-items:center;flex:none;
+  border:1px solid var(--edge);background:rgba(10,10,26,.65);position:relative}
+.sigil svg{width:30px;height:30px;fill:none;stroke:var(--dim);stroke-width:1.6;
+  stroke-linecap:round;stroke-linejoin:round}
+.realm.done .sigil{border-color:var(--leaf);background:rgba(95,211,160,.12)}
+.realm.done .sigil svg{stroke:var(--leaf)}
+.realm.here .sigil{border-color:var(--ember);background:rgba(255,107,53,.16);
+  box-shadow:0 0 0 0 rgba(255,107,53,.5);animation:pulse 2.6s infinite}
+.realm.here .sigil svg{stroke:var(--ember)}
+@keyframes pulse{70%{box-shadow:0 0 0 14px rgba(255,107,53,0)}100%{box-shadow:0 0 0 0 rgba(255,107,53,0)}}
+.realm.far{opacity:.5}
+.rn{font-family:var(--f);font-size:17px;line-height:1.25}
+.rs{font-family:var(--m);font-size:11.5px;color:var(--dim);margin-top:3px}
+.rbar{height:4px;border-radius:3px;background:rgba(255,255,255,.09);margin-top:9px;max-width:260px;overflow:hidden}
+.rbar i{display:block;height:100%;border-radius:3px;background:var(--gold);transition:width .9s}
+.rmeta{font-family:var(--m);font-size:11px;color:var(--dimmer);text-align:right;white-space:nowrap}
+.rmeta b{display:block;font-family:var(--f);font-size:19px;color:var(--ink)}
+
+/* week sheet */
+.ov{position:fixed;inset:0;z-index:70;display:none;place-items:center;padding:18px;
+  background:rgba(6,6,18,.86);backdrop-filter:blur(10px)}
+.ov.on{display:grid}
+.sheet{width:min(620px,100%);max-height:88svh;overflow:auto;border-radius:22px;padding:clamp(22px,4vw,32px);
+  border:1px solid var(--edge2);background:linear-gradient(160deg,var(--mist),var(--deep));
+  animation:rise .4s cubic-bezier(.2,.8,.2,1)}
+@keyframes rise{from{opacity:0;transform:translateY(20px) scale(.97)}}
+.sheet h3{font-family:var(--f);font-size:25px;margin:8px 0 4px}
+.sheet .k{font-family:var(--m);font-size:11px;letter-spacing:.24em;text-transform:uppercase;color:var(--gold)}
+.sheet .lore{color:var(--dim);font-size:14.6px;font-style:italic;margin:12px 0 18px;
+  padding-left:14px;border-left:2px solid var(--edge)}
+.wk{border:1px solid rgba(255,255,255,.08);border-radius:14px;padding:15px 17px;margin-bottom:11px}
+.wk.now{border-color:var(--ember);background:rgba(255,107,53,.07)}
+.wk-h{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:8px}
+.wk-h b{font-family:var(--f);font-size:16px}
+.wk-h span{font-family:var(--m);font-size:11px;color:var(--dim)}
+.x{position:absolute;top:16px;right:20px;font-size:26px;line-height:1;color:var(--dim);z-index:3}
+.x:hover{color:var(--ember)}
+.toast{position:fixed;left:50%;bottom:26px;transform:translateX(-50%) translateY(90px);z-index:90;
+  background:var(--gold);color:#1A1200;padding:13px 24px;border-radius:999px;font-weight:700;
+  transition:transform .35s cubic-bezier(.2,.8,.2,1)}
+.toast.on{transform:translateX(-50%) translateY(0)}
+@media(max-width:560px){
+  .realm{grid-template-columns:52px 1fr;gap:13px}
+  .sigil{width:52px;height:52px}
+  .realm::before{left:39px}
+  .rmeta{grid-column:2;text-align:left;margin-top:4px}
+}
+@media(prefers-reduced-motion:reduce){*{animation-duration:.001ms!important;transition-duration:.001ms!important}}
+</style>
+</head>
+<body>
+<!-- Google Tag Manager (noscript) -->
+<noscript><iframe src="https://www.googletagmanager.com/ns.html?id=GTM-N6G3XV6G"
+height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
+<!-- End Google Tag Manager (noscript) -->
+
+<canvas id="sky"></canvas>
+<div class="veil"></div>
+
+<div class="open" id="open">
+  <svg viewBox="0 0 200 200">
+    <circle class="r r1" cx="100" cy="100" r="88" stroke="var(--edge)" stroke-width="1" stroke-dasharray="3 11"/>
+    <circle class="r r1" cx="100" cy="100" r="70" stroke="var(--gold)" stroke-width="2" stroke-dasharray="52 300" opacity=".8"/>
+    <circle class="r r2" cx="100" cy="100" r="54" stroke="var(--ember)" stroke-width="2" stroke-dasharray="30 260" opacity=".85"/>
+    <circle class="core" cx="100" cy="100" r="9"/>
+  </svg>
+</div>
+
+<!-- ======== the gate ======== -->
+<section class="gate" id="gate">
+  <div class="gate-in">
+    <div class="crest">
+      <svg viewBox="0 0 120 120">
+        <circle class="r r1" cx="60" cy="60" r="54" stroke="var(--edge)" stroke-width="1" stroke-dasharray="2 9"/>
+        <circle class="r r1" cx="60" cy="60" r="42" stroke="var(--gold)" stroke-width="2" stroke-dasharray="34 200" opacity=".85"/>
+        <circle class="r r2" cx="60" cy="60" r="30" stroke="var(--ember)" stroke-width="2" stroke-dasharray="20 170" opacity=".9"/>
+        <circle class="core" cx="60" cy="60" r="6"/>
+      </svg>
+    </div>
+    <h1>The Long Road</h1>
+    <p>Thirteen realms stand between you and the exam hall.<br>Speak your name to begin.</p>
+    <div class="idbox">
+      <input id="sid" placeholder="EICT-0000" autocomplete="off" spellcheck="false" maxlength="12">
+      <button class="enter" id="go">Enter</button>
+    </div>
+    <div class="gerr" id="gerr"></div>
+    <div class="hintline">Your student number was given to you when you joined.<br>
+      Lost it? Ask sir on WhatsApp.</div>
+  </div>
+</section>
+
+<!-- ======== the world ======== -->
+<main class="world hide" id="world">
+  <div class="crown">
+    <div class="who"><b id="hail">Traveller</b><span id="sidOut"></span></div>
+    <div class="spacer"></div>
+    <div class="rank">
+      <div class="ring"><svg viewBox="0 0 44 44" width="44" height="44">
+        <circle class="bg" cx="22" cy="22" r="18"></circle>
+        <circle class="fg" cx="22" cy="22" r="18" id="ringFg" stroke-dasharray="113" stroke-dashoffset="113"></circle>
+      </svg><b id="pct">0%</b></div>
+      <div><div class="t" id="rankName">Wanderer</div><div class="s" id="rankSub">0 of 0 deeds done</div></div>
+    </div>
+    <button class="leave" id="leave">LEAVE</button>
+  </div>
+
+  <section class="now"><div class="now-in" id="nowBox"></div></section>
+
+  <div class="mapwrap">
+    <div class="maph">
+      <h3>The road ahead</h3>
+      <span id="roadSub"></span>
+    </div>
+    <div class="realms" id="realms"></div>
+  </div>
+</main>
+
+<div class="ov" id="ov"><div class="sheet" style="position:relative">
+  <button class="x" data-close>&times;</button><div id="sheetBody"></div></div></div>
+<div class="toast" id="toast"></div>
+
+<script>window.FB_READY=new Promise(r=>{window.__fbDone=r;setTimeout(()=>r(null),8000)});</script>
+<script src="firebase-config.js" onerror="void 0"></script>
+<script type="module">
+(async()=>{
+  const cfg=window.FIREBASE_CONFIG;
+  if(!cfg||!cfg.projectId) return null;
+  try{
+    const {initializeApp}=await import('https://www.gstatic.com/firebasejs/11.0.2/firebase-app.js');
+    const {getFirestore,doc,getDoc,setDoc}=await import('https://www.gstatic.com/firebasejs/11.0.2/firebase-firestore.js');
+    return {db:getFirestore(initializeApp(cfg)),doc,getDoc,setDoc};
+  }catch(e){ console.warn('offline',e.message); return null; }
+})().then(window.__fbDone);
+</script>
+<script>
+/* =================================================================
+   THE ROAD — thirteen realms, one week at a time.
+   Week length comes from the syllabus hours, so the heavy units get
+   the time they deserve rather than an equal slice.
+   ================================================================= */
+const START='2026-09-14';           // first Monday of the road
+const REALMS=[
+ {n:'The Threshold',            u:'Basic Concepts of ICT',  w:2, h:28,
+  lore:'Every road begins with a question: what is this thing we call a computer?',
+  t:['What ICT means, and where it sits in the world','Ethics and the rules we are held to',
+     'How computing changed society','A short history, first machines to now']},
+ {n:"The Ancestors' Road",      u:'Evolution of Computers', w:2, h:22,
+  lore:'Walk past the machines that came before. Each one solved a problem you now take for granted.',
+  t:['The five generations, and what changed each time','Vacuum tubes to transistors to chips',
+     'Hardware that shaped each era','Why the old limits still matter']},
+ {n:'The Binary Caves',         u:'Data Representation',    w:1, h:18,
+  lore:'Down here everything is ones and noughts. Learn to read in the dark.',
+  t:['Binary, denary and hexadecimal, and moving between them','Signed numbers and two’s complement',
+     'Adding and subtracting in binary','Characters, ASCII and Unicode']},
+ {n:'The Gate Forge',           u:'Digital Circuits',       w:2, h:26,
+  lore:'Here logic is hammered into metal. AND, OR, NOT — the three smiths of the forge.',
+  t:['AND, OR, NOT, NAND, NOR, XOR','Truth tables and Boolean algebra',
+     'Half adders and full adders','Flip-flops and holding a value']},
+ {n:'The Engine Halls',         u:'Operating Systems',      w:2, h:22,
+  lore:'Something must decide who runs next. In the halls below, the scheduler never sleeps.',
+  t:['What an operating system actually does','Process states and how they change',
+     'FCFS, SJF and round robin','Memory, files and deadlock']},
+ {n:'The Signal Sea',           u:'Data Communication & Networking', w:4, h:50,
+  lore:'A wide crossing. Messages travel in layers, and every layer keeps its own secrets.',
+  t:['The OSI model, layer by layer','TCP/IP and how it differs',
+     'Topologies: bus, star, ring, mesh','Cables, fibre and wireless',
+     'IP addressing and subnetting','Switches, routers and what they each do']},
+ {n:"The Architect's Tower",    u:'System Analysis & Design', w:5, h:68,
+  lore:'The tallest tower on the road, and the one most travellers underestimate. Twenty marks live here.',
+  t:['The SDLC, stage by stage','Gathering requirements properly',
+     'Data flow diagrams, levels 0 and 1','ER modelling for a real system',
+     'UML: use case and class diagrams','Testing, rollout and maintenance',
+     'Past paper questions on design']},
+ {n:'The Hall of Records',      u:'Database Management',    w:4, h:50,
+  lore:'Every fact ever kept, filed and cross-filed. Ask it properly and it answers.',
+  t:['Why databases beat flat files','ER diagrams into tables',
+     'Keys: primary, foreign, composite','Normalisation to 1NF, 2NF, 3NF',
+     'SELECT, WHERE, JOIN, GROUP BY','Writing SQL under exam pressure']},
+ {n:"The Serpent's Keep",       u:'Programming',            w:5, h:74,
+  lore:'The longest climb. The serpent is patient and does not bite those who practise.',
+  t:['Variables, types and input','if, elif, else — and nesting them',
+     'for and while loops','Lists, tuples and dictionaries',
+     'Functions and passing values','Files: reading and writing',
+     'Classes and objects','Tracing code by hand, as the paper asks']},
+ {n:"The Weaver's City",        u:'Web Development',        w:4, h:60,
+  lore:'Streets of markup and style. Build something that stands, then make it beautiful.',
+  t:['HTML structure and the tags that matter','CSS: selectors, the box model, layout',
+     'Forms and how data is sent','PHP basics and handling a form',
+     'Talking to MySQL from PHP','Putting a small site together end to end']},
+ {n:'The Clockwork Grove',      u:'Internet of Things',     w:1, h:15,
+  lore:'Trees that listen. Small machines, quietly measuring the world.',
+  t:['What IoT is and where it is used','Arduino: board, pins, sketch',
+     'Sensors and actuators','A simple circuit, start to finish']},
+ {n:'The Merchant Quarter',     u:'ICT in Business',        w:1, h:12,
+  lore:'Coin changes hands here without ever being touched.',
+  t:['E-commerce models: B2B, B2C, C2C','Payment systems and trust',
+     'Digital marketing, briefly','ICT inside an organisation']},
+ {n:'The Far Horizon',          u:'New Trends',             w:1, h:12,
+  lore:'The edge of the map, where the road turns to mist and the future begins.',
+  t:['AI and machine learning, in outline','Blockchain and what it is for',
+     'Cloud computing and its models','Where all of this is heading']},
+ {n:'The Proving Grounds',      u:'Papers & revision',      w:3, h:0,
+  lore:'No new ground. Only the road behind you, walked again at speed.',
+  t:['Full paper, timed, no notes','Mark it honestly and list every gap',
+     'Go back for the weakest realm','Second full paper, timed',
+     'Model papers and predicted questions','Final pass on formulas and definitions']}
+];
+const RANKS=[[0,'Wanderer'],[10,'Pathfinder'],[25,'Wayfarer'],[40,'Trailblazer'],
+             [55,'Realm-Walker'],[70,'Gatekeeper'],[85,'Roadmaster'],[100,'Exam-Ready']];
+const SIGILS=['M4 18h16M7 18V9l5-4 5 4v9','M3 17h18M6 17V7h12v10M9 10h6',
+ 'M5 7h14M5 12h14M5 17h9','M4 12h4m8 0h4M8 8h8v8H8z','M4 6h16v12H4zM8 10h8M8 14h5',
+ 'M3 12c3-5 15-5 18 0-3 5-15 5-18 0M12 9v6','M12 3l8 5v8l-8 5-8-5V8z M12 3v18',
+ 'M4 7c0-2 16-2 16 0v10c0 2-16 2-16 0zM4 12c0 2 16 2 16 0','M6 8c4-3 8 3 12 0M6 16c4-3 8 3 12 0M4 12h16',
+ 'M3 8h18v11H3zM3 8l4-4h10l4 4M8 13h8','M12 3v6M7 9h10l-2 10H9zM10 13h4',
+ 'M4 19h16M7 19V9l5-3 5 3v10M10 13h4','M3 15c4-8 14-8 18 0M12 5v4M6 19h12',
+ 'M5 5h14v14H5zM9 12l2 2 4-4'];
+
+const $=(s,r=document)=>r.querySelector(s), $$=(s,r=document)=>[...r.querySelectorAll(s)];
+const esc=s=>String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+let FB=null, CODE='', DONE=new Set(), WEEKS=[];
+
+/* ---------- build the calendar once ---------- */
+(function plan(){
+  let w=0;
+  REALMS.forEach((r,ri)=>{
+    /* deal the deeds out round-robin, so every week gets something */
+    const buckets=Array.from({length:r.w},()=>[]);
+    r.t.forEach((task,i)=>buckets[i%r.w].push(task));
+    if(r.h) buckets[r.w-1].push('Past paper questions on '+r.u);
+    for(let k=0;k<r.w;k++){
+      const from=new Date(START); from.setDate(from.getDate()+w*7);
+      const to=new Date(from); to.setDate(to.getDate()+6);
+      WEEKS.push({ i:w, realm:ri, part:k+1, of:r.w, from, to, tasks:buckets[k] });
+      w++;
+    }
+  });
+})();
+const fmt=d=>d.toLocaleDateString('en-GB',{day:'numeric',month:'short'});
+const weekNow=()=>{
+  const t=Date.now();
+  for(const wk of WEEKS){ if(t < wk.to.getTime()+864e5) return wk.i; }
+  return WEEKS.length-1;
+};
+const allTasks=()=>WEEKS.reduce((a,w)=>a+w.tasks.length,0);
+const key=(wi,ti)=>`w${wi}t${ti}`;
+
+/* ---------- stars ---------- */
+(function sky(){
+  const c=$('#sky'); if(!c) return;
+  if(matchMedia('(prefers-reduced-motion: reduce)').matches){ c.style.display='none'; return; }
+  const x=c.getContext('2d'); let st=[],W,H,dpr;
+  function build(){ dpr=Math.min(devicePixelRatio||1,2);
+    W=c.width=innerWidth*dpr; H=c.height=innerHeight*dpr;
+    c.style.width=innerWidth+'px'; c.style.height=innerHeight+'px';
+    st=Array.from({length:Math.min(120,Math.round(innerWidth*innerHeight/14000))},()=>({
+      x:Math.random()*W,y:Math.random()*H,r:(Math.random()*1.3+.3)*dpr,
+      a:Math.random(),s:.004+Math.random()*.012}));}
+  function step(){ x.clearRect(0,0,W,H);
+    for(const s of st){ s.a+=s.s; const o=.25+Math.abs(Math.sin(s.a))*.75;
+      x.globalAlpha=o; x.fillStyle=o>.85?'#F2C14E':'#CFE6FF';
+      x.beginPath(); x.arc(s.x,s.y,s.r,0,6.2832); x.fill(); }
+    x.globalAlpha=1; requestAnimationFrame(step); }
+  addEventListener('resize',build); build(); step();
+})();
+
+/* ---------- entering ---------- */
+const clean=v=>{
+  v=String(v||'').trim().toUpperCase().replace(/\s+/g,'');
+  if(/^\d+$/.test(v)) v='EICT-'+v.padStart(4,'0');
+  if(/^EICT\d+$/.test(v)) v='EICT-'+v.slice(4).padStart(4,'0');
+  return v;
+};
+$('#go').onclick=enter;
+$('#sid').addEventListener('keydown',e=>{ if(e.key==='Enter') enter(); });
+
+async function enter(){
+  const code=clean($('#sid').value);
+  if(!/^EICT-\d{4}$/.test(code)){
+    $('#gerr').textContent='That does not look like a student number. It reads like EICT-0007.'; return; }
+  $('#gerr').textContent=''; CODE=code;
+  FB=await window.FB_READY;
+  if(FB){
+    try{ const d=await FB.getDoc(FB.doc(FB.db,'journey',code));
+         if(d.exists()) DONE=new Set(d.data().done||[]); }catch(e){}
+  }
+  const o=$('#open'); o.classList.add('on');
+  setTimeout(()=>o.classList.add('go'),700);
+  setTimeout(()=>{ o.classList.remove('on','go');
+    $('#gate').classList.add('hide'); $('#world').classList.remove('hide'); paint(); },2100);
+}
+$('#leave').onclick=()=>location.reload();
+
+/* ---------- saving ---------- */
+let saveT=null;
+function save(){
+  if(!FB||!CODE) return;
+  clearTimeout(saveT);
+  saveT=setTimeout(()=>FB.setDoc(FB.doc(FB.db,'journey',CODE),
+    {done:[...DONE],at:new Date().toISOString()}).catch(()=>{}),700);
+}
+function toast(t){ const e=$('#toast'); e.textContent=t; e.classList.add('on');
+  setTimeout(()=>e.classList.remove('on'),2200); }
+
+/* ---------- painting ---------- */
+function paint(){
+  const total=allTasks(), done=DONE.size, pc=total?Math.round(done/total*100):0;
+  $('#hail').textContent='Traveller '+CODE.replace('EICT-','');
+  $('#sidOut').textContent=CODE;
+  $('#pct').textContent=pc+'%';
+  $('#ringFg').style.strokeDashoffset=(113*(1-pc/100)).toFixed(1);
+  $('#rankName').textContent=[...RANKS].reverse().find(r=>pc>=r[0])[1];
+  $('#rankSub').textContent=`${done} of ${total} deeds done`;
+
+  const wi=weekNow(), wk=WEEKS[wi], r=REALMS[wk.realm];
+  const left=WEEKS.length-wi-1;
+  $('#roadSub').textContent=`${WEEKS.length} weeks · ${left} still ahead · ends ${fmt(WEEKS[WEEKS.length-1].to)}`;
+
+  $('#nowBox').innerHTML=`
+    <div class="k">This week · ${fmt(wk.from)} to ${fmt(wk.to)}</div>
+    <h2>${esc(r.n)}</h2>
+    <div class="sub">${esc(r.u)}${r.of>1?` · part ${wk.part} of ${r.w}`:''} — ${wk.tasks.length} deeds</div>
+    ${wk.tasks.map((t,ti)=>{const k=key(wi,ti), on=DONE.has(k);
+      return `<div class="task ${on?'on':''}" data-k="${k}">
+        <span class="box"><svg viewBox="0 0 24 24"><path d="M4 12l5 5L20 6"/></svg></span>
+        <span class="tx">${esc(t)}<span class="tg">${on?'done':'to do'}</span></span></div>`;}).join('')}`;
+
+  $('#realms').innerHTML=REALMS.map((rl,ri)=>{
+    const mine=WEEKS.filter(w=>w.realm===ri);
+    const tot=mine.reduce((a,w)=>a+w.tasks.length,0);
+    const dn=mine.reduce((a,w)=>a+w.tasks.filter((_,ti)=>DONE.has(key(w.i,ti))).length,0);
+    const state=dn===tot&&tot?'done':(ri===wk.realm?'here':(mine[0].i<wi?'':'far'));
+    const p=tot?Math.round(dn/tot*100):0;
+    return `<button class="realm ${state}" data-r="${ri}">
+      <span class="sigil"><svg viewBox="0 0 24 24"><path d="${SIGILS[ri]}"/></svg></span>
+      <span><span class="rn">${esc(rl.n)}</span>
+        <span class="rs">${esc(rl.u)}${rl.h?` · ${rl.h} hours`:''}</span>
+        <span class="rbar"><i style="width:${p}%"></i></span></span>
+      <span class="rmeta"><b>${dn}/${tot}</b>${fmt(mine[0].from)}<br>${fmt(mine[mine.length-1].to)}</span>
+    </button>`;}).join('');
+}
+
+/* ---------- one realm, up close ---------- */
+function openRealm(ri){
+  const rl=REALMS[ri], mine=WEEKS.filter(w=>w.realm===ri), wi=weekNow();
+  $('#sheetBody').innerHTML=`<div class="k">Realm ${String(ri+1).padStart(2,'0')} of ${REALMS.length}</div>
+    <h3>${esc(rl.n)}</h3>
+    <div class="rs" style="font-family:var(--m);font-size:12px;color:var(--dim)">${esc(rl.u)}${rl.h?` · ${rl.h} hours of the syllabus`:''}</div>
+    <div class="lore">${esc(rl.lore)}</div>
+    ${mine.map(w=>`<div class="wk ${w.i===wi?'now':''}">
+      <div class="wk-h"><b>Week ${w.i+1}${rl.w>1?` · part ${w.part}`:''}</b>
+        <span>${fmt(w.from)} – ${fmt(w.to)}${w.i===wi?' · you are here':''}</span></div>
+      ${w.tasks.map((t,ti)=>{const k=key(w.i,ti), on=DONE.has(k);
+        return `<div class="task ${on?'on':''}" data-k="${k}">
+          <span class="box"><svg viewBox="0 0 24 24"><path d="M4 12l5 5L20 6"/></svg></span>
+          <span class="tx">${esc(t)}</span></div>`;}).join('')}
+    </div>`).join('')}`;
+  $('#ov').classList.add('on'); document.body.style.overflow='hidden';
+}
+
+document.addEventListener('click',e=>{
+  const t=e.target.closest('[data-k]');
+  if(t){ const k=t.dataset.k;
+    if(DONE.has(k)) DONE.delete(k);
+    else{ DONE.add(k);
+      const n=DONE.size, tot=allTasks();
+      if(n===tot) toast('The road is walked. Go and sit it.');
+      else if(n%10===0) toast(`${n} deeds done — ${[...RANKS].reverse().find(r=>Math.round(n/tot*100)>=r[0])[1]}`);
+    }
+    save();
+    paint();                                   // the map and the rank move
+    $$('[data-k="'+k+'"]').forEach(el=>{        // and any copy of this deed on screen
+      el.classList.toggle('on',DONE.has(k));
+      const tg=el.querySelector('.tg'); if(tg) tg.textContent=DONE.has(k)?'done':'to do';
+    });
+    return; }
+  const r=e.target.closest('[data-r]'); if(r) return openRealm(+r.dataset.r);
+  if(e.target.closest('[data-close]')||e.target.classList.contains('ov')){
+    $('#ov').classList.remove('on'); document.body.style.overflow=''; }
+});
+document.addEventListener('keydown',e=>{ if(e.key==='Escape'){
+  $('#ov').classList.remove('on'); document.body.style.overflow=''; }});
+</script>
+</body>
+</html>
