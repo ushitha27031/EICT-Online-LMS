@@ -11,7 +11,7 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
 <!-- End Google Tag Manager -->
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>EICT — Mission Control</title>
-<meta name="version" content="3.4.0">
+<meta name="version" content="3.5.1">
 <meta name="theme-color" content="#070B1F">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -220,6 +220,23 @@ a{color:inherit;text-decoration:none}
 .gates{display:flex;gap:8px;flex-wrap:wrap;margin:10px 0}
 .gates button{padding:9px 14px;border-radius:9px;border:1px solid var(--edge);font-family:var(--m);font-size:13px}
 .gates button.on{background:var(--cyan);color:#04202B;border-color:var(--cyan)}
+.burst{position:fixed;left:50%;top:34%;transform:translateX(-50%);z-index:96;pointer-events:none;
+  text-align:center;opacity:0}
+.burst.on{animation:burst 2.4s cubic-bezier(.2,.8,.2,1) forwards}
+.burst b{display:block;font-family:var(--d);font-weight:700;font-size:clamp(44px,10vw,76px);
+  color:#FFC93C;text-shadow:0 0 34px rgba(255,201,60,.85),0 6px 22px rgba(0,0,0,.6)}
+.burst span{display:block;font-family:var(--m);font-size:13px;letter-spacing:.22em;
+  text-transform:uppercase;color:#EAF0FF;margin-top:6px}
+@keyframes burst{
+  0%{opacity:0;transform:translateX(-50%) scale(.5)}
+  16%{opacity:1;transform:translateX(-50%) scale(1.14)}
+  28%{transform:translateX(-50%) scale(1)}
+  74%{opacity:1;transform:translateX(-50%) scale(1)}
+  100%{opacity:0;transform:translateX(-50%) translateY(-42px) scale(.96)}}
+.spark{position:fixed;z-index:95;pointer-events:none;width:9px;height:9px;border-radius:50%;
+  background:radial-gradient(circle at 34% 30%,#FFE79A,#FFC93C 62%,#B67F00);box-shadow:0 0 11px #FFC93C}
+.chip.pop{animation:chippop .6s cubic-bezier(.2,.9,.2,1)}
+@keyframes chippop{0%{transform:scale(1)}40%{transform:scale(1.22);border-color:#FFC93C}100%{transform:scale(1)}}
 .toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%) translateY(90px);z-index:95;
   padding:13px 24px;border-radius:999px;font-family:var(--d);font-weight:700;
   background:var(--gold);color:#23180A;transition:transform .35s cubic-bezier(.2,.8,.2,1)}
@@ -318,6 +335,7 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
 <div class="ov" id="ov"><div class="sheet"><button class="x" data-close>&times;</button>
   <div id="sheetBody"></div></div></div>
 <div class="toast" id="toast"></div>
+<div class="burst" id="burst"><b></b><span></span></div>
 
 <script>window.FB_READY=new Promise(r=>{window.__fbDone=r;setTimeout(()=>r(null),8000)});</script>
 <script src="firebase-config.js" onerror="void 0"></script>
@@ -405,9 +423,16 @@ const nextRank=e=>RANKS.find(r=>e<r[0]);
 
 let NAME='', UID='', PROFILE={};
 
+let READY=false;
 async function boot(){
+  $('#goBtn').disabled=true; $('#goBtn').style.opacity='.6';
+  $('#gerr').textContent='Connecting…';
   FB=await window.FB_READY;
-  if(!FB){ $('#gerr').textContent='Cannot reach the database. Try again in a moment.'; return; }
+  if(!FB){ $('#gerr').innerHTML='Cannot reach the database.<br>'
+    +'<span style="color:#93A0C8">firebase-config.js may be missing next to this page.</span>'; return; }
+  READY=true;
+  $('#goBtn').disabled=false; $('#goBtn').style.opacity='';
+  $('#gerr').textContent='';
   FB.onAuthStateChanged(FB.auth, async u=>{
     if(!u) return;                       /* still on the gate */
     UID=u.uid;
@@ -417,8 +442,14 @@ async function boot(){
       PROFILE=d.data();
       CODE=PROFILE.code||'';
       NAME=PROFILE.name||'Student';
-      if(!CODE){ $('#gerr').textContent='Your account has no student number yet. Ask sir to add one.'; return; }
-    }catch(e){ $('#gerr').textContent='Could not read your record: '+(e.code||e.message); return; }
+      if(!CODE){ $('#goBtn').disabled=false;
+        $('#gerr').textContent='Your account has no student number yet. Ask sir to add one.'; return; }
+    }catch(e){
+      $('#goBtn').disabled=false;
+      $('#gerr').innerHTML=/permission/i.test(e.code||'')
+        ? 'Your account cannot read its own record.<br><span style="color:#93A0C8">Sir needs to update the database rules.</span>'
+        : 'Could not read your record: '+(e.code||e.message);
+      return; }
     await loadAll();
     launch();
   });
@@ -433,8 +464,12 @@ async function loadAll(){
                        SPENT=+j.data().spent||0; SENT=j.data().sent||{}; } }catch(e){}
   try{ FB.onSnapshot(FB.doc(FB.db,'marks',CODE),s=>{
          const d=s.exists()?s.data():{};
+         const before=BONUS, hadMarks=Object.keys(MARKS).length;
          MARKS=d.weeks||{}; BONUS=+d.bonus||0;
-         if(!$('#app').classList.contains('hide')) paint(); }); }catch(e){}
+         const live=!$('#app').classList.contains('hide');
+         if(live && BONUS>before) coinBurst(BONUS-before,'from sir');
+         else if(live && Object.keys(MARKS).length>hadMarks) coinBurst(0,'a paper was marked');
+         if(live) paint(); }); }catch(e){}
 }
 function launch(){
   const w=$('#warp'); w.classList.add('on');
@@ -443,12 +478,25 @@ function launch(){
     $('#gate').classList.add('hide'); $('#app').classList.remove('hide'); paint(); },1950);
 }
 async function enter(){
+  if(!READY){                       /* clicked before Firebase finished loading */
+    $('#gerr').textContent='Still connecting, one moment…';
+    FB=await window.FB_READY;
+    if(!FB){ $('#gerr').textContent='Cannot reach the database.'; return; }
+    READY=true;
+  }
   const em=$('#em').value.trim(), pw=$('#pw').value;
   if(!em||!pw){ $('#gerr').textContent='Fill in both boxes.'; return; }
-  $('#gerr').textContent='Checking…';
-  try{ await FB.signInWithEmailAndPassword(FB.auth,em,pw); $('#gerr').textContent=''; }
-  catch(e){ $('#gerr').textContent=/invalid|wrong|credential/i.test(e.code||'')
-    ? 'Wrong email or password.' : (e.code||e.message); }
+  $('#gerr').textContent='Checking…'; $('#goBtn').disabled=true;
+  try{ await FB.signInWithEmailAndPassword(FB.auth,em,pw); $('#gerr').textContent='Opening…'; }
+  catch(e){
+    $('#goBtn').disabled=false;
+    const c=e.code||'';
+    $('#gerr').textContent = /invalid-credential|wrong-password|user-not-found/.test(c)
+      ? 'Wrong email or password.'
+      : /too-many-requests/.test(c) ? 'Too many tries. Wait a minute and try again.'
+      : /network/.test(c) ? 'No connection. Check your internet.'
+      : (c||e.message);
+  }
 }
 $('#goBtn').onclick=enter;
 ['#em','#pw'].forEach(q=>$(q).addEventListener('keydown',e=>{ if(e.key==='Enter') enter(); }));
@@ -462,6 +510,50 @@ function save(){ if(!FB||!CODE) return; clearTimeout(sv);
      at:new Date().toISOString()},{merge:true}).catch(()=>{}),600); }
 function toast(t){const e=$('#toast');e.textContent=t;e.classList.add('on');
   setTimeout(()=>e.classList.remove('on'),2300);}
+
+/* a gain worth noticing */
+function coinBurst(n,why){
+  const b=$('#burst'); if(!b) return;
+  b.querySelector('b').textContent=(n>0?'+':'')+n;
+  b.querySelector('span').textContent=why||'coins';
+  b.classList.remove('on'); void b.offsetWidth; b.classList.add('on');
+  const chip=$('.chip'); if(chip){ chip.classList.remove('pop'); void chip.offsetWidth; chip.classList.add('pop'); }
+  if(!matchMedia('(prefers-reduced-motion: reduce)').matches) sparks();
+  try{ const A=new (window.AudioContext||window.webkitAudioContext)();
+    [880,1320,1760].forEach((f,i)=>{ const o=A.createOscillator(), g=A.createGain();
+      o.type='triangle'; o.frequency.value=f;
+      g.gain.setValueAtTime(0,A.currentTime+i*.07);
+      g.gain.linearRampToValueAtTime(.22,A.currentTime+i*.07+.02);
+      g.gain.exponentialRampToValueAtTime(.001,A.currentTime+i*.07+.3);
+      o.connect(g); g.connect(A.destination);
+      o.start(A.currentTime+i*.07); o.stop(A.currentTime+i*.07+.32); });
+  }catch(e){}
+}
+function sparks(){
+  const cx=innerWidth/2, cy=innerHeight*0.36;
+  for(let i=0;i<18;i++){
+    const s=document.createElement('div'); s.className='spark';
+    s.style.left=cx+'px'; s.style.top=cy+'px'; document.body.appendChild(s);
+    const a=Math.random()*Math.PI*2, d=90+Math.random()*190;
+    s.animate([{transform:'translate(0,0) scale(1)',opacity:1},
+      {transform:`translate(${Math.cos(a)*d}px,${Math.sin(a)*d+120}px) scale(.2)`,opacity:0}],
+      {duration:1100+Math.random()*700,easing:'cubic-bezier(.2,.7,.3,1)'}).onfinish=()=>s.remove();
+  }
+}
+/* count up rather than jumping */
+let shownCoins=null, rollT=null;
+function rollCoins(to){
+  const el=$('#coinN'); if(!el) return;
+  if(shownCoins===null){ shownCoins=to; el.textContent=to; return; }
+  const from=shownCoins; shownCoins=to;
+  if(from===to){ el.textContent=to; return; }
+  clearInterval(rollT); const t0=performance.now(), dur=900;
+  rollT=setInterval(()=>{
+    const k=Math.min(1,(performance.now()-t0)/dur);
+    el.textContent=Math.round(from+(to-from)*(1-Math.pow(1-k,3)));
+    if(k>=1) clearInterval(rollT);
+  },30);
+}
 
 const weekNow=()=>{ const t=Date.now();
   for(let i=0;i<ROAD.weeks.length;i++){ const w=ROAD.weeks[i];
@@ -478,7 +570,7 @@ function paint(){
     ?'linear-gradient(150deg,#A87BFF,#FF4D6D)':'linear-gradient(150deg,#38E1FF,#A87BFF)';
   $('#rankName').textContent=rk[1];
   $('#sidOut').textContent=CODE;
-  $('#coinN').textContent=t.coins;
+  rollCoins(t.coins);
   $('#gradeBox').className='grade '+g[1];
   $('#gradeLetter').textContent=g[0];
   $('#gradeSub').textContent=avg===null?'NO PAPERS':avg+'% \u00B7 '+g[2].toUpperCase();
@@ -724,7 +816,7 @@ document.addEventListener('click',e=>{
   if(t){ const k=t.dataset.k;
     if(DONE.has(k)) DONE.delete(k); else DONE.add(k);
     t.classList.toggle('on',DONE.has(k)); save(); paint();
-    if(DONE.has(k)) toast('+5 coins'); return; }
+    if(DONE.has(k)) coinBurst(5,'exercise done'); return; }
   const bu=e.target.closest('[data-buy]');
   if(bu){ const it=SHOP.find(x=>x.id===bu.dataset.buy); const t2=totals();
     if(!it||t2.coins<it.cost) return;
