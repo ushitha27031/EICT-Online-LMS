@@ -11,7 +11,7 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
 <!-- End Google Tag Manager -->
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>EICT — Mission Control</title>
-<meta name="version" content="3.7.0">
+<meta name="version" content="3.8.0">
 <meta name="theme-color" content="#070B1F">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -155,6 +155,47 @@ a{color:inherit;text-decoration:none}
 .ov{position:fixed;inset:0;z-index:90;display:none;place-items:center;padding:16px;
   background:rgba(4,7,20,.88);backdrop-filter:blur(10px)}
 .ov.on{display:grid}
+.ov.big{padding:10px}
+.ov.big .sheet{width:min(1180px,100%);max-height:95svh}
+.wsHead{display:flex;align-items:baseline;gap:12px;flex-wrap:wrap;margin-bottom:16px}
+.wsHead h3{margin:0}
+.wsHead span{font-family:var(--m);font-size:10.5px;letter-spacing:.16em;text-transform:uppercase;color:var(--dimmer)}
+.twocol{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+@media(max-width:820px){.twocol{grid-template-columns:1fr}}
+.pane{border:1px solid var(--edge);border-radius:12px;background:rgba(0,0,0,.26);padding:14px}
+.pane h5{font-family:var(--d);font-size:12.5px;letter-spacing:.12em;text-transform:uppercase;
+  color:var(--gold);margin:0 0 10px}
+.code{width:100%;min-height:300px;padding:14px;border-radius:11px;background:#060A18;
+  border:1px solid var(--edge);color:#DCE6FF;font-family:var(--m);font-size:14px;
+  line-height:1.75;resize:vertical;tab-size:2}
+.code:focus{outline:none;border-color:var(--cyan)}
+.bigin{width:100%;padding:14px 16px;border-radius:11px;background:rgba(0,0,0,.35);
+  border:1px solid var(--edge);color:var(--ink);font-family:var(--m);font-size:16px}
+.bigin:focus{outline:none;border-color:var(--cyan)}
+table.tt{width:100%;border-collapse:collapse;font-family:var(--m);font-size:13.5px}
+table.tt th{text-align:left;padding:8px 10px;border-bottom:1px solid var(--edge2);
+  color:var(--gold);font-weight:500;white-space:nowrap}
+table.tt td{padding:7px 10px;border-bottom:1px solid rgba(255,255,255,.06);white-space:nowrap}
+table.tt tr:hover td{background:rgba(56,225,255,.07)}
+table.tt td.one{color:var(--lime);font-weight:600}
+table.tt td.zero{color:var(--dimmer)}
+.baserow{display:grid;grid-template-columns:92px 1fr;gap:12px;align-items:center;
+  padding:12px 0;border-bottom:1px solid rgba(255,255,255,.07)}
+.baserow b{font-family:var(--m);font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--dim)}
+.baseval{font-family:var(--m);font-size:21px;color:var(--cyan);word-break:break-all}
+.step{display:flex;gap:13px;padding:11px 0;border-bottom:1px solid rgba(255,255,255,.07)}
+.step i{font-style:normal;width:26px;height:26px;flex:none;border-radius:8px;display:grid;
+  place-items:center;font-family:var(--m);font-size:12px;background:rgba(56,225,255,.15);color:var(--cyan)}
+.step b{display:block;font-family:var(--m);font-size:15px;color:var(--ink)}
+.step span{display:block;font-size:12.5px;color:var(--dim);margin-top:3px}
+.pins{display:flex;gap:10px;align-items:center;margin:12px 0}
+.pin{padding:11px 18px;border-radius:10px;border:1px solid var(--edge2);font-family:var(--m);font-size:15px}
+.pin.hi{background:var(--lime);color:#04240F;border-color:var(--lime)}
+.lamp{width:42px;height:42px;border-radius:50%;border:2px solid var(--edge2);display:grid;
+  place-items:center;font-family:var(--d);font-weight:700;font-size:17px;transition:.2s}
+.lamp.hi{background:var(--lime);color:#04240F;border-color:var(--lime);box-shadow:0 0 20px rgba(124,242,155,.7)}
+.prev{width:100%;height:420px;border-radius:11px;border:1px solid var(--edge);background:#fff}
+.openTool{width:100%;margin-top:12px}
 .sheet{width:min(680px,100%);max-height:90svh;overflow:auto;border-radius:18px;position:relative;
   border:1px solid var(--edge2);background:linear-gradient(165deg,var(--raise),var(--deep));
   padding:clamp(20px,3.4vw,30px);animation:rise .35s cubic-bezier(.2,.8,.2,1)}
@@ -663,8 +704,8 @@ function paintShop(){
       (it.u?'<span style="font-family:var(--m);font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:#6A77A0">'+esc(it.u)+'</span>':'')+
       '<p>'+esc(it.d)+'</p>'+
       (own?'<span class="price">UNLOCKED</span>'+
-           (it.ext?'<a class="btn b1" style="width:100%;margin-top:12px" href="'+esc(it.ext)+'" target="_blank" rel="noopener">Launch</a>':'')+
-           (!it.ext&&it.id!=='skin'?'<div class="tool">'+tool(it.id)+'</div>':'')
+           (it.ext?'<a class="btn b1 openTool" href="'+esc(it.ext)+'" target="_blank" rel="noopener">Launch</a>':'')+
+           (!it.ext&&it.id!=='skin'?'<button class="btn b1 openTool" data-tool="'+it.id+'">Open</button>':'')
          :'<button class="btn '+(t.coins>=it.cost?'b1':'b2')+'" data-buy="'+it.id+'"'+
            (t.coins<it.cost?' disabled style="opacity:.5"':'')+'><span class="coin"></span>'+it.cost+'</button>')+
     '</div>';}).join('')+'</div>';
@@ -727,32 +768,392 @@ function runGate(g){
   return '<b>A B \u2192 Q</b><br>'+[[0,0],[0,1],[1,0],[1,1]]
     .map(p=>p[0]+' '+p[1]+' \u2192 '+(f(!!p[0],!!p[1])?1:0)).join('<br>');
 }
-/* Boolean expression to truth table. Only the characters below are ever
-   evaluated, so nothing else can be smuggled in. */
-function runBool(src){
-  let v=String(src||'').replace(/\s+/g,'').replace(/\u2019/g,"'");
-  if(!v) return 'Waiting\u2026';
-  if(!/^[A-Da-d01.+'!^()~]+$/.test(v)) return 'Use only A to D, and . + \u2019 ! ^ ( )';
-  v=v.toUpperCase();
-  const vars=[...new Set(v.match(/[A-D]/g)||[])].sort();
-  if(!vars.length) return 'Put at least one variable in, such as A.';
-  if(vars.length>4) return 'Four variables at most.';
-  let e=v, guard=0;
-  while(/[A-D01)]'/.test(e) && guard++<40)
-    e=e.replace(/(\([^()]*\)|[A-D01])'/g,'!($1)');
-  e=e.replace(/~/g,'!').replace(/\./g,'&&').replace(/\+/g,'||').replace(/\^/g,'!==');
-  let f;
-  try{ f=new Function(...vars,'return ('+e+')?1:0;'); }
-  catch(err){ return 'I cannot read that expression.'; }
+
+/* ===== Boolean algebra: parse, then simplify by named laws ===== */
+const V=n=>({t:'v',n}), C=k=>({t:'c',k}),
+      NOT=a=>({t:'not',a}), AND=g=>({t:'and',g}), OR=g=>({t:'or',g});
+
+function parseBool(src){
+  let s=String(src||'').replace(/\s+/g,'').replace(/\u2019/g,"'").toUpperCase();
+  if(!s) throw 'empty';
+  if(!/^[A-D01.+'!^()~]+$/.test(s)) throw 'Use only A to D and . + \u2019 ! ^ ( )';
+  let i=0;
+  const peek=()=>s[i], eat=c=>{ if(s[i]===c){i++;return true;} return false; };
+  function primary(){
+    let node;
+    if(eat('(')){ node=orExpr(); if(!eat(')')) throw 'missing )'; }
+    else if(eat('!')||eat('~')){ return NOT(primary()); }
+    else if(/[A-D]/.test(peek()||'')){ node=V(s[i++]); }
+    else if(peek()==='0'||peek()==='1'){ node=C(s[i++]==='1'?1:0); }
+    else throw 'unexpected '+(peek()||'end');
+    while(eat("'")) node=NOT(node);
+    return node;
+  }
+  function andExpr(){ const g=[primary()];
+    while(true){ if(eat('.')) g.push(primary());
+      else if(/[A-D(!~]/.test(peek()||'')) g.push(primary());   /* AB means A.B */
+      else break; }
+    return g.length>1?AND(g):g[0]; }
+  function xorExpr(){ let l=andExpr();
+    while(eat('^')){ const r=andExpr();
+      l=OR([AND([l,NOT(r)]),AND([NOT(l),r])]); }        /* expand XOR */
+    return l; }
+  function orExpr(){ const g=[xorExpr()];
+    while(eat('+')) g.push(xorExpr());
+    return g.length>1?OR(g):g[0]; }
+  const out=orExpr();
+  if(i<s.length) throw 'cannot read from "'+s.slice(i)+'"';
+  return out;
+}
+
+function show(n,top){
+  if(n.t==='v') return n.n;
+  if(n.t==='c') return String(n.k);
+  if(n.t==='not'){ const a=n.a;
+    return (a.t==='v'||a.t==='c')? show(a)+'\u2019' : '('+show(a,true)+')\u2019'; }
+  if(n.t==='and') return n.g.map(x=>x.t==='or'?'('+show(x,true)+')':show(x)).join('.');
+  if(n.t==='or'){ const b=n.g.map(show).join(' + '); return b; }
+  return '?';
+}
+const key=n=>{
+  if(n.t==='v') return n.n;
+  if(n.t==='c') return '#'+n.k;
+  if(n.t==='not') return '!'+key(n.a);
+  return n.t+'('+n.g.map(key).sort().join(',')+')';
+};
+const same=(a,b)=>key(a)===key(b);
+const isNotOf=(a,b)=>(a.t==='not'&&same(a.a,b))||(b.t==='not'&&same(b.a,a));
+
+/* flatten nested AND/AND and OR/OR */
+function flat(n){
+  if(n.t==='not') return NOT(flat(n.a));
+  if(n.t==='and'||n.t==='or'){
+    const g=[];
+    n.g.map(flat).forEach(x=>{ if(x.t===n.t) g.push(...x.g); else g.push(x); });
+    return g.length===1?g[0]:(n.t==='and'?AND(g):OR(g));
+  }
+  return n;
+}
+
+/* one pass of the laws; returns {node,rule,was,now} or null */
+function stepOnce(n){
+  let hit=null;
+  const walk=node=>{
+    if(hit) return node;
+    node=flat(node);
+    if(node.t==='not'){
+      const a=walk(node.a); if(hit) return NOT(a);
+      if(a.t==='not'){ hit={rule:'Double negation',law:'(x\u2019)\u2019 = x'}; return a.a; }
+      if(a.t==='c'){ hit={rule:'Constant',law:'0\u2019 = 1'}; return C(a.k?0:1); }
+      if(a.t==='and'){ hit={rule:'De Morgan',law:'(x.y)\u2019 = x\u2019 + y\u2019'};
+        return OR(a.g.map(NOT)); }
+      if(a.t==='or'){ hit={rule:'De Morgan',law:'(x+y)\u2019 = x\u2019.y\u2019'};
+        return AND(a.g.map(NOT)); }
+      return NOT(a);
+    }
+    if(node.t==='and'||node.t==='or'){
+      const isAnd=node.t==='and';
+      let g=node.g.map(walk); if(hit) return isAnd?AND(g):OR(g);
+      g=flat(isAnd?AND(g):OR(g)).g||g;
+
+      /* idempotent  x.x = x   /  x+x = x */
+      for(let i=0;i<g.length;i++) for(let j=i+1;j<g.length;j++)
+        if(same(g[i],g[j])){ hit={rule:'Idempotent',law:isAnd?'x.x = x':'x+x = x'};
+          const h=g.slice(); h.splice(j,1); return h.length===1?h[0]:(isAnd?AND(h):OR(h)); }
+
+      /* complement  x.x\u2019 = 0  /  x+x\u2019 = 1 */
+      for(let i=0;i<g.length;i++) for(let j=i+1;j<g.length;j++)
+        if(isNotOf(g[i],g[j])){ hit={rule:'Complement',law:isAnd?'x.x\u2019 = 0':'x+x\u2019 = 1'};
+          return C(isAnd?0:1); }
+
+      /* identity and domination */
+      for(let i=0;i<g.length;i++) if(g[i].t==='c'){
+        const k=g[i].k;
+        if((isAnd&&k===1)||(!isAnd&&k===0)){
+          hit={rule:'Identity',law:isAnd?'x.1 = x':'x+0 = x'};
+          const h=g.slice(); h.splice(i,1); return h.length===1?h[0]:(isAnd?AND(h):OR(h)); }
+        hit={rule:'Domination',law:isAnd?'x.0 = 0':'x+1 = 1'}; return C(isAnd?0:1);
+      }
+
+      /* absorption  x + x.y = x   /  x.(x+y) = x */
+      for(let i=0;i<g.length;i++) for(let j=0;j<g.length;j++){
+        if(i===j) continue;
+        const a=g[i], b=g[j];
+        if(b.t===(isAnd?'or':'and') && b.g.some(x=>same(x,a))){
+          hit={rule:'Absorption',law:isAnd?'x.(x+y) = x':'x + x.y = x'};
+          const h=g.slice(); h.splice(j,1); return h.length===1?h[0]:(isAnd?AND(h):OR(h)); }
+      }
+
+      /* x + x\u2019.y = x + y  (and its dual) */
+      for(let i=0;i<g.length;i++) for(let j=0;j<g.length;j++){
+        if(i===j) continue;
+        const a=g[i], b=g[j];
+        if(b.t===(isAnd?'or':'and')){
+          const idx=b.g.findIndex(x=>isNotOf(x,a));
+          if(idx>=0){ hit={rule:'Absorption (second form)',
+              law:isAnd?'x.(x\u2019+y) = x.y':'x + x\u2019.y = x + y'};
+            const rest=b.g.filter((_,k)=>k!==idx);
+            const nb=rest.length===1?rest[0]:(isAnd?OR(rest):AND(rest));
+            const h=g.slice(); h[j]=nb; return isAnd?AND(h):OR(h); }
+        }
+      }
+
+      /* factor out a common term: x.y + x.z = x.(y+z) */
+      if(!isAnd){
+        const terms=g.filter(x=>x.t==='and');
+        if(terms.length>1){
+          const counts={};
+          terms.forEach(t=>t.g.forEach(f=>{ counts[key(f)]=(counts[key(f)]||0)+1; }));
+          const common=Object.keys(counts).find(k=>counts[k]===terms.length&&terms.length===g.length);
+          if(common){
+            const f=terms[0].g.find(x=>key(x)===common);
+            const rest=terms.map(t=>{ const r=t.g.filter(x=>key(x)!==common);
+              return r.length===0?C(1):r.length===1?r[0]:AND(r); });
+            hit={rule:'Distributive',law:'x.y + x.z = x.(y+z)'};
+            return AND([f,OR(rest)]);
+          }
+        }
+      }
+      return isAnd?AND(g):OR(g);
+    }
+    return node;
+  };
+  const out=walk(n);
+  return hit?{node:flat(out),...hit}:null;
+}
+
+function simplify(src){
+  let n=flat(parseBool(src));
+  const steps=[{expr:show(n),rule:'Start',law:''}];
+  for(let i=0;i<60;i++){
+    const r=stepOnce(n);
+    if(!r) break;
+    n=r.node;
+    const e=show(n);
+    if(steps[steps.length-1].expr===e && steps[steps.length-1].rule===r.rule) break;
+    steps.push({expr:e,rule:r.rule,law:r.law});
+  }
+  return {steps,final:show(n),node:n};
+}
+
+/* truth table, used to prove the simplification is honest */
+function tableOf(node,vars){
+  const ev=(n,env)=>{
+    if(n.t==='v') return env[n.n]?1:0;
+    if(n.t==='c') return n.k;
+    if(n.t==='not') return ev(n.a,env)?0:1;
+    if(n.t==='and') return n.g.every(x=>ev(x,env))?1:0;
+    return n.g.some(x=>ev(x,env))?1:0;
+  };
   const rows=[];
   for(let i=0;i<(1<<vars.length);i++){
-    const bits=vars.map((_,k)=>(i>>(vars.length-1-k))&1);
-    let q; try{ q=f(...bits.map(Boolean)); }catch(err){ return 'I cannot read that expression.'; }
-    rows.push(bits.join(' ')+' \u2192 '+q);
+    const env={}; vars.forEach((v,k)=>env[v]=(i>>(vars.length-1-k))&1);
+    rows.push({bits:vars.map(v=>env[v]),q:ev(node,env)});
   }
-  const ones=rows.filter(r=>r.endsWith('1')).length;
-  return '<b>'+vars.join(' ')+' \u2192 Q</b><br>'+rows.join('<br>')+
-    '<br><span style="color:#93A0C8">'+ones+' of '+rows.length+' rows give 1</span>';
+  return rows;
+}
+const varsIn=n=>{ const out=new Set();
+  (function w(x){ if(x.t==='v') out.add(x.n); else if(x.t==='not') w(x.a);
+    else if(x.g) x.g.forEach(w); })(n);
+  return [...out].sort(); };
+
+
+
+/* ================= the workspaces ================= */
+const GATE_SVG={
+ AND:'<path d="M18 12h22v40H18z" /><path d="M40 12a20 20 0 0 1 0 40" /><path d="M4 22h14M4 42h14M60 32h14"/>',
+ OR:'<path d="M16 12c14 8 14 32 0 40 20 0 34-8 44-20C50 20 36 12 16 12z"/><path d="M4 22h14M4 42h14M60 32h14"/>',
+ NOT:'<path d="M20 12l32 20-32 20z"/><circle cx="57" cy="32" r="5"/><path d="M4 32h16M62 32h12"/>',
+ NAND:'<path d="M18 12h22v40H18z"/><path d="M40 12a20 20 0 0 1 0 40"/><circle cx="65" cy="32" r="5"/><path d="M4 22h14M4 42h14M70 32h6"/>',
+ NOR:'<path d="M16 12c14 8 14 32 0 40 20 0 34-8 44-20C50 20 36 12 16 12z"/><circle cx="65" cy="32" r="5"/><path d="M4 22h14M4 42h14M70 32h6"/>',
+ XOR:'<path d="M22 12c14 8 14 32 0 40 20 0 34-8 44-20C56 20 42 12 22 12z"/><path d="M12 12c14 8 14 32 0 40"/><path d="M4 22h10M4 42h10M66 32h8"/>'};
+const GATE_WORD={AND:'Q is 1 only when both inputs are 1.',OR:'Q is 1 when either input is 1.',
+ NOT:'Q is the opposite of A.',NAND:'AND with the answer flipped. 1 unless both inputs are 1.',
+ NOR:'OR with the answer flipped. 1 only when both inputs are 0.',
+ XOR:'Q is 1 when the inputs differ.'};
+let gateSel='AND', gateA=0, gateB=0;
+
+function ws(title,unit,body){
+  $('#sheetBody').innerHTML='<div class="wsHead"><h3>'+esc(title)+'</h3><span>'+esc(unit)+'</span></div>'+body;
+  const ov=$('#ov'); ov.classList.add('on','big'); document.body.style.overflow='hidden';
+}
+function openTool(id){
+  const it=SHOP.find(x=>x.id===id)||{};
+  if(id==='bin'){
+    ws(it.n,it.u,'<input class="bigin t-bin" placeholder="45  \u00b7  0b101101  \u00b7  0o55  \u00b7  0x2D">'+
+      '<div style="font-family:var(--m);font-size:11.5px;color:#6A77A0;margin-top:8px">'+
+      'type in any base \u2014 plain digits are denary, or use 0b 0o 0x</div>'+
+      '<div class="o-bin" style="margin-top:16px"></div>');
+    bindBin();
+  }
+  else if(id==='gate'){ ws(it.n,it.u,'<div class="o-gate"></div>'); drawGate(); }
+  else if(id==='bool'){
+    ws(it.n,it.u,'<input class="bigin t-bool" value="A.B + A.B\u2019">'+
+      '<div style="font-family:var(--m);font-size:11.5px;color:#6A77A0;margin-top:8px">'+
+      '. is AND &nbsp; + is OR &nbsp; \u2019 or ! is NOT &nbsp; ^ is XOR &nbsp; AB also means A.B</div>'+
+      '<div class="o-bool" style="margin-top:16px"></div>');
+    const i=document.querySelector('.t-bool'); i.oninput=()=>{ $('.o-bool').innerHTML=runBool(i.value); };
+    $('.o-bool').innerHTML=runBool(i.value);
+  }
+  else if(id==='net'){
+    ws(it.n,it.u,'<input class="bigin t-net" value="192.168.1.10/24">'+
+      '<div class="o-net out2" style="margin-top:16px"></div>');
+    const i=document.querySelector('.t-net'); i.oninput=()=>{ $('.o-net').innerHTML=runNet(i.value); };
+    $('.o-net').innerHTML=runNet(i.value);
+  }
+  else if(id==='twos'){
+    ws(it.n,it.u,'<input class="bigin t-twos" placeholder="-45  or  11010011">'+
+      '<div class="o-twos out2" style="margin-top:16px"></div>');
+    const i=document.querySelector('.t-twos'); i.oninput=()=>{ $('.o-twos').innerHTML=runTwos(i.value); };
+  }
+  else if(id==='store'){
+    ws(it.n,it.u,'<input class="bigin t-store" placeholder="700 MB over 8 Mbps">'+
+      '<div class="o-store out2" style="margin-top:16px"></div>');
+    const i=document.querySelector('.t-store'); i.oninput=()=>{ $('.o-store').innerHTML=runStore(i.value); };
+  }
+  else if(id==='sql'){
+    ws(it.n,it.u,'<div class="twocol">'+
+      '<div><div class="pane"><h5>Your query</h5>'+
+        '<textarea class="code t-sql" style="min-height:170px" spellcheck="false">'+
+        'SELECT name, city, marks\nFROM student\nWHERE marks > 60\nORDER BY marks DESC</textarea></div>'+
+        '<div class="pane" style="margin-top:14px"><h5>The table \u00b7 student</h5>'+
+        '<div class="o-sqltable"></div></div></div>'+
+      '<div class="pane"><h5>Result</h5><div class="o-sql"></div></div></div>');
+    const i=document.querySelector('.t-sql');
+    i.oninput=()=>{ $('.o-sql').innerHTML=runSql(i.value); };
+    $('.o-sqltable').innerHTML=sqlTable(SQLROWS,['id','name','city','grade','marks']);
+    $('.o-sql').innerHTML=runSql(i.value);
+  }
+  else if(id==='trace'){
+    ws(it.n,it.u,'<div class="twocol">'+
+      '<div class="pane"><h5>Your program</h5>'+
+        '<textarea class="code t-trace" spellcheck="false">total = 0\nn = 1\nwhile n <= 5\n  total = total + n\n  print total\n  n = n + 1\nend</textarea>'+
+        '<div style="font-family:var(--m);font-size:11.5px;color:#6A77A0;margin-top:10px;line-height:1.9">'+
+        'x = 5 &nbsp;\u00b7&nbsp; print x &nbsp;\u00b7&nbsp; if x &gt; 3 &nbsp;\u00b7&nbsp; while x &lt; 9 &nbsp;\u00b7&nbsp; repeat 4 &nbsp;\u00b7&nbsp; end</div></div>'+
+      '<div class="pane"><h5>Trace table</h5><div class="o-trace"></div></div></div>');
+    const i=document.querySelector('.t-trace');
+    i.oninput=()=>{ $('.o-trace').innerHTML=runTrace(i.value); };
+    $('.o-trace').innerHTML=runTrace(i.value);
+  }
+  else if(id==='web'){
+    ws(it.n,it.u,'<div class="twocol">'+
+      '<div class="pane"><h5>Your code</h5>'+
+        '<textarea class="code t-web" style="min-height:420px" spellcheck="false">&lt;h1&gt;My first page&lt;/h1&gt;\n&lt;p class="note"&gt;Change anything and watch it appear.&lt;/p&gt;\n\n&lt;style&gt;\n  body  { font-family: system-ui; padding: 18px; }\n  h1    { color: #1E88E5; }\n  .note { background: #FFF3CD; padding: 10px; border-radius: 8px; }\n&lt;/style&gt;</textarea></div>'+
+      '<div class="pane"><h5>The page</h5><iframe class="prev o-web" sandbox></iframe></div></div>');
+    const i=document.querySelector('.t-web');
+    const go=()=>{ $('.o-web').srcdoc=i.value; };
+    i.oninput=go; go();
+  }
+  else if(id==='sdlc'){ ws(it.n,it.u,'<div class="o-sdlc"></div>'); sdlcPick=[]; drawSdlc(); }
+}
+
+/* ---- base converter across four bases ---- */
+function bindBin(){
+  const i=document.querySelector('.t-bin');
+  const go=()=>{ $('.o-bin').innerHTML=runBases(i.value); };
+  i.oninput=go; i.value=i.value||'45'; go();
+}
+function runBases(v){
+  v=String(v||'').trim().toLowerCase().replace(/\s+/g,'');
+  if(!v) return '<div class="empty">Type a number.</div>';
+  let n=NaN, from='denary';
+  if(/^0b[01]+$/.test(v)){ n=parseInt(v.slice(2),2); from='binary'; }
+  else if(/^0o[0-7]+$/.test(v)){ n=parseInt(v.slice(2),8); from='octal'; }
+  else if(/^0x[0-9a-f]+$/.test(v)){ n=parseInt(v.slice(2),16); from='hexadecimal'; }
+  else if(/^\d+$/.test(v)) n=parseInt(v,10);
+  else if(/^[01]+$/.test(v)){ n=parseInt(v,2); from='binary'; }
+  else return '<div style="color:#FF4D6D">I cannot read that. Try 45, 0b101101, 0o55 or 0x2D.</div>';
+  if(!isFinite(n)||n<0) return '<div style="color:#FF4D6D">Whole numbers from 0 upward only.</div>';
+  if(n>4294967295) return '<div style="color:#FF4D6D">That is larger than 32 bits.</div>';
+  const b=n.toString(2), o=n.toString(8), h=n.toString(16).toUpperCase();
+  const nib=b.padStart(Math.ceil(b.length/4)*4,'0').replace(/(.{4})/g,'$1 ').trim();
+  const place=b.split('').reverse().map((d,k)=>d==='1'?Math.pow(2,k):0).filter(Boolean).reverse();
+  const row=(lab,val,note)=>'<div class="baserow"><b>'+lab+'</b><div><div class="baseval">'+val+'</div>'+
+    (note?'<div style="font-family:var(--m);font-size:11.5px;color:#6A77A0;margin-top:3px">'+note+'</div>':'')+'</div></div>';
+  return '<div style="font-family:var(--m);font-size:11.5px;color:#93A0C8;margin-bottom:6px">'+
+      'read as '+from+'</div>'+
+    row('Denary',n.toLocaleString(),'base 10')+
+    row('Binary',nib,'base 2 \u00b7 '+b.length+' bits \u00b7 '+place.join(' + ')+' = '+n)+
+    row('Octal',o,'base 8 \u00b7 three bits to a digit')+
+    row('Hex',h,'base 16 \u00b7 four bits to a digit')+
+    '<div style="margin-top:16px;font-family:var(--m);font-size:12.5px;color:#93A0C8;line-height:2">'+
+      'Binary to hex: split into fours from the right \u2192 <b style="color:#38E1FF">'+nib+'</b> \u2192 '+
+      '<b style="color:#38E1FF">'+h+'</b></div>';
+}
+
+/* ---- logic bench with a real gate drawn ---- */
+function drawGate(){
+  const box=document.querySelector('.o-gate'); if(!box) return;
+  const g=gateSel, one=g==='NOT';
+  const f={AND:(a,b)=>a&&b,OR:(a,b)=>a||b,NOT:a=>!a,NAND:(a,b)=>!(a&&b),
+           NOR:(a,b)=>!(a||b),XOR:(a,b)=>a!==b}[g];
+  const q=one?(f(!!gateA)?1:0):(f(!!gateA,!!gateB)?1:0);
+  const rows=one?[[0],[1]]:[[0,0],[0,1],[1,0],[1,1]];
+  box.innerHTML='<div class="gates">'+Object.keys(GATE_SVG)
+      .map(k=>'<button class="t-gate '+(k===g?'on':'')+'" data-g="'+k+'">'+k+'</button>').join('')+'</div>'+
+    '<div class="twocol" style="margin-top:14px">'+
+      '<div class="pane"><h5>'+g+'</h5>'+
+        '<svg viewBox="0 0 80 64" style="width:100%;max-width:280px;height:auto;display:block;margin:6px auto 4px" '+
+          'fill="none" stroke="#38E1FF" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">'+
+          GATE_SVG[g]+'</svg>'+
+        '<div style="font-size:14px;color:#93A0C8;text-align:center">'+GATE_WORD[g]+'</div>'+
+        '<div class="pins" style="justify-content:center">'+
+          '<button class="pin '+(gateA?'hi':'')+'" data-pin="a">A = '+gateA+'</button>'+
+          (one?'':'<button class="pin '+(gateB?'hi':'')+'" data-pin="b">B = '+gateB+'</button>')+
+          '<span style="color:#6A77A0">\u2192</span>'+
+          '<span class="lamp '+(q?'hi':'')+'">'+q+'</span></div>'+
+        '<div style="font-family:var(--m);font-size:12px;color:#6A77A0;text-align:center">tap an input to flip it</div>'+
+      '</div>'+
+      '<div class="pane"><h5>Truth table</h5><table class="tt"><thead><tr>'+
+        (one?'<th>A</th>':'<th>A</th><th>B</th>')+'<th>Q</th></tr></thead><tbody>'+
+        rows.map(r=>{ const out=one?(f(!!r[0])?1:0):(f(!!r[0],!!r[1])?1:0);
+          const here=one?(r[0]===gateA):(r[0]===gateA&&r[1]===gateB);
+          return '<tr style="'+(here?'background:rgba(56,225,255,.12)':'')+'">'+
+            r.map(x=>'<td class="'+(x?'one':'zero')+'">'+x+'</td>').join('')+
+            '<td class="'+(out?'one':'zero')+'">'+out+'</td></tr>';}).join('')+
+      '</tbody></table></div></div>';
+}
+
+/* ---- expression solver with the laws named ---- */
+function runBool(src){
+  if(!String(src||'').trim()) return '<div class="empty">Type an expression.</div>';
+  let r;
+  try{ r=simplify(src); }
+  catch(e){ return '<div style="color:#FF4D6D">'+esc(String(e))+'</div>'; }
+  const vs=varsIn(r.node).length?varsIn(r.node):varsIn(parseBool(src));
+  let proof='';
+  try{
+    const a=tableOf(parseBool(src),vs), b=tableOf(r.node,vs);
+    const same=a.every((x,i)=>x.q===b[i].q);
+    proof='<div class="pane" style="margin-top:14px"><h5>Truth table</h5><table class="tt"><thead><tr>'+
+      vs.map(v=>'<th>'+v+'</th>').join('')+'<th>Q</th></tr></thead><tbody>'+
+      a.map((row,i)=>'<tr>'+row.bits.map(x=>'<td class="'+(x?'one':'zero')+'">'+x+'</td>').join('')+
+        '<td class="'+(row.q?'one':'zero')+'">'+row.q+'</td></tr>').join('')+
+      '</tbody></table><div style="font-family:var(--m);font-size:12.5px;margin-top:10px;color:'+
+        (same?'#7CF29B':'#FF4D6D')+'">'+
+        (same?'The simplified form gives the same answer on every row.':'Something is wrong \u2014 tell sir.')+
+      '</div></div>';
+  }catch(e){}
+  const steps=r.steps.slice(1);
+  return '<div class="pane"><h5>Simplest form</h5>'+
+      '<div style="font-family:var(--m);font-size:clamp(20px,3.4vw,28px);color:#7CF29B">'+esc(r.final)+'</div></div>'+
+    '<div class="pane" style="margin-top:14px"><h5>How it got there</h5>'+
+      '<div class="step"><i>0</i><span style="flex:1"><b>'+esc(r.steps[0].expr)+'</b>'+
+        '<span>what you typed</span></span></div>'+
+      (steps.length?steps.map((st,k)=>'<div class="step"><i>'+(k+1)+'</i><span style="flex:1">'+
+        '<b>'+esc(st.expr)+'</b><span>'+esc(st.rule)+(st.law?' \u2014 '+esc(st.law):'')+'</span></span></div>').join('')
+        :'<div style="font-family:var(--m);font-size:13px;color:#93A0C8;padding:8px 0">'+
+          'Already as simple as it gets.</div>')+
+    '</div>'+proof;
+}
+
+/* ---- sql result as a real table ---- */
+function sqlTable(rows,cols){
+  if(!rows.length) return '<div style="font-family:var(--m);font-size:13px;color:#93A0C8">0 rows.</div>';
+  return '<table class="tt"><thead><tr>'+cols.map(c=>'<th>'+c+'</th>').join('')+'</tr></thead><tbody>'+
+    rows.map(r=>'<tr>'+cols.map(c=>'<td>'+esc(r[c])+'</td>').join('')+'</tr>').join('')+
+    '</tbody></table><div style="font-family:var(--m);font-size:12px;color:#6A77A0;margin-top:8px">'+
+    rows.length+' row'+(rows.length===1?'':'s')+'</div>';
 }
 
 /* ---- signed numbers ---- */
@@ -1065,6 +1466,7 @@ document.addEventListener('click',e=>{
   const sb=e.target.closest('.sdlc-b');
   if(sb){ sdlcPick.push(sb.dataset.s); drawSdlc(); return; }
   if(e.target.id==='sdlcReset'){ sdlcPick=[]; drawSdlc(); return; }
+  const ot=e.target.closest('[data-tool]'); if(ot) return openTool(ot.dataset.tool);
   const g=e.target.closest('.t-gate');
   if(g){ $$('.t-gate').forEach(x=>x.classList.toggle('on',x===g));
     $('.o-gate').innerHTML=runGate(g.dataset.g); return; }
