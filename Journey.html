@@ -11,7 +11,7 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
 <!-- End Google Tag Manager -->
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>EICT — Mission Control</title>
-<meta name="version" content="3.8.0">
+<meta name="version" content="3.8.1">
 <meta name="theme-color" content="#070B1F">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -1060,9 +1060,10 @@ function runBases(v){
   if(/^0b[01]+$/.test(v)){ n=parseInt(v.slice(2),2); from='binary'; }
   else if(/^0o[0-7]+$/.test(v)){ n=parseInt(v.slice(2),8); from='octal'; }
   else if(/^0x[0-9a-f]+$/.test(v)){ n=parseInt(v.slice(2),16); from='hexadecimal'; }
+  else if(/^[01]{4,}$/.test(v)){ n=parseInt(v,2); from='binary (all ones and noughts)'; }
   else if(/^\d+$/.test(v)) n=parseInt(v,10);
-  else if(/^[01]+$/.test(v)){ n=parseInt(v,2); from='binary'; }
-  else return '<div style="color:#FF4D6D">I cannot read that. Try 45, 0b101101, 0o55 or 0x2D.</div>';
+  else if(/^[0-9a-f]+$/.test(v)){ n=parseInt(v,16); from='hexadecimal'; }   /* 2D, FF, ABC */
+  else return '<div style="color:#FF4D6D">I cannot read that. Try 45, 2D, 0b101101, 0o55 or 0x2D.</div>';
   if(!isFinite(n)||n<0) return '<div style="color:#FF4D6D">Whole numbers from 0 upward only.</div>';
   if(n>4294967295) return '<div style="color:#FF4D6D">That is larger than 32 bits.</div>';
   const b=n.toString(2), o=n.toString(8), h=n.toString(16).toUpperCase();
@@ -1135,8 +1136,19 @@ function runBool(src){
       '</div></div>';
   }catch(e){}
   const steps=r.steps.slice(1);
+  let best=r.final, note='';
+  try{
+    const mm=minimise(tableOf(parseBool(src),vs),vs);
+    if(mm.text && mm.text.replace(/\s/g,'').length < r.final.replace(/\s/g,'').length){
+      best=mm.text;
+      note='<div style="font-family:var(--m);font-size:12.5px;color:#FFC93C;margin-top:9px">'+
+        'The rewriting above stops at <b>'+esc(r.final)+'</b>. Grouping the truth table goes further '+
+        'and reaches <b>'+esc(mm.text)+'</b> \u2014 the <b>Redundancy law</b>, where a term that is already '+
+        'covered by the others can be dropped.</div>';
+    }
+  }catch(e){}
   return '<div class="pane"><h5>Simplest form</h5>'+
-      '<div style="font-family:var(--m);font-size:clamp(20px,3.4vw,28px);color:#7CF29B">'+esc(r.final)+'</div></div>'+
+      '<div style="font-family:var(--m);font-size:clamp(20px,3.4vw,28px);color:#7CF29B">'+esc(best)+'</div>'+note+'</div>'+
     '<div class="pane" style="margin-top:14px"><h5>How it got there</h5>'+
       '<div class="step"><i>0</i><span style="flex:1"><b>'+esc(r.steps[0].expr)+'</b>'+
         '<span>what you typed</span></span></div>'+
@@ -1156,47 +1168,155 @@ function sqlTable(rows,cols){
     rows.length+' row'+(rows.length===1?'':'s')+'</div>';
 }
 
+/* Quine-McCluskey: the honest minimum, which algebraic rewriting alone misses */
+function minimise(rows,vars){
+  const n=vars.length;
+  const ones=rows.filter(r=>r.q).map(r=>r.bits.reduce((a,b)=>a*2+b,0));
+  if(!ones.length) return {terms:[],text:'0'};
+  if(ones.length===(1<<n)) return {terms:[],text:'1'};
+  const bitsOf=(m)=>m.toString(2).padStart(n,'0');
+  let groups=ones.map(m=>({mask:bitsOf(m),cov:[m],used:false}));
+  const primes=[];
+  while(groups.length){
+    const next=[], seen=new Set();
+    for(let i=0;i<groups.length;i++)
+      for(let j=i+1;j<groups.length;j++){
+        const a=groups[i], b=groups[j];
+        let diff=-1, ok=true;
+        for(let k=0;k<n;k++){
+          if(a.mask[k]!==b.mask[k]){ if(diff>=0){ok=false;break;} diff=k; }
+        }
+        if(!ok||diff<0) continue;
+        a.used=b.used=true;
+        const m=a.mask.slice(0,diff)+'-'+a.mask.slice(diff+1);
+        if(seen.has(m)) continue; seen.add(m);
+        next.push({mask:m,cov:[...new Set([...a.cov,...b.cov])],used:false});
+      }
+    groups.forEach(g=>{ if(!g.used) primes.push(g); });
+    groups=next;
+  }
+  /* essential primes first, then cover what is left */
+  const chart={}; ones.forEach(m=>chart[m]=primes.filter(p=>p.cov.includes(m)));
+  const chosen=[], covered=new Set();
+  ones.forEach(m=>{ if(chart[m].length===1 && !chosen.includes(chart[m][0])){
+    chosen.push(chart[m][0]); chart[m][0].cov.forEach(x=>covered.add(x)); }});
+  while(covered.size<ones.length){
+    let best=null, gain=-1;
+    primes.forEach(p=>{ if(chosen.includes(p)) return;
+      const g=p.cov.filter(x=>!covered.has(x)).length;
+      if(g>gain){ gain=g; best=p; }});
+    if(!best||gain<=0) break;
+    chosen.push(best); best.cov.forEach(x=>covered.add(x));
+  }
+  const termText=p=>{
+    const parts=[];
+    for(let k=0;k<n;k++){ if(p.mask[k]==='-') continue;
+      parts.push(vars[k]+(p.mask[k]==='0'?'\u2019':'')); }
+    return parts.length?parts.join('.'):'1';
+  };
+  const terms=chosen.map(termText).sort((a,b)=>a.length-b.length||a.localeCompare(b));
+  return {terms, text:terms.join(' + '), dropped:primes.length-chosen.length};
+}
+
+
 /* ---- signed numbers ---- */
 function runTwos(v){
-  v=String(v||'').trim(); if(!v) return 'Waiting\u2026';
+  return twosBench(v);
+}
+function twosBench(v){
+  v=String(v||'').trim();
+  if(!v) return '<div class="empty">Type a number, or eight bits.</div>';
+  const row=(i,title,bits,why)=>'<div class="step"><i>'+i+'</i><span style="flex:1">'+
+    '<b style="font-size:18px;letter-spacing:.12em">'+bits+'</b>'+
+    '<span>'+title+(why?' \u2014 '+why:'')+'</span></span></div>';
+  const grp=b=>b.replace(/(.{4})/g,'$1 ').trim();
+
   if(/^[01]{8}$/.test(v)){
-    const u=parseInt(v,2), sgn=u>127?u-256:u;
-    return 'bits <b>'+v+'</b><br>unsigned <b>'+u+'</b><br>signed <b>'+sgn+'</b><br>'+
-      '<span style="color:#93A0C8">top bit '+v[0]+' means '+(v[0]==='1'?'negative':'positive')+'</span>';
+    const u=parseInt(v,2), neg=v[0]==='1';
+    const ones=v.split('').map(b=>b==='1'?'0':'1').join('');
+    const back=(parseInt(ones,2)+1)&255;
+    return '<div class="pane"><h5>Reading eight bits back</h5>'+
+      row(1,'the bits you gave',grp(v),'top bit is '+v[0]+', so '+(neg?'negative':'positive'))+
+      row(2,'as unsigned',String(u),'straight binary')+
+      (neg?row(3,'flip every bit',grp(ones),'one\u2019s complement')+
+           row(4,'add one',grp(back.toString(2).padStart(8,'0')),'gives '+back+', so the value is \u2212'+back)
+        :'')+
+      '<div style="font-family:var(--m);font-size:19px;color:#7CF29B;margin-top:14px">'+
+        'signed value = '+(neg?'\u2212'+back:u)+'</div></div>';
   }
   const n=parseInt(v,10);
-  if(!isFinite(n)) return 'Give a number from -128 to 127, or 8 bits.';
-  if(n<-128||n>127) return '8 bits hold -128 to 127 only.';
-  const bits=((n<0?n+256:n)>>>0).toString(2).padStart(8,'0');
-  if(n>=0) return 'denary <b>'+n+'</b><br>8 bits <b>'+bits+'</b><br>'+
-    '<span style="color:#93A0C8">positive, so nothing to flip</span>';
+  if(!isFinite(n)) return '<div style="color:#FF4D6D">Give a denary number, or eight bits such as 11010011.</div>';
+  if(n<-128||n>127) return '<div style="color:#FF4D6D">Eight bits hold \u2212128 to 127 only.</div>';
   const mag=Math.abs(n).toString(2).padStart(8,'0');
-  const inv=mag.split('').map(b=>b==='1'?'0':'1').join('');
-  return 'denary <b>'+n+'</b><br>'+Math.abs(n)+' in binary <b>'+mag+'</b><br>'+
-    'flip every bit <b>'+inv+'</b><br>add one <b>'+bits+'</b>';
+  if(n>=0) return '<div class="pane"><h5>Positive numbers need no work</h5>'+
+    row(1,'the number',String(n),'')+
+    row(2,'in eight bits',grp(mag),'top bit 0 marks it positive')+
+    '<div style="font-family:var(--m);font-size:13px;color:#93A0C8;margin-top:12px">'+
+      'One\u2019s and two\u2019s complement only differ from plain binary for negative numbers.</div></div>';
+  const ones=mag.split('').map(b=>b==='1'?'0':'1').join('');
+  const twos=(parseInt(ones,2)+1).toString(2).padStart(8,'0').slice(-8);
+  return '<div class="pane"><h5>One\u2019s complement</h5>'+
+      row(1,'take the size, ignoring the sign',grp(mag),Math.abs(n)+' in binary')+
+      row(2,'flip every bit',grp(ones),'0 becomes 1, 1 becomes 0')+
+      '<div style="font-family:var(--m);font-size:17px;color:#38E1FF;margin-top:10px">'+
+        n+' in one\u2019s complement = '+grp(ones)+'</div></div>'+
+    '<div class="pane" style="margin-top:14px"><h5>Two\u2019s complement</h5>'+
+      row(3,'start from the one\u2019s complement',grp(ones),'')+
+      row(4,'add one',grp(twos),'this is the form computers actually use')+
+      '<div style="font-family:var(--m);font-size:19px;color:#7CF29B;margin-top:10px">'+
+        n+' in two\u2019s complement = '+grp(twos)+'</div>'+
+      '<div style="font-family:var(--m);font-size:12.5px;color:#93A0C8;margin-top:10px">'+
+        'Check: '+grp(mag)+' + '+grp(twos)+' overflows to zero, which is what a negative should do.</div></div>';
 }
 /* ---- storage and transfer ---- */
 function runStore(v){
-  const src=String(v||'').trim(); if(!src) return 'Waiting\u2026';
-  const U={b:1/8,byte:1,bytes:1,kb:1e3,mb:1e6,gb:1e9,tb:1e12,kib:1024,mib:1048576,gib:1073741824};
-  const m=src.match(/^([\d.]+)\s*(bytes?|[kmgt]i?b|b)\b/i);
-  if(!m) return 'Try something like <b>700 MB</b> or <b>2 GB over 20 Mbps</b>.';
-  const size=parseFloat(m[1])*(U[m[2].toLowerCase()]||1);
-  const out=['<b>'+m[1]+' '+m[2].toUpperCase()+'</b> is',
-    '&nbsp;'+size.toLocaleString()+' bytes',
-    '&nbsp;'+(size*8).toLocaleString()+' bits',
-    '&nbsp;'+(size/1048576).toFixed(2)+' MiB &nbsp;(what a computer shows)'];
+  const src=String(v||'').trim();
+  if(!src) return '<div class="empty">Type a size, such as 2 GB.</div>';
+  const DEC={b:1/8,bit:1/8,bits:1/8,byte:1,bytes:1,kb:1e3,mb:1e6,gb:1e9,tb:1e12};
+  const BIN={kib:1024,mib:1048576,gib:1073741824,tib:1099511627776};
+  const m=src.match(/^([\d.]+)\s*(bits?|bytes?|[kmgt]ib|[kmgt]b|b)\b/i);
+  if(!m) return '<div style="color:#FF4D6D">Try <b>2 GB</b>, <b>700 MB</b>, or <b>2 GB over 20 Mbps</b>.</div>';
+  const u=m[2].toLowerCase();
+  const bytes=parseFloat(m[1])*(DEC[u]!==undefined?DEC[u]:BIN[u]||1);
+  const fm=x=>x>=1?x.toLocaleString(undefined,{maximumFractionDigits:2}):x.toPrecision(3);
+  const row=(lab,val,note)=>'<div class="baserow"><b>'+lab+'</b><div><div class="baseval">'+val+'</div>'+
+    (note?'<div style="font-family:var(--m);font-size:11.5px;color:#6A77A0;margin-top:3px">'+note+'</div>':'')+
+    '</div></div>';
+  let out='<div class="twocol"><div class="pane"><h5>Powers of ten \u00b7 what the box says</h5>'+
+      row('Terabytes',fm(bytes/1e12),'\u00f7 1000 four times')+
+      row('Gigabytes',fm(bytes/1e9),'')+
+      row('Megabytes',fm(bytes/1e6),'')+
+      row('Kilobytes',fm(bytes/1e3),'')+
+      row('Bytes',fm(bytes),'')+
+      row('Bits',fm(bytes*8),'8 bits to a byte')+
+    '</div><div class="pane"><h5>Powers of two \u00b7 what the computer says</h5>'+
+      row('TiB',fm(bytes/BIN.tib),'\u00f7 1024 four times')+
+      row('GiB',fm(bytes/BIN.gib),'2\u00b3\u2070 bytes')+
+      row('MiB',fm(bytes/BIN.mib),'2\u00b2\u2070 bytes')+
+      row('KiB',fm(bytes/BIN.kib),'2\u00b9\u2070 bytes')+
+      row('Bytes',fm(bytes),'')+
+      row('Bits',fm(bytes*8),'')+
+    '</div></div>'+
+    '<div style="font-family:var(--m);font-size:12.5px;color:#93A0C8;margin-top:14px;line-height:1.9">'+
+      'This gap is why a \u201c500 GB\u201d drive shows as about '+fm(500e9/BIN.gib)+' GB in Windows. '+
+      'The maker counts in thousands, the computer counts in 1024s.</div>';
   const sp=src.match(/(?:over|at|\/)\s*([\d.]+)\s*([kmg])?bps/i);
   if(sp){
     const mult={k:1e3,m:1e6,g:1e9}[(sp[2]||'').toLowerCase()]||1;
-    const bps=parseFloat(sp[1])*mult, secs=size*8/bps;
-    out.push('<br><b>Transfer at '+sp[1]+' '+((sp[2]||'').toUpperCase())+'bps</b>');
-    out.push('&nbsp;'+(secs<60?secs.toFixed(1)+' seconds'
-      :secs<3600?(secs/60).toFixed(1)+' minutes':(secs/3600).toFixed(2)+' hours'));
-    out.push('<span style="color:#93A0C8">bits \u00F7 bits per second</span>');
+    const bps=parseFloat(sp[1])*mult, secs=bytes*8/bps;
+    const t=secs<60?secs.toFixed(1)+' seconds'
+      :secs<3600?Math.floor(secs/60)+' min '+Math.round(secs%60)+' s'
+      :Math.floor(secs/3600)+' h '+Math.round(secs%3600/60)+' min';
+    out+='<div class="pane" style="margin-top:14px"><h5>Transfer time</h5>'+
+      '<div style="font-family:var(--m);font-size:26px;color:#7CF29B">'+t+'</div>'+
+      '<div style="font-family:var(--m);font-size:12.5px;color:#93A0C8;margin-top:9px;line-height:1.9">'+
+        fm(bytes*8)+' bits \u00f7 '+fm(bps)+' bits per second = '+secs.toFixed(1)+' seconds<br>'+
+        'Line speeds are quoted in <b>bits</b>, file sizes in <b>bytes</b> \u2014 that factor of 8 is the usual trap.'+
+      '</div></div>';
   }
-  return out.join('<br>');
+  return out;
 }
+
 /* ---- SQL against a sample table ---- */
 const SQLROWS=[
  {id:1,name:'Nimali',city:'Colombo',grade:'A',marks:88},
@@ -1468,8 +1588,11 @@ document.addEventListener('click',e=>{
   if(e.target.id==='sdlcReset'){ sdlcPick=[]; drawSdlc(); return; }
   const ot=e.target.closest('[data-tool]'); if(ot) return openTool(ot.dataset.tool);
   const g=e.target.closest('.t-gate');
-  if(g){ $$('.t-gate').forEach(x=>x.classList.toggle('on',x===g));
-    $('.o-gate').innerHTML=runGate(g.dataset.g); return; }
+  if(g){ gateSel=g.dataset.g;
+    if(gateSel==='NOT') gateB=0;
+    drawGate(); return; }
+  const pn=e.target.closest('[data-pin]');
+  if(pn){ if(pn.dataset.pin==='a') gateA=gateA?0:1; else gateB=gateB?0:1; drawGate(); return; }
   if(e.target.closest('[data-close]')||e.target.classList.contains('ov')){
     $('#ov').classList.remove('on'); document.body.style.overflow=''; }
 });
