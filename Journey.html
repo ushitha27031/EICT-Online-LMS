@@ -11,7 +11,7 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
 <!-- End Google Tag Manager -->
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>EICT — Mission Control</title>
-<meta name="version" content="3.3.0">
+<meta name="version" content="3.4.0">
 <meta name="theme-color" content="#070B1F">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -35,9 +35,25 @@ a{color:inherit;text-decoration:none}
 
 #sky{position:fixed;inset:0;z-index:0;pointer-events:none}
 .neb{position:fixed;inset:0;z-index:0;pointer-events:none;
-  background:radial-gradient(700px 500px at 12% 8%,rgba(168,123,255,.16),transparent 60%),
-             radial-gradient(760px 520px at 88% 4%,rgba(56,225,255,.13),transparent 62%),
-             radial-gradient(900px 640px at 50% 110%,rgba(255,201,60,.09),transparent 62%)}
+  background:radial-gradient(760px 540px at 14% 4%,rgba(168,123,255,.20),transparent 62%),
+             radial-gradient(820px 560px at 86% 0%,rgba(56,225,255,.15),transparent 64%),
+             radial-gradient(1100px 700px at 50% 104%,rgba(255,107,53,.22),transparent 60%)}
+/* storm light rolling across the sky */
+.storm{position:fixed;inset:0;z-index:0;pointer-events:none;opacity:.5;
+  background:radial-gradient(620px 320px at 30% 22%,rgba(180,200,255,.16),transparent 70%);
+  animation:roll 17s ease-in-out infinite alternate}
+@keyframes roll{0%{transform:translate3d(-8%,0,0) scale(1)}100%{transform:translate3d(10%,4%,0) scale(1.18)}}
+/* ridgeline, drawn not photographed */
+.ridge{position:fixed;left:0;right:0;bottom:0;z-index:0;pointer-events:none;width:100%;height:52vh}
+.ridge svg{width:100%;height:100%;display:block}
+.r-far{fill:#0B1128;opacity:.92}
+.r-mid{fill:#080C1E}
+.r-near{fill:#04060F}
+.r-glow{fill:url(#emberGlow)}
+.blade{transform-origin:center;animation:sway 9s ease-in-out infinite alternate}
+@keyframes sway{0%{transform:rotate(-1.2deg)}100%{transform:rotate(1.2deg)}}
+.rune{animation:rune 3.4s ease-in-out infinite}
+@keyframes rune{0%,100%{opacity:.35}50%{opacity:1}}
 
 .gate{position:relative;z-index:3;min-height:100svh;display:grid;place-items:center;padding:24px}
 .gbox{width:min(420px,100%);text-align:center}
@@ -53,7 +69,8 @@ a{color:inherit;text-decoration:none}
   letter-spacing:.04em;text-transform:uppercase}
 .gate p{color:var(--dim);margin:0 0 26px;font-size:15px}
 .idrow{display:flex;gap:10px}
-.idrow input{flex:1;padding:15px 16px;border-radius:13px;background:rgba(20,28,61,.9);
+.fld1{width:100%;margin-bottom:10px;}
+.idrow input,.fld1{flex:1;padding:15px 16px;border-radius:13px;background:rgba(20,28,61,.9);
   border:1px solid var(--edge);color:var(--ink);font-family:var(--m);font-size:17px;
   letter-spacing:.16em;text-align:center;text-transform:uppercase}
 .idrow input:focus{outline:none;border-color:var(--cyan);box-shadow:0 0 0 4px rgba(56,225,255,.14)}
@@ -217,7 +234,27 @@ a{color:inherit;text-decoration:none}
 <noscript><iframe src="https://www.googletagmanager.com/ns.html?id=GTM-N6G3XV6G"
 height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
 <!-- End Google Tag Manager (noscript) -->
-<canvas id="sky"></canvas><div class="neb"></div>
+<canvas id="sky"></canvas><div class="neb"></div><div class="storm"></div>
+<div class="ridge" aria-hidden="true">
+  <svg viewBox="0 0 1440 420" preserveAspectRatio="none">
+    <defs>
+      <linearGradient id="emberGlow" x1="0" y1="1" x2="0" y2="0">
+        <stop offset="0%" stop-color="#FF6B35" stop-opacity=".55"/>
+        <stop offset="100%" stop-color="#FF6B35" stop-opacity="0"/>
+      </linearGradient>
+    </defs>
+    <path class="r-far" d="M0 250 L120 196 L232 246 L352 168 L470 232 L604 150 L742 228 L880 164 L1010 236 L1146 178 L1288 242 L1440 196 L1440 420 L0 420 Z"/>
+    <path class="r-mid" d="M0 300 L150 256 L286 302 L420 238 L556 296 L700 226 L844 292 L986 244 L1130 300 L1280 252 L1440 296 L1440 420 L0 420 Z"/>
+    <rect class="r-glow" x="0" y="300" width="1440" height="120"/>
+    <path class="r-near" d="M0 352 L170 322 L320 356 L470 316 L628 358 L790 312 L948 356 L1110 320 L1276 358 L1440 330 L1440 420 L0 420 Z"/>
+    <g class="blade" transform="translate(720 250)">
+      <path d="M0 -96 L15 -60 L15 78 L0 104 L-15 78 L-15 -60 Z" fill="#161C33" stroke="#2A3350" stroke-width="2"/>
+      <path class="rune" d="M0 -66 L0 62 M-7 -34 L7 -14 M7 6 L-7 26" stroke="#FF4D6D" stroke-width="2.6"
+        stroke-linecap="round" fill="none"/>
+      <rect x="-30" y="98" width="60" height="9" rx="4" fill="#161C33"/>
+    </g>
+  </svg>
+</div>
 
 <div class="warp" id="warp">
   <svg viewBox="0 0 200 200">
@@ -239,19 +276,25 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
       </svg>
     </div>
     <h1>Mission Control</h1>
-    <p>Every week is a mission. Clear them, earn coins, climb the ranks.<br>Enter your student number to launch.</p>
-    <div class="idrow">
-      <input id="sid" placeholder="EICT-0000" autocomplete="off" spellcheck="false" maxlength="12">
-      <button class="go" id="goBtn">Launch</button>
+    <p>Every week is a mission. Clear them, earn coins, climb the ranks.<br>Sign in to reach your own missions.</p>
+    <div id="signRow">
+      <input id="em" type="email" placeholder="your email" autocomplete="email" class="fld1">
+      <input id="pw" type="password" placeholder="password" autocomplete="current-password" class="fld1">
+      <button class="go" id="goBtn" style="width:100%;margin-top:4px">Launch</button>
     </div>
     <div class="gerr" id="gerr"></div>
+    <div style="font-size:13px;color:var(--dimmer);margin-top:16px;line-height:1.7">
+      The same email and password you use for your class page.<br>
+      No account yet? <a href="Class.html" style="color:var(--cyan)">Make one here</a>.
+    </div>
   </div>
 </section>
 
 <div id="app" class="hide">
   <header class="hud">
     <div class="av" id="av">--</div>
-    <div class="nm"><b id="rankName">Recruit</b><span id="sidOut"></span></div>
+    <div class="nm"><b id="who">Student</b>
+      <span><span id="sidOut"></span> · <span id="rankName">Recruit</span></span></div>
     <div class="xpwrap"><div class="xpbar"><i id="xpFill" style="width:0"></i></div>
       <div class="xptx" id="xpTx"></div></div>
     <div class="chip"><span class="coin"></span><span id="coinN">0</span><small>COINS</small></div>
@@ -284,9 +327,13 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
   if(!cfg||!cfg.projectId) return null;
   try{
     const {initializeApp}=await import('https://www.gstatic.com/firebasejs/11.0.2/firebase-app.js');
-    const {getFirestore,doc,getDoc,setDoc,onSnapshot}=
+    const {getFirestore,doc,getDoc,setDoc,onSnapshot,collection,addDoc}=
       await import('https://www.gstatic.com/firebasejs/11.0.2/firebase-firestore.js');
-    return {db:getFirestore(initializeApp(cfg)),doc,getDoc,setDoc,onSnapshot};
+    const {getAuth,onAuthStateChanged,signInWithEmailAndPassword,signOut}=
+      await import('https://www.gstatic.com/firebasejs/11.0.2/firebase-auth.js');
+    const app=initializeApp(cfg);
+    return {db:getFirestore(app),auth:getAuth(app),doc,getDoc,setDoc,onSnapshot,collection,addDoc,
+            onAuthStateChanged,signInWithEmailAndPassword,signOut};
   }catch(e){ console.warn('offline',e.message); return null; }
 })().then(window.__fbDone);
 </script>
@@ -307,17 +354,37 @@ const SHOP=[
 const $=(s,r=document)=>r.querySelector(s), $$=(s,r=document)=>[...r.querySelectorAll(s)];
 const esc=s=>String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 let FB=null, CODE='', ROAD={weeks:[]}, DONE=new Set(), OWNED=new Set(), MARKS={}, SPENT=0, tab='map';
+let SENT={}, BONUS=0;
 
 (function(){const c=$('#sky');if(!c)return;
  if(matchMedia('(prefers-reduced-motion: reduce)').matches){c.style.display='none';return;}
  const x=c.getContext('2d');let st=[],W,H,dpr;
  function build(){dpr=Math.min(devicePixelRatio||1,2);W=c.width=innerWidth*dpr;H=c.height=innerHeight*dpr;
   c.style.width=innerWidth+'px';c.style.height=innerHeight+'px';
-  st=Array.from({length:Math.min(130,Math.round(innerWidth*innerHeight/13000))},()=>({
-   x:Math.random()*W,y:Math.random()*H,r:(Math.random()*1.25+.3)*dpr,a:Math.random(),s:.005+Math.random()*.014}));}
+  const n=Math.min(150,Math.round(innerWidth*innerHeight/11000));
+  st=Array.from({length:n},(_,i)=>({
+   x:Math.random()*W, y:Math.random()*H, r:(Math.random()*1.3+.3)*dpr,
+   a:Math.random(), s:.005+Math.random()*.014,
+   ember:i<n*0.34,                                   /* a third drift upward, glowing */
+   vy:-(0.08+Math.random()*0.32)*dpr, vx:(Math.random()-.5)*0.14*dpr}));}
  function step(){x.clearRect(0,0,W,H);
-  for(const s of st){s.a+=s.s;const o=.2+Math.abs(Math.sin(s.a))*.8;x.globalAlpha=o;
-   x.fillStyle=o>.86?'#FFC93C':'#CFE6FF';x.beginPath();x.arc(s.x,s.y,s.r,0,6.2832);x.fill();}
+  for(const s of st){
+   s.a+=s.s;
+   if(s.ember){
+     s.y+=s.vy; s.x+=s.vx+Math.sin(s.a*1.6)*0.25*dpr;
+     if(s.y<-12){ s.y=H+10; s.x=Math.random()*W; }
+     const o=.35+Math.abs(Math.sin(s.a))*.65;
+     x.globalAlpha=o;
+     const g=x.createRadialGradient(s.x,s.y,0,s.x,s.y,s.r*5);
+     g.addColorStop(0,'#FFC08A'); g.addColorStop(.4,'#FF6B35'); g.addColorStop(1,'rgba(255,107,53,0)');
+     x.fillStyle=g; x.beginPath(); x.arc(s.x,s.y,s.r*5,0,6.2832); x.fill();
+     x.globalAlpha=Math.min(1,o+.2); x.fillStyle='#FFE0B0';
+     x.beginPath(); x.arc(s.x,s.y,s.r*.8,0,6.2832); x.fill();
+   } else {
+     const o=.18+Math.abs(Math.sin(s.a))*.8; x.globalAlpha=o;
+     x.fillStyle=o>.86?'#FFC93C':'#CFE6FF';
+     x.beginPath(); x.arc(s.x,s.y,s.r,0,6.2832); x.fill();
+   }}
   x.globalAlpha=1;requestAnimationFrame(step);}
  addEventListener('resize',build);build();step();})();
 
@@ -325,6 +392,7 @@ const coinsFor=m=>m>=75?60:m>=65?48:m>=50?36:m>=35?24:12;
 function totals(){
   let c=DONE.size*5;
   for(const k in MARKS){ const r=MARKS[k]; c+=coinsFor(+r.mark||0); if(r.onTime) c+=25; }
+  c+=BONUS;                                   /* coins sir has added by hand */
   return {earned:c, coins:c-SPENT};
 }
 const paperList=()=>Object.keys(MARKS).map(k=>({w:+k,...MARKS[k]})).sort((a,b)=>a.w-b.w);
@@ -335,35 +403,63 @@ const gradeOf=a=>a===null?['\u2013','gW','no papers']:a>74?['A','gA','excellent'
 const rankOf=e=>[...RANKS].reverse().find(r=>e>=r[0]);
 const nextRank=e=>RANKS.find(r=>e<r[0]);
 
-const clean=v=>{v=String(v||'').trim().toUpperCase().replace(/\s+/g,'');
-  if(/^\d+$/.test(v)) v='EICT-'+v.padStart(4,'0');
-  if(/^EICT\d+$/.test(v)) v='EICT-'+v.slice(4).padStart(4,'0'); return v;};
-$('#goBtn').onclick=enter;
-$('#sid').addEventListener('keydown',e=>{if(e.key==='Enter')enter();});
-async function enter(){
-  const code=clean($('#sid').value);
-  if(!/^EICT-\d{4}$/.test(code)){ $('#gerr').textContent='Student numbers look like EICT-0007.'; return; }
-  $('#gerr').textContent=''; CODE=code;
+let NAME='', UID='', PROFILE={};
+
+async function boot(){
   FB=await window.FB_READY;
-  if(FB){
-    try{ const d=await FB.getDoc(FB.doc(FB.db,'site','roadmap'));
-         if(d.exists()&&d.data().json) ROAD=JSON.parse(d.data().json); }catch(e){}
-    try{ const j=await FB.getDoc(FB.doc(FB.db,'journey',code));
-         if(j.exists()){ DONE=new Set(j.data().done||[]); OWNED=new Set(j.data().owned||[]); SPENT=+j.data().spent||0; } }catch(e){}
-    try{ FB.onSnapshot(FB.doc(FB.db,'marks',code),s=>{
-           MARKS=(s.exists()&&s.data().weeks)||{}; if(!$('#app').classList.contains('hide')) paint(); }); }catch(e){}
-  }
+  if(!FB){ $('#gerr').textContent='Cannot reach the database. Try again in a moment.'; return; }
+  FB.onAuthStateChanged(FB.auth, async u=>{
+    if(!u) return;                       /* still on the gate */
+    UID=u.uid;
+    try{
+      const d=await FB.getDoc(FB.doc(FB.db,'students',u.uid));
+      if(!d.exists()){ $('#gerr').textContent='No student record found for this account.'; return; }
+      PROFILE=d.data();
+      CODE=PROFILE.code||'';
+      NAME=PROFILE.name||'Student';
+      if(!CODE){ $('#gerr').textContent='Your account has no student number yet. Ask sir to add one.'; return; }
+    }catch(e){ $('#gerr').textContent='Could not read your record: '+(e.code||e.message); return; }
+    await loadAll();
+    launch();
+  });
+}
+boot();
+
+async function loadAll(){
+  try{ const d=await FB.getDoc(FB.doc(FB.db,'site','roadmap'));
+       if(d.exists()&&d.data().json) ROAD=JSON.parse(d.data().json); }catch(e){}
+  try{ const j=await FB.getDoc(FB.doc(FB.db,'journey',CODE));
+       if(j.exists()){ DONE=new Set(j.data().done||[]); OWNED=new Set(j.data().owned||[]);
+                       SPENT=+j.data().spent||0; SENT=j.data().sent||{}; } }catch(e){}
+  try{ FB.onSnapshot(FB.doc(FB.db,'marks',CODE),s=>{
+         const d=s.exists()?s.data():{};
+         MARKS=d.weeks||{}; BONUS=+d.bonus||0;
+         if(!$('#app').classList.contains('hide')) paint(); }); }catch(e){}
+}
+function launch(){
   const w=$('#warp'); w.classList.add('on');
   setTimeout(()=>w.classList.add('go'),650);
   setTimeout(()=>{ w.classList.remove('on','go');
     $('#gate').classList.add('hide'); $('#app').classList.remove('hide'); paint(); },1950);
 }
-$('#outBtn').onclick=()=>location.reload();
+async function enter(){
+  const em=$('#em').value.trim(), pw=$('#pw').value;
+  if(!em||!pw){ $('#gerr').textContent='Fill in both boxes.'; return; }
+  $('#gerr').textContent='Checking…';
+  try{ await FB.signInWithEmailAndPassword(FB.auth,em,pw); $('#gerr').textContent=''; }
+  catch(e){ $('#gerr').textContent=/invalid|wrong|credential/i.test(e.code||'')
+    ? 'Wrong email or password.' : (e.code||e.message); }
+}
+$('#goBtn').onclick=enter;
+['#em','#pw'].forEach(q=>$(q).addEventListener('keydown',e=>{ if(e.key==='Enter') enter(); }));
+
+$('#outBtn').onclick=async()=>{ try{ await FB.signOut(FB.auth); }catch(e){} location.reload(); };
 
 let sv=null;
 function save(){ if(!FB||!CODE) return; clearTimeout(sv);
   sv=setTimeout(()=>FB.setDoc(FB.doc(FB.db,'journey',CODE),
-    {done:[...DONE],owned:[...OWNED],spent:SPENT,at:new Date().toISOString()}).catch(()=>{}),600); }
+    {done:[...DONE],owned:[...OWNED],spent:SPENT,sent:SENT,uid:UID,
+     at:new Date().toISOString()},{merge:true}).catch(()=>{}),600); }
 function toast(t){const e=$('#toast');e.textContent=t;e.classList.add('on');
   setTimeout(()=>e.classList.remove('on'),2300);}
 
@@ -376,7 +472,8 @@ const dshort=d=>new Date(d).toLocaleDateString('en-GB',{day:'numeric',month:'sho
 function paint(){
   const t=totals(), avg=average(), g=gradeOf(avg);
   const rk=rankOf(t.earned), nx=nextRank(t.earned);
-  $('#av').textContent=CODE.slice(-2);
+  $('#av').textContent=(NAME||'?').trim().charAt(0).toUpperCase();
+  $('#who').textContent=NAME||'Student';
   $('#av').style.background=OWNED.has('skin')
     ?'linear-gradient(150deg,#A87BFF,#FF4D6D)':'linear-gradient(150deg,#38E1FF,#A87BFF)';
   $('#rankName').textContent=rk[1];
@@ -494,6 +591,85 @@ function runNet(v){
     '<span style="color:#93A0C8">'+hosts+' usable addresses</span>';
 }
 
+function sendSheet(i){
+  const w=ROAD.weeks[i]||{}, prev=SENT[i]||{};
+  $('#sheetBody').innerHTML=
+    '<div class="k">Mission '+String(i+1).padStart(2,'0')+'</div>'+
+    '<h3>Send your answers</h3>'+
+    '<div style="font-family:var(--m);font-size:12px;color:var(--dim)">'+esc(w.title||'')+'</div>'+
+    '<ol style="margin:18px 0 0;padding-left:20px;line-height:2;font-size:14.6px;color:#93A0C8">'+
+      '<li>Photograph every page and put them into <b style="color:#EAF0FF">one PDF</b>, in order.</li>'+
+      '<li>Upload that PDF to your <b style="color:#EAF0FF">Google Drive</b>.</li>'+
+      '<li>Right click it \u2192 <b style="color:#EAF0FF">Share</b> \u2192 change <i>Restricted</i> to '+
+        '<b style="color:#EAF0FF">Anyone with the link</b>.</li>'+
+      '<li>Change <b style="color:#EAF0FF">Viewer</b> to <b style="color:#FFC93C">Editor</b> \u2014 '+
+        'sir writes your marks onto the paper itself.</li>'+
+      '<li>Press <b style="color:#EAF0FF">Copy link</b> and paste it below.</li>'+
+    '</ol>'+
+    '<div class="tool" style="border-top:0"><input id="dl" placeholder="https://drive.google.com/file/d/..." '+
+      'value="'+esc(prev.link||'')+'"></div>'+
+    '<div id="dlMsg" style="font-family:var(--m);font-size:13px;margin-top:10px;line-height:1.8"></div>'+
+    '<label class="task" style="border-top:0;padding-top:14px" id="edOk">'+
+      '<span class="bx"><svg viewBox="0 0 24 24"><path d="M4 12l5 5L20 6"/></svg></span>'+
+      '<span>Access is set to <b>Editor</b>, not Viewer</span></label>'+
+    '<div style="display:flex;gap:9px;flex-wrap:wrap;margin-top:6px">'+
+      '<button class="btn b2" id="dlTest">Open my link to check</button>'+
+      '<button class="btn b1" id="dlSend" data-i="'+i+'">Send to sir</button></div>';
+  $('#ov').classList.add('on'); document.body.style.overflow='hidden';
+  const box=$('#dl'); box.addEventListener('input',checkLink); checkLink();
+  $('#dlTest').onclick=()=>{ const v=($('#dl').value||'').trim(); if(v) window.open(v,'_blank','noopener'); };
+  $('#edOk').onclick=e=>{ e.preventDefault(); $('#edOk').classList.toggle('on'); };
+}
+function tidy(v){ return String(v||'').replace(/[\u200B-\u200D\uFEFF]/g,'').trim()
+  .replace(/^["'<(\[]+|["'>)\].,;]+$/g,'').replace(/\s+/g,''); }
+function driveId(u){ const m=u.match(/\/d\/([A-Za-z0-9_-]{10,})/)||u.match(/[?&]id=([A-Za-z0-9_-]{10,})/)
+  ||u.match(/\/folders\/([A-Za-z0-9_-]{10,})/); return m?m[1]:null; }
+function readLink(raw){
+  let v=tidy(raw); if(!v) return {state:'empty'};
+  if(!/^https?:\/\//i.test(v)){
+    if(/^[\w.-]+\.[a-z]{2,}\//i.test(v)) v='https://'+v;
+    else return {state:'bad',msg:'That is not a link. Use <b>Copy link</b> from the Share box in Drive.'};
+  }
+  let host=''; try{ host=new URL(v).hostname.toLowerCase(); }
+  catch(e){ return {state:'bad',msg:'That link cannot be read.'}; }
+  const google=/(^|\.)google\.com$/.test(host)||/(^|\.)googleusercontent\.com$/.test(host);
+  const id=driveId(v);
+  if(google&&/\/folders\//.test(v)) return {state:'ok',link:v,id,msg:'That is a folder \u2014 it works if the folder itself is shared as Editor.'};
+  if(google&&id) return {state:'ok',link:v,id,msg:'Link looks right.'};
+  if(google) return {state:'ok',link:v,id:'',msg:'Accepted. Sir will check it by hand.'};
+  return {state:'ok',link:v,id:'',msg:'Not a Drive link. It will still be sent, but Drive is easier to mark.'};
+}
+function checkLink(){
+  const el=$('#dl'), m=$('#dlMsg'); if(!el||!m) return true;
+  const r=readLink(el.value);
+  if(r.state==='empty'){ m.innerHTML=''; return true; }
+  if(r.state==='bad'){ m.innerHTML='<span style="color:#FF4D6D">'+r.msg+'</span>'; return false; }
+  m.innerHTML='<span style="color:'+(r.id?'#7CF29B':'#FFC93C')+'">'+r.msg+'</span>';
+  return true;
+}
+async function doSend(i){
+  const r=readLink($('#dl').value);
+  if(r.state==='empty') return toast('Paste your Drive link first');
+  if(r.state==='bad'){ checkLink(); return toast('That link cannot be read'); }
+  if(!$('#edOk').classList.contains('on'))
+    return toast('Confirm the access is set to Editor');
+  const w=ROAD.weeks[i]||{};
+  const late=w.paper&&w.paper.due ? Date.now()>new Date(w.paper.due).getTime()+864e5 : false;
+  SENT[i]={link:r.link, at:new Date().toISOString(), late};
+  save();
+  if(FB&&UID){
+    try{ await FB.setDoc(FB.doc(FB.db,'submissions',UID+'__JW'+i),{
+      uid:UID, code:CODE, name:NAME, whatsapp:PROFILE.whatsapp||'', batch:PROFILE.batch||'',
+      track:'journey', paper:'JW'+i, week:i,
+      title:(w.title||('Week '+(i+1)))+' \u2014 weekend paper',
+      link:r.link, fileId:r.id||'', late, at:new Date().toISOString(), marked:false });
+    }catch(e){ return toast('Could not send: '+(e.code||e.message)); }
+  }
+  $('#ov').classList.remove('on'); document.body.style.overflow='';
+  toast(late?'Sent \u2014 marked late':'Sent to sir');
+  paint();
+}
+
 function openWeek(i){
   const w=ROAD.weeks[i]; if(!w) return;
   const m=MARKS[i];
@@ -519,10 +695,17 @@ function openWeek(i){
         (w.paper.due?' \u00B7 due '+dshort(w.paper.due):'')+'</div>'+
       '<div style="display:flex;gap:9px;flex-wrap:wrap;margin-top:13px">'+
         '<a class="btn b1" href="'+esc(w.paper.url)+'" target="_blank" rel="noopener">Open paper</a>'+
-        '<a class="btn b2" href="Class.html" target="_blank">Send answers</a></div>'+
-      (m?'<div style="margin-top:13px;font-family:var(--m);font-size:13px;color:#7CF29B">Marked: '+
-        '<b style="font-size:17px">'+esc(m.mark)+'%</b>'+(m.onTime?' \u00B7 on time, +25 coins':'')+
-        (m.note?'<br><span style="color:#93A0C8">'+esc(m.note)+'</span>':'')+'</div>':'')+
+        (m?'':'<button class="btn b2" data-send="'+i+'">'+(SENT[i]?'Change my link':'Send my answers')+'</button>')+
+      '</div>'+
+      (SENT[i]&&!m?'<div style="margin-top:12px;font-family:var(--m);font-size:12.5px;color:#7CF29B">'+
+        'Sent '+esc(String(SENT[i].at||'').slice(0,10))+' \u00B7 waiting to be marked</div>':'')+
+      (m?'<div style="margin-top:13px;padding-top:13px;border-top:1px solid rgba(255,255,255,.1)">'+
+        '<div style="font-family:var(--m);font-size:13px;color:#7CF29B">Marked '+
+          '<b style="font-size:19px">'+esc(m.mark)+'%</b>'+(m.onTime?' \u00B7 on time, +25 coins':' \u00B7 late')+'</div>'+
+        (m.note?'<div style="color:#93A0C8;font-size:13.5px;margin-top:7px">'+esc(m.note)+'</div>':'')+
+        (m.sheet?'<a class="btn b1" style="margin-top:12px" href="'+esc(m.sheet)+'" target="_blank" rel="noopener">'+
+          'See my marked paper</a>':'')+
+        '</div>':'')+
       '</div></div>':'');
   $('#ov').classList.add('on'); document.body.style.overflow='hidden';
 }
@@ -534,6 +717,8 @@ document.addEventListener('click',e=>{
     $('#vMarks').classList.toggle('hide',tab!=='marks');
     $('#vShop').classList.toggle('hide',tab!=='shop');
     paint(); return; }
+  const sd=e.target.closest('[data-send]'); if(sd) return sendSheet(+sd.dataset.send);
+  if(e.target.id==='dlSend') return doSend(+e.target.dataset.i);
   const n=e.target.closest('[data-w]'); if(n) return openWeek(+n.dataset.w);
   const t=e.target.closest('[data-k]');
   if(t){ const k=t.dataset.k;
