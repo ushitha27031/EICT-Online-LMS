@@ -11,7 +11,7 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
 <!-- End Google Tag Manager -->
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>EICT — Mission Control</title>
-<meta name="version" content="3.9.0">
+<meta name="version" content="3.9.1">
 <meta name="theme-color" content="#070B1F">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -463,39 +463,67 @@ const SHOP=[
 const $=(s,r=document)=>r.querySelector(s), $$=(s,r=document)=>[...r.querySelectorAll(s)];
 const esc=s=>String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 let FB=null, CODE='', ROAD={weeks:[]}, DONE=new Set(), OWNED=new Set(), MARKS={}, SPENT=0, tab='map';
-let SENT={}, BONUS=0;
+let SENT={}, BONUS=0, firstMarks=true, settled=false;
 
-(function(){const c=$('#sky');if(!c)return;
- if(matchMedia('(prefers-reduced-motion: reduce)').matches){c.style.display='none';return;}
- const x=c.getContext('2d');let st=[],W,H,dpr;
- function build(){dpr=Math.min(devicePixelRatio||1,2);W=c.width=innerWidth*dpr;H=c.height=innerHeight*dpr;
-  c.style.width=innerWidth+'px';c.style.height=innerHeight+'px';
-  const n=Math.min(150,Math.round(innerWidth*innerHeight/11000));
-  st=Array.from({length:n},(_,i)=>({
-   x:Math.random()*W, y:Math.random()*H, r:(Math.random()*1.3+.3)*dpr,
-   a:Math.random(), s:.005+Math.random()*.014,
-   ember:i<n*0.34,                                   /* a third drift upward, glowing */
-   vy:-(0.08+Math.random()*0.32)*dpr, vx:(Math.random()-.5)*0.14*dpr}));}
- function step(){x.clearRect(0,0,W,H);
-  for(const s of st){
-   s.a+=s.s;
-   if(s.ember){
-     s.y+=s.vy; s.x+=s.vx+Math.sin(s.a*1.6)*0.25*dpr;
-     if(s.y<-12){ s.y=H+10; s.x=Math.random()*W; }
-     const o=.35+Math.abs(Math.sin(s.a))*.65;
-     x.globalAlpha=o;
-     const g=x.createRadialGradient(s.x,s.y,0,s.x,s.y,s.r*5);
-     g.addColorStop(0,'#FFC08A'); g.addColorStop(.4,'#FF6B35'); g.addColorStop(1,'rgba(255,107,53,0)');
-     x.fillStyle=g; x.beginPath(); x.arc(s.x,s.y,s.r*5,0,6.2832); x.fill();
-     x.globalAlpha=Math.min(1,o+.2); x.fillStyle='#FFE0B0';
-     x.beginPath(); x.arc(s.x,s.y,s.r*.8,0,6.2832); x.fill();
-   } else {
-     const o=.18+Math.abs(Math.sin(s.a))*.8; x.globalAlpha=o;
-     x.fillStyle=o>.86?'#FFC93C':'#CFE6FF';
-     x.beginPath(); x.arc(s.x,s.y,s.r,0,6.2832); x.fill();
-   }}
-  x.globalAlpha=1;requestAnimationFrame(step);}
- addEventListener('resize',build);build();step();})();
+let starsOn=()=>{};
+(function(){
+  const c=$('#sky'); if(!c) return;
+  if(matchMedia('(prefers-reduced-motion: reduce)').matches){ c.style.display='none'; return; }
+  const x=c.getContext('2d',{alpha:true});
+  let st=[],W,H,dpr,raf=null,running=true;
+
+  /* one ember drawn once into a small canvas, then stamped.
+     building a gradient per particle per frame was what made it stutter. */
+  const sprite=document.createElement('canvas');
+  (function(){
+    const R=22; sprite.width=sprite.height=R*2;
+    const g=sprite.getContext('2d').createRadialGradient(R,R,0,R,R,R);
+    g.addColorStop(0,'rgba(255,238,200,1)');
+    g.addColorStop(.28,'rgba(255,192,138,.85)');
+    g.addColorStop(.6,'rgba(255,107,53,.35)');
+    g.addColorStop(1,'rgba(255,107,53,0)');
+    const sx=sprite.getContext('2d'); sx.fillStyle=g; sx.fillRect(0,0,R*2,R*2);
+  })();
+
+  function build(){
+    dpr=Math.min(devicePixelRatio||1,1.5);            /* 2x cost nothing gains */
+    W=c.width=Math.round(innerWidth*dpr); H=c.height=Math.round(innerHeight*dpr);
+    c.style.width=innerWidth+'px'; c.style.height=innerHeight+'px';
+    const area=innerWidth*innerHeight;
+    const n=Math.max(40,Math.min(innerWidth<700?70:120,Math.round(area/16000)));
+    st=Array.from({length:n},(_,i)=>({
+      x:Math.random()*W, y:Math.random()*H, r:(Math.random()*1.2+.35)*dpr,
+      a:Math.random()*6.28, s:.006+Math.random()*.012,
+      ember:i<n*0.3,
+      size:(8+Math.random()*13)*dpr,
+      vy:-(0.10+Math.random()*0.30)*dpr, vx:(Math.random()-.5)*0.12*dpr}));
+  }
+  function step(){
+    if(!running){ raf=null; return; }
+    x.clearRect(0,0,W,H);
+    for(let i=0;i<st.length;i++){
+      const s=st[i]; s.a+=s.s;
+      if(s.ember){
+        s.y+=s.vy; s.x+=s.vx;
+        if(s.y<-30){ s.y=H+20; s.x=Math.random()*W; }
+        x.globalAlpha=.30+Math.abs(Math.sin(s.a))*.55;
+        x.drawImage(sprite,s.x-s.size/2,s.y-s.size/2,s.size,s.size);
+      } else {
+        const o=.16+Math.abs(Math.sin(s.a))*.72;
+        x.globalAlpha=o;
+        x.fillStyle=o>.84?'#FFC93C':'#CFE6FF';
+        x.fillRect(s.x,s.y,s.r,s.r);          /* squares: no arc path per star */
+      }
+    }
+    x.globalAlpha=1;
+    raf=requestAnimationFrame(step);
+  }
+  starsOn=v=>{ running=v; if(v&&!raf) raf=requestAnimationFrame(step); };
+  let rt=null;
+  addEventListener('resize',()=>{ clearTimeout(rt); rt=setTimeout(build,180); });
+  document.addEventListener('visibilitychange',()=>starsOn(!document.hidden));
+  build(); starsOn(true);
+})();
 
 const coinsFor=m=>m>=75?60:m>=65?48:m>=50?36:m>=35?24:12;
 function totals(){
@@ -564,13 +592,14 @@ async function loadAll(){
          const d=s.exists()?s.data():{};
          const before=BONUS, hadMarks=Object.keys(MARKS).length;
          MARKS=d.weeks||{}; BONUS=+d.bonus||0;
-         const live=!$('#app').classList.contains('hide');
-         if(live && BONUS>before) coinBurst(BONUS-before,'from sir');
-         else if(live && Object.keys(MARKS).length>hadMarks) coinBurst(0,'a paper was marked');
-         if(live) paint(); }); }catch(e){}
+         if(firstMarks){ firstMarks=false; }
+         else if(settled && BONUS>before) coinBurst(BONUS-before,'coins added');
+         else if(settled && Object.keys(MARKS).length>hadMarks) coinBurst(0,'a paper was marked');
+         if(!$('#app').classList.contains('hide')) paint(); }); }catch(e){}
 }
 function launch(){
   const w=$('#warp'), sp=$('#splash');
+  starsOn(false);                       /* give the transition the whole frame budget */
   w.classList.add('on');
   void w.offsetWidth;                         /* let the browser paint it closed first */
   if(sp){ sp.classList.add('out'); setTimeout(()=>sp.remove(),500); }
@@ -584,7 +613,8 @@ function launch(){
   requestAnimationFrame(()=>requestAnimationFrame(()=>{
     setTimeout(()=>w.classList.add('go'),420);
   }));
-  setTimeout(()=>{ w.classList.remove('on','go'); },2100);
+  setTimeout(()=>{ w.classList.remove('on','go'); starsOn(true);
+    setTimeout(()=>{ settled=true; },600); },2100);
 }
 async function enter(){
   if(!READY){                       /* clicked before Firebase finished loading */
