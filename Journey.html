@@ -11,7 +11,7 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
 <!-- End Google Tag Manager -->
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>EICT — Mission Control</title>
-<meta name="version" content="3.5.1">
+<meta name="version" content="3.7.0">
 <meta name="theme-color" content="#070B1F">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -363,11 +363,36 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
    ========================================================== */
 const RANKS=[[0,'Recruit'],[150,'Cadet'],[400,'Scout'],[800,'Ranger'],[1400,'Specialist'],
              [2200,'Veteran'],[3200,'Elite'],[4500,'Commander'],[6000,'Legend']];
+const SIMBASE='https://ushitha27031.github.io/eict_online/simulators/';
 const SHOP=[
- {id:'bin',  cost:150, ic:'\u2B21', n:'Base Converter',    d:'Binary, denary and hex, both ways, with the working shown.'},
- {id:'gate', cost:300, ic:'\u2295', n:'Logic Bench',       d:'Pick a gate and watch its truth table fill itself in.'},
- {id:'net',  cost:450, ic:'\u25C8', n:'Subnet Calculator', d:'Network address, broadcast, host range and mask.'},
- {id:'skin', cost:700, ic:'\u2726', n:'Callsign Colours',  d:'A violet badge instead of the standard issue.'}
+ {id:'bin',   cost:150,  ic:'\u2B21', u:'Data Representation', n:'Base Converter',
+  d:'Binary, denary and hex, both ways, with the place values shown.'},
+ {id:'gate',  cost:300,  ic:'\u2295', u:'Digital Circuits', n:'Logic Bench',
+  d:'Pick a gate and watch its truth table fill itself in.'},
+ {id:'bool',  cost:600,  ic:'\u2234', u:'Digital Circuits', n:'Expression Solver',
+  d:'Type an expression such as A.B + C\u2019 and get the whole truth table.'},
+ {id:'net',   cost:450,  ic:'\u25C8', u:'Networking', n:'Subnet Calculator',
+  d:'Network address, broadcast, host range and mask.'},
+ {id:'sched', cost:800,  ic:'\u23F1', u:'Operating Systems', n:'Process Scheduler', ext:SIMBASE+'process-scheduler/',
+  d:'Run FCFS, SJF and round robin and watch the Gantt chart build.'},
+ {id:'web',   cost:900,  ic:'\u25A6', u:'Web Development', n:'Page Builder',
+  d:'Write HTML and CSS on the left, see the page appear on the right.'},
+ {id:'hand',  cost:1200, ic:'\u270B', u:'New Trends', n:'Hand Magic', ext:SIMBASE+'hand-magic/',
+  d:'Control the screen with your hand through the camera. Computer vision, live.'},
+ {id:'emo',   cost:1500, ic:'\u25D5', u:'New Trends', n:'Emotion Reader', ext:SIMBASE+'emotion-reader/',
+  d:'A model reads the feeling on a face. AI you can argue with.'},
+ {id:'twos',  cost:250,  ic:'\u00B1', u:'Data Representation', n:'Signed Number Bench',
+  d:'Two\u2019s complement both ways, plus binary addition with every carry shown.'},
+ {id:'store', cost:350,  ic:'\u25F3', u:'Basic Concepts', n:'Storage & Speed',
+  d:'File sizes across the units, and how long a transfer really takes.'},
+ {id:'sql',   cost:1000, ic:'\u2338', u:'Database Management', n:'SQL Bench',
+  d:'Run real SELECT queries against a sample table and see the rows come back.'},
+ {id:'trace', cost:1300, ic:'\u27A4', u:'Programming', n:'Code Tracer',
+  d:'Step through a program line by line and watch every variable change.'},
+ {id:'sdlc',  cost:1600, ic:'\u25F1', u:'System Analysis', n:'SDLC Sequencer',
+  d:'Put the stages in order and find out where you are wrong. Worth 20% of the paper.'},
+ {id:'skin',  cost:2400, ic:'\u2726', u:'', n:'Callsign Colours',
+  d:'A violet badge instead of the standard issue. Purely for show.'}
 ];
 const $=(s,r=document)=>r.querySelector(s), $$=(s,r=document)=>[...r.querySelectorAll(s)];
 const esc=s=>String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
@@ -634,11 +659,18 @@ function paintShop(){
   $('#vShop').innerHTML='<div class="shop">'+SHOP.map(it=>{
     const own=OWNED.has(it.id);
     return '<div class="item '+(own?'owned':'')+'">'+
-      '<div class="ic">'+it.ic+'</div><b>'+esc(it.n)+'</b><p>'+esc(it.d)+'</p>'+
-      (own?'<span class="price">UNLOCKED</span>'+(it.id!=='skin'?'<div class="tool">'+tool(it.id)+'</div>':'')
+      '<div class="ic">'+it.ic+'</div><b>'+esc(it.n)+'</b>'+
+      (it.u?'<span style="font-family:var(--m);font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:#6A77A0">'+esc(it.u)+'</span>':'')+
+      '<p>'+esc(it.d)+'</p>'+
+      (own?'<span class="price">UNLOCKED</span>'+
+           (it.ext?'<a class="btn b1" style="width:100%;margin-top:12px" href="'+esc(it.ext)+'" target="_blank" rel="noopener">Launch</a>':'')+
+           (!it.ext&&it.id!=='skin'?'<div class="tool">'+tool(it.id)+'</div>':'')
          :'<button class="btn '+(t.coins>=it.cost?'b1':'b2')+'" data-buy="'+it.id+'"'+
            (t.coins<it.cost?' disabled style="opacity:.5"':'')+'><span class="coin"></span>'+it.cost+'</button>')+
     '</div>';}).join('')+'</div>';
+  if(OWNED.has('sdlc')) drawSdlc();
+  if(OWNED.has('sql')){ const i=document.querySelector('.t-sql'); if(i) $('.o-sql').innerHTML=runSql(i.value); }
+  if(OWNED.has('trace')){ const i=document.querySelector('.t-trace'); if(i) $('.o-trace').innerHTML=runTrace(i.value); }
 }
 
 function tool(id){
@@ -647,6 +679,32 @@ function tool(id){
       .map((g,i)=>'<button class="t-gate '+(i===0?'on':'')+'" data-g="'+g+'">'+g+'</button>').join('')+
       '</div><div class="out2 o-gate">'+runGate('AND')+'</div>';
   if(id==='net') return '<input class="t-net" placeholder="192.168.1.10/24"><div class="out2 o-net">Waiting\u2026</div>';
+  if(id==='bool') return '<input class="t-bool" placeholder="A.B + C\u2019 &nbsp; or &nbsp; (A+B).C">'+
+    '<div style="font-family:var(--m);font-size:11px;color:#6A77A0;margin-top:7px">'+
+    '. is AND &nbsp; + is OR &nbsp; \u2019 or ! is NOT &nbsp; ^ is XOR</div>'+
+    '<div class="out2 o-bool">Waiting\u2026</div>';
+  if(id==='twos') return '<input class="t-twos" placeholder="-45 &nbsp; or &nbsp; 11010011">'+
+    '<div style="font-family:var(--m);font-size:11px;color:#6A77A0;margin-top:7px">'+
+    'a denary number, or 8 bits to read back</div><div class="out2 o-twos">Waiting\u2026</div>';
+  if(id==='store') return '<input class="t-store" placeholder="700 MB over 8 Mbps">'+
+    '<div style="font-family:var(--m);font-size:11px;color:#6A77A0;margin-top:7px">'+
+    'size alone, or size + speed for a transfer time</div><div class="out2 o-store">Waiting\u2026</div>';
+  if(id==='sql') return '<div style="font-family:var(--m);font-size:11px;color:#6A77A0;margin-bottom:8px">'+
+    'table <b style="color:#38E1FF">student</b> \u2014 id, name, city, grade, marks</div>'+
+    '<input class="t-sql" value="SELECT name, marks FROM student WHERE marks > 60 ORDER BY marks DESC">'+
+    '<div class="out2 o-sql"></div>';
+  if(id==='trace') return '<textarea class="t-trace" rows="7" spellcheck="false" '+
+    'style="width:100%;padding:11px 13px;border-radius:10px;background:rgba(0,0,0,.35);'+
+    'border:1px solid var(--edge);color:var(--ink);font-family:var(--m);font-size:13px;resize:vertical">'+
+    'total = 0\nn = 1\nwhile n &lt;= 5\n  total = total + n\n  print total\n  n = n + 1\nend</textarea>'+
+    '<div class="out2 o-trace"></div>';
+  if(id==='sdlc') return '<div class="o-sdlc"></div>';
+  if(id==='web') return '<textarea class="t-web" rows="7" spellcheck="false" '+
+    'style="width:100%;padding:11px 13px;border-radius:10px;background:rgba(0,0,0,.35);'+
+    'border:1px solid var(--edge);color:var(--ink);font-family:var(--m);font-size:13px;resize:vertical">'+
+    '&lt;h1 style="color:#38E1FF"&gt;Hello&lt;/h1&gt;\n&lt;p&gt;Edit me and watch.&lt;/p&gt;</textarea>'+
+    '<iframe class="o-web" sandbox style="width:100%;height:190px;margin-top:10px;border-radius:10px;'+
+    'border:1px solid var(--edge);background:#fff"></iframe>';
   return '';
 }
 function runBin(v){
@@ -669,6 +727,189 @@ function runGate(g){
   return '<b>A B \u2192 Q</b><br>'+[[0,0],[0,1],[1,0],[1,1]]
     .map(p=>p[0]+' '+p[1]+' \u2192 '+(f(!!p[0],!!p[1])?1:0)).join('<br>');
 }
+/* Boolean expression to truth table. Only the characters below are ever
+   evaluated, so nothing else can be smuggled in. */
+function runBool(src){
+  let v=String(src||'').replace(/\s+/g,'').replace(/\u2019/g,"'");
+  if(!v) return 'Waiting\u2026';
+  if(!/^[A-Da-d01.+'!^()~]+$/.test(v)) return 'Use only A to D, and . + \u2019 ! ^ ( )';
+  v=v.toUpperCase();
+  const vars=[...new Set(v.match(/[A-D]/g)||[])].sort();
+  if(!vars.length) return 'Put at least one variable in, such as A.';
+  if(vars.length>4) return 'Four variables at most.';
+  let e=v, guard=0;
+  while(/[A-D01)]'/.test(e) && guard++<40)
+    e=e.replace(/(\([^()]*\)|[A-D01])'/g,'!($1)');
+  e=e.replace(/~/g,'!').replace(/\./g,'&&').replace(/\+/g,'||').replace(/\^/g,'!==');
+  let f;
+  try{ f=new Function(...vars,'return ('+e+')?1:0;'); }
+  catch(err){ return 'I cannot read that expression.'; }
+  const rows=[];
+  for(let i=0;i<(1<<vars.length);i++){
+    const bits=vars.map((_,k)=>(i>>(vars.length-1-k))&1);
+    let q; try{ q=f(...bits.map(Boolean)); }catch(err){ return 'I cannot read that expression.'; }
+    rows.push(bits.join(' ')+' \u2192 '+q);
+  }
+  const ones=rows.filter(r=>r.endsWith('1')).length;
+  return '<b>'+vars.join(' ')+' \u2192 Q</b><br>'+rows.join('<br>')+
+    '<br><span style="color:#93A0C8">'+ones+' of '+rows.length+' rows give 1</span>';
+}
+
+/* ---- signed numbers ---- */
+function runTwos(v){
+  v=String(v||'').trim(); if(!v) return 'Waiting\u2026';
+  if(/^[01]{8}$/.test(v)){
+    const u=parseInt(v,2), sgn=u>127?u-256:u;
+    return 'bits <b>'+v+'</b><br>unsigned <b>'+u+'</b><br>signed <b>'+sgn+'</b><br>'+
+      '<span style="color:#93A0C8">top bit '+v[0]+' means '+(v[0]==='1'?'negative':'positive')+'</span>';
+  }
+  const n=parseInt(v,10);
+  if(!isFinite(n)) return 'Give a number from -128 to 127, or 8 bits.';
+  if(n<-128||n>127) return '8 bits hold -128 to 127 only.';
+  const bits=((n<0?n+256:n)>>>0).toString(2).padStart(8,'0');
+  if(n>=0) return 'denary <b>'+n+'</b><br>8 bits <b>'+bits+'</b><br>'+
+    '<span style="color:#93A0C8">positive, so nothing to flip</span>';
+  const mag=Math.abs(n).toString(2).padStart(8,'0');
+  const inv=mag.split('').map(b=>b==='1'?'0':'1').join('');
+  return 'denary <b>'+n+'</b><br>'+Math.abs(n)+' in binary <b>'+mag+'</b><br>'+
+    'flip every bit <b>'+inv+'</b><br>add one <b>'+bits+'</b>';
+}
+/* ---- storage and transfer ---- */
+function runStore(v){
+  const src=String(v||'').trim(); if(!src) return 'Waiting\u2026';
+  const U={b:1/8,byte:1,bytes:1,kb:1e3,mb:1e6,gb:1e9,tb:1e12,kib:1024,mib:1048576,gib:1073741824};
+  const m=src.match(/^([\d.]+)\s*(bytes?|[kmgt]i?b|b)\b/i);
+  if(!m) return 'Try something like <b>700 MB</b> or <b>2 GB over 20 Mbps</b>.';
+  const size=parseFloat(m[1])*(U[m[2].toLowerCase()]||1);
+  const out=['<b>'+m[1]+' '+m[2].toUpperCase()+'</b> is',
+    '&nbsp;'+size.toLocaleString()+' bytes',
+    '&nbsp;'+(size*8).toLocaleString()+' bits',
+    '&nbsp;'+(size/1048576).toFixed(2)+' MiB &nbsp;(what a computer shows)'];
+  const sp=src.match(/(?:over|at|\/)\s*([\d.]+)\s*([kmg])?bps/i);
+  if(sp){
+    const mult={k:1e3,m:1e6,g:1e9}[(sp[2]||'').toLowerCase()]||1;
+    const bps=parseFloat(sp[1])*mult, secs=size*8/bps;
+    out.push('<br><b>Transfer at '+sp[1]+' '+((sp[2]||'').toUpperCase())+'bps</b>');
+    out.push('&nbsp;'+(secs<60?secs.toFixed(1)+' seconds'
+      :secs<3600?(secs/60).toFixed(1)+' minutes':(secs/3600).toFixed(2)+' hours'));
+    out.push('<span style="color:#93A0C8">bits \u00F7 bits per second</span>');
+  }
+  return out.join('<br>');
+}
+/* ---- SQL against a sample table ---- */
+const SQLROWS=[
+ {id:1,name:'Nimali',city:'Colombo',grade:'A',marks:88},
+ {id:2,name:'Kasun', city:'Gampaha',grade:'B',marks:72},
+ {id:3,name:'Dilki', city:'Colombo',grade:'C',marks:58},
+ {id:4,name:'Sahan', city:'Kandy',  grade:'A',marks:91},
+ {id:5,name:'Tharu', city:'Gampaha',grade:'S',marks:44},
+ {id:6,name:'Ishara',city:'Colombo',grade:'B',marks:67}];
+function runSql(q){
+  q=String(q||'').trim().replace(/;$/,''); if(!q) return '';
+  const m=q.match(/^select\s+(.+?)\s+from\s+student(?:\s+where\s+(.+?))?(?:\s+order\s+by\s+(\w+)(?:\s+(asc|desc))?)?(?:\s+limit\s+(\d+))?$/i);
+  if(!m) return '<span style="color:#FF4D6D">Only SELECT \u2026 FROM student works here.</span>';
+  const cols=m[1].trim()==='*'?['id','name','city','grade','marks']
+    :m[1].split(',').map(c=>c.trim().toLowerCase());
+  const bad=cols.find(c=>!['id','name','city','grade','marks'].includes(c));
+  if(bad) return '<span style="color:#FF4D6D">There is no column called '+esc(bad)+'.</span>';
+  let rows=SQLROWS.slice();
+  if(m[2]){
+    const parts=m[2].split(/\s+(and|or)\s+/i);
+    const test=r=>{
+      let acc=null, op=null;
+      for(let i=0;i<parts.length;i++){
+        if(/^(and|or)$/i.test(parts[i])){ op=parts[i].toLowerCase(); continue; }
+        const c=parts[i].match(/^(\w+)\s*(>=|<=|<>|!=|=|>|<|like)\s*'?([^']*)'?$/i);
+        if(!c) return false;
+        const f=c[1].toLowerCase(), o=c[2].toLowerCase();
+        let a=r[f], b=c[3].trim();
+        if(a===undefined) return false;
+        if(typeof a==='number') b=parseFloat(b);
+        let ok = o==='='?a==b : o==='>'?a>b : o==='<'?a<b : o==='>='?a>=b : o==='<='?a<=b
+          : (o==='<>'||o==='!=')?a!=b
+          : new RegExp('^'+String(b).replace(/%/g,'.*')+'$','i').test(String(a));
+        acc = acc===null?ok : op==='or'?(acc||ok):(acc&&ok);
+      }
+      return !!acc;
+    };
+    rows=rows.filter(test);
+  }
+  if(m[3]){ const k=m[3].toLowerCase(), d=(m[4]||'asc').toLowerCase()==='desc'?-1:1;
+    rows.sort((a,b)=>(a[k]>b[k]?1:a[k]<b[k]?-1:0)*d); }
+  if(m[5]) rows=rows.slice(0,+m[5]);
+  if(!rows.length) return '<span style="color:#93A0C8">0 rows.</span>';
+  return '<b>'+cols.join(' | ')+'</b><br>'+
+    rows.map(r=>cols.map(c=>r[c]).join(' | ')).join('<br>')+
+    '<br><span style="color:#93A0C8">'+rows.length+' row'+(rows.length===1?'':'s')+'</span>';
+}
+/* ---- step through a small program ---- */
+function runTrace(src){
+  const lines=String(src||'').split('\n').map(l=>l.trim()).filter(l=>l&&!l.startsWith('#'));
+  if(!lines.length) return '';
+  const vars={}, out=[]; let steps=0;
+  const val=e=>{
+    e=e.trim();
+    if(!/^[\w\s+\-*/%().<>=!]+$/.test(e)) throw 'bad expression';
+    const names=[...new Set(e.match(/[a-z_]\w*/gi)||[])];
+    const f=new Function(...names,'return ('+e+');');
+    return f(...names.map(n=>vars[n]!==undefined?vars[n]:0));
+  };
+  const block=(from,to)=>{
+    let i=from;
+    while(i<to){
+      if(++steps>4000) throw 'this runs too long';
+      const L=lines[i];
+      let m;
+      if((m=L.match(/^(?:print|show|display)\s*\(?(.+?)\)?$/i))){
+        out.push({ln:i+1,txt:String(val(m[1])),vars:{...vars}}); i++; continue; }
+      if((m=L.match(/^(while|if|repeat)\s+(.+)$/i))){
+        const kind=m[1].toLowerCase();
+        let depth=1,j=i+1;
+        while(j<to&&depth>0){ if(/^(while|if|repeat)\s+/i.test(lines[j])) depth++;
+          else if(/^end$/i.test(lines[j])) depth--; if(depth>0) j++; }
+        if(kind==='while'){ while(val(m[2])){ if(++steps>4000) throw 'this loops forever'; block(i+1,j); } }
+        else if(kind==='repeat'){ const n=val(m[2]); for(let k=0;k<n;k++) block(i+1,j); }
+        else if(val(m[2])) block(i+1,j);
+        i=j+1; continue; }
+      if(/^end$/i.test(L)){ i++; continue; }
+      if((m=L.match(/^([a-z_]\w*)\s*=\s*(.+)$/i))){
+        vars[m[1]]=val(m[2]);
+        out.push({ln:i+1,txt:m[1]+' = '+vars[m[1]],vars:{...vars}}); i++; continue; }
+      throw 'cannot read line '+(i+1)+': '+L;
+    }
+  };
+  try{ block(0,lines.length); }
+  catch(err){ return '<span style="color:#FF4D6D">'+esc(String(err))+'</span>'; }
+  const shown=out.slice(-16);
+  return shown.map(o=>'<span style="color:#6A77A0">'+String(o.ln).padStart(2)+'</span> '+esc(o.txt)).join('<br>')+
+    '<br><span style="color:#93A0C8">final: '+
+      Object.keys(vars).map(k=>k+'='+vars[k]).join(', ')+'</span>'+
+    (out.length>16?'<br><span style="color:#6A77A0">(last 16 of '+out.length+' steps)</span>':'');
+}
+/* ---- SDLC order ---- */
+const SDLC=['Preliminary study','Requirements analysis','Design','Development',
+            'Testing','Deployment','Maintenance'];
+let sdlcPick=[];
+function drawSdlc(){
+  const box=document.querySelector('.o-sdlc'); if(!box) return;
+  const left=SDLC.filter(x=>!sdlcPick.includes(x));
+  const right=sdlcPick.map((x,i)=>{
+    const ok=SDLC[i]===x;
+    return '<div style="padding:9px 12px;border-radius:9px;margin-bottom:6px;font-size:13.5px;'+
+      'border:1px solid '+(ok?'#7CF29B':'#FF4D6D')+';background:'+(ok?'rgba(124,242,155,.12)':'rgba(255,77,109,.12)')+'">'+
+      (i+1)+'. '+x+'</div>';}).join('');
+  box.innerHTML='<div style="font-family:var(--m);font-size:11px;color:#6A77A0;margin-bottom:9px">'+
+      'tap them in order, from first to last</div>'+
+    '<div class="gates">'+left.map(x=>'<button class="sdlc-b" data-s="'+x+'">'+x+'</button>').join('')+'</div>'+
+    (right?'<div style="margin-top:10px">'+right+'</div>':'')+
+    (sdlcPick.length===SDLC.length
+      ? (sdlcPick.every((x,i)=>SDLC[i]===x)
+        ? '<div style="color:#7CF29B;font-family:var(--m);font-size:13px;margin-top:8px">All seven in order. That is the SDLC.</div>'
+        : '<div style="color:#FF4D6D;font-family:var(--m);font-size:13px;margin-top:8px">Red ones are out of place.</div>')
+      : '')+
+    '<button class="btn b2" id="sdlcReset" style="margin-top:10px;padding:8px 14px">Start again</button>';
+}
+
 function runNet(v){
   const m=String(v).trim().match(/^(\d+)\.(\d+)\.(\d+)\.(\d+)\s*\/\s*(\d+)$/);
   if(!m) return 'Write it like 192.168.1.10/24';
@@ -821,6 +1062,9 @@ document.addEventListener('click',e=>{
   if(bu){ const it=SHOP.find(x=>x.id===bu.dataset.buy); const t2=totals();
     if(!it||t2.coins<it.cost) return;
     OWNED.add(it.id); SPENT+=it.cost; save(); paint(); toast(it.n+' unlocked'); return; }
+  const sb=e.target.closest('.sdlc-b');
+  if(sb){ sdlcPick.push(sb.dataset.s); drawSdlc(); return; }
+  if(e.target.id==='sdlcReset'){ sdlcPick=[]; drawSdlc(); return; }
   const g=e.target.closest('.t-gate');
   if(g){ $$('.t-gate').forEach(x=>x.classList.toggle('on',x===g));
     $('.o-gate').innerHTML=runGate(g.dataset.g); return; }
@@ -830,6 +1074,14 @@ document.addEventListener('click',e=>{
 document.addEventListener('input',e=>{
   if(e.target.classList.contains('t-bin')) $('.o-bin').innerHTML=runBin(e.target.value);
   if(e.target.classList.contains('t-net')) $('.o-net').innerHTML=runNet(e.target.value);
+  if(e.target.classList.contains('t-bool')) $('.o-bool').innerHTML=runBool(e.target.value);
+  if(e.target.classList.contains('t-twos')) $('.o-twos').innerHTML=runTwos(e.target.value);
+  if(e.target.classList.contains('t-store')) $('.o-store').innerHTML=runStore(e.target.value);
+  if(e.target.classList.contains('t-sql')) $('.o-sql').innerHTML=runSql(e.target.value);
+  if(e.target.classList.contains('t-trace')) $('.o-trace').innerHTML=runTrace(e.target.value);
+  if(e.target.classList.contains('t-web')){
+    const f=$('.o-web'); if(f) f.srcdoc='<style>body{font-family:system-ui;padding:14px}</style>'+e.target.value;
+  }
 });
 document.addEventListener('keydown',e=>{ if(e.key==='Escape'){
   $('#ov').classList.remove('on'); document.body.style.overflow=''; }});
