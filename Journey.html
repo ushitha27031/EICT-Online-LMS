@@ -11,7 +11,7 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
 <!-- End Google Tag Manager -->
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>EICT — Mission Control</title>
-<meta name="version" content="3.9.1">
+<meta name="version" content="4.0.0">
 <meta name="theme-color" content="#070B1F">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -90,8 +90,10 @@ a{color:inherit;text-decoration:none}
 .warp{clip-path:circle(150% at 50% 50%);will-change:clip-path}
 .warp.go{clip-path:circle(0% at 50% 50%);
   transition:clip-path 1.5s cubic-bezier(.66,0,.34,1)}
-.warp svg{position:absolute;left:50%;top:50%;width:min(66vmin,420px);height:min(66vmin,420px);
+.warp svg{position:absolute;left:50%;top:50%;width:min(52vmin,320px);height:min(52vmin,320px);
   transform:translate(-50%,-50%)}
+.fillring{transition:stroke-dashoffset 1.15s cubic-bezier(.45,.05,.2,1)}
+.warp.fill .fillring{stroke-dashoffset:0}
 .warp svg{will-change:opacity,transform}
 .warp.go svg{opacity:0;transform:translate(-50%,-50%) scale(1.55);
   transition:opacity .55s ease,transform 1.2s cubic-bezier(.66,0,.34,1)}
@@ -325,10 +327,17 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
 
 <div class="warp" id="warp">
   <svg viewBox="0 0 200 200">
-    <circle class="r a" cx="100" cy="100" r="86" stroke="rgba(120,150,255,.20)" stroke-width="1" stroke-dasharray="3 10"/>
-    <circle class="r a" cx="100" cy="100" r="68" stroke="#38E1FF" stroke-width="2.4" stroke-dasharray="54 300"/>
-    <circle class="r b" cx="100" cy="100" r="50" stroke="#A87BFF" stroke-width="2.4" stroke-dasharray="30 250"/>
-    <circle class="core" cx="100" cy="100" r="9"/>
+    <defs>
+      <linearGradient id="fillArc" x1="0" y1="0" x2="1" y2="1">
+        <stop offset="0%" stop-color="#38E1FF"/><stop offset="100%" stop-color="#A87BFF"/>
+      </linearGradient>
+    </defs>
+    <circle cx="100" cy="100" r="74" fill="none" stroke="rgba(120,150,255,.16)" stroke-width="6"/>
+    <circle class="fillring" cx="100" cy="100" r="74" fill="none" stroke="url(#fillArc)"
+      stroke-width="6" stroke-linecap="round" pathLength="100"
+      stroke-dasharray="100" stroke-dashoffset="100"
+      transform="rotate(-90 100 100)"/>
+    <circle class="core" cx="100" cy="100" r="7"/>
   </svg>
 </div>
 
@@ -569,6 +578,17 @@ async function boot(){
       NAME=PROFILE.name||'Student';
       if(!CODE){ $('#goBtn').disabled=false;
         showGate(); $('#gerr').textContent='Your account has no student number yet. Ask sir to add one.'; return; }
+      /* the study world runs for the revision batch only */
+      const bt=String(PROFILE.batch||'');
+      if(bt && bt!=='AL-27'){
+        showGate();
+        $('#gerr').innerHTML='The study world runs for the <b>2027 A/L</b> batch.<br>'
+          +'<span style="color:#93A0C8">Your class page has everything for your batch \u2014 '
+          +'lessons, papers, payments and deliveries.</span><br>'
+          +'<a href="Class.html" style="color:#38E1FF">Go to my class page</a>';
+        try{ await FB.signOut(FB.auth); }catch(e){}
+        return;
+      }
     }catch(e){
       $('#goBtn').disabled=false;
       showGate();
@@ -599,22 +619,25 @@ async function loadAll(){
 }
 function launch(){
   const w=$('#warp'), sp=$('#splash');
-  starsOn(false);                       /* give the transition the whole frame budget */
+  starsOn(false);                    /* the transition gets the whole frame budget */
   w.classList.add('on');
-  void w.offsetWidth;                         /* let the browser paint it closed first */
-  if(sp){ sp.classList.add('out'); setTimeout(()=>sp.remove(),500); }
-  /* put the world underneath before opening, so the iris reveals it
-     rather than flashing the sign-in page */
+  void w.offsetWidth;                /* paint it empty before the ring starts filling */
+  if(sp){ sp.classList.add('out'); setTimeout(()=>sp.remove(),450); }
+
+  /* the world goes underneath first, so the ring opens onto it
+     instead of flashing the sign-in page */
   $('#gate').classList.add('hide');
   const app=$('#app');
   app.classList.remove('hide');
   paint();
-  requestAnimationFrame(()=>{ app.style.opacity='1'; });
+
   requestAnimationFrame(()=>requestAnimationFrame(()=>{
-    setTimeout(()=>w.classList.add('go'),420);
+    w.classList.add('fill');                       /* ring sweeps round once */
+    app.style.opacity='1';
+    setTimeout(()=>w.classList.add('go'),1180);     /* then it opens */
   }));
-  setTimeout(()=>{ w.classList.remove('on','go'); starsOn(true);
-    setTimeout(()=>{ settled=true; },600); },2100);
+  setTimeout(()=>{ w.classList.remove('on','go','fill'); starsOn(true);
+    setTimeout(()=>{ settled=true; },500); },2650);
 }
 async function enter(){
   if(!READY){                       /* clicked before Firebase finished loading */
@@ -698,7 +721,17 @@ const weekNow=()=>{ const t=Date.now();
   for(let i=0;i<ROAD.weeks.length;i++){ const w=ROAD.weeks[i];
     if(!w.to || t < new Date(w.to).getTime()+864e5) return i; }
   return Math.max(0,ROAD.weeks.length-1); };
-const dshort=d=>new Date(d).toLocaleDateString('en-GB',{day:'numeric',month:'short'});
+const MON=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+const dshort=v=>{ if(!v) return '';
+  const d=new Date(v+(String(v).length===10?'T00:00:00':''));
+  return isNaN(d)?String(v):d.getDate()+' '+MON[d.getMonth()]; };
+const dRange=(a,b)=>{ if(!a) return '';
+  const x=new Date(a+'T00:00:00'), y=b?new Date(b+'T00:00:00'):null;
+  if(isNaN(x)) return String(a);
+  if(!y||isNaN(y)) return dshort(a);
+  return x.getMonth()===y.getMonth()
+    ? x.getDate()+'\u2013'+y.getDate()+' '+MON[y.getMonth()]
+    : dshort(a)+' \u2013 '+dshort(b); };
 
 function paint(){
   const t=totals(), avg=average(), g=gradeOf(avg);
@@ -1616,7 +1649,7 @@ function openWeek(i){
       '<i>'+icon+'</i><span>'+esc(x.label||x.url)+'</span></a>').join('')+'</div>';
   $('#sheetBody').innerHTML=
     '<div class="k">Mission '+String(i+1).padStart(2,'0')+
-      (w.from?' \u00B7 '+dshort(w.from)+' \u2013 '+dshort(w.to):'')+'</div>'+
+      (w.from?' \u00B7 '+dRange(w.from,w.to):'')+'</div>'+
     '<h3>'+esc(w.title||('Week '+(i+1)))+'</h3>'+
     '<div style="font-family:var(--m);font-size:12px;color:var(--dim)">'+esc(w.unit||'')+'</div>'+
     (w.brief?'<p style="color:var(--dim);margin:14px 0 0">'+esc(w.brief)+'</p>':'')+
