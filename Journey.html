@@ -11,7 +11,7 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
 <!-- End Google Tag Manager -->
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>EICT — Mission Control</title>
-<meta name="version" content="4.1.0">
+<meta name="version" content="4.7.0">
 <meta name="theme-color" content="#070B1F">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -393,12 +393,14 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
   <nav class="tabs">
     <button class="tab on" data-t="map">Missions</button>
     <button class="tab" data-t="marks">My marks</button>
+    <button class="tab" data-t="hall">Hall of fame</button>
     <button class="tab" data-t="shop">Armoury</button>
   </nav>
 
   <div class="wrap"><div class="stage">
     <div id="vMap"></div>
     <div id="vMarks" class="hide"></div>
+    <div id="vHall" class="hide"></div>
     <div id="vShop" class="hide"></div>
   </div></div>
 </div>
@@ -416,7 +418,7 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
   if(!cfg||!cfg.projectId) return null;
   try{
     const {initializeApp}=await import('https://www.gstatic.com/firebasejs/11.0.2/firebase-app.js');
-    const {getFirestore,doc,getDoc,setDoc,onSnapshot,collection,addDoc}=
+    const {getFirestore,doc,getDoc,setDoc,onSnapshot,collection,addDoc,getDocs}=
       await import('https://www.gstatic.com/firebasejs/11.0.2/firebase-firestore.js');
     const {getAuth,onAuthStateChanged,signInWithEmailAndPassword,signOut,
            setPersistence,browserLocalPersistence}=
@@ -425,7 +427,7 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
     const auth=getAuth(app);
     /* remember the sign-in on this device, so reloading does not ask again */
     try{ await setPersistence(auth,browserLocalPersistence); }catch(e){}
-    return {db:getFirestore(app),auth,doc,getDoc,setDoc,onSnapshot,collection,addDoc,
+    return {db:getFirestore(app),auth,doc,getDoc,setDoc,onSnapshot,collection,addDoc,getDocs,
             onAuthStateChanged,signInWithEmailAndPassword,signOut};
   }catch(e){ console.warn('offline',e.message); return null; }
 })().then(window.__fbDone);
@@ -614,7 +616,7 @@ async function loadAll(){
          MARKS=d.weeks||{}; BONUS=+d.bonus||0;
          if(firstMarks){ firstMarks=false; }
          else if(settled && BONUS>before) coinBurst(BONUS-before,'coins added');
-         else if(settled && Object.keys(MARKS).length>hadMarks) coinBurst(0,'a paper was marked');
+         else if(settled && Object.keys(MARKS).length>hadMarks){ coinBurst(0,'a paper was marked'); HALL=null; }
          if(!$('#app').classList.contains('hide')) paint(); }); }catch(e){}
 }
 function launch(){
@@ -722,6 +724,45 @@ const weekNow=()=>{ const t=Date.now();
     if(!w.to || t < new Date(w.to).getTime()+864e5) return i; }
   return Math.max(0,ROAD.weeks.length-1); };
 const MON=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+const LK=5.5*3600e3;                       /* Sri Lanka is +05:30 all year */
+function dueAt(paper){
+  if(!paper||!paper.due) return null;
+  const [y,m,d]=String(paper.due).split('-').map(Number);
+  const t=String(paper.dueTime||'23:59').split(':').map(Number);
+  if(!y||!m||!d) return null;
+  return Date.UTC(y,m-1,d,t[0]||0,t[1]||0,0)-LK;    /* stated in Colombo time */
+}
+function dueText(paper){
+  const at=dueAt(paper); if(at===null) return '';
+  const d=new Date(at+LK);
+  let h=d.getUTCHours(), mi=d.getUTCMinutes();
+  const ap=h>=12?'PM':'AM'; h=h%12||12;
+  return d.getUTCDate()+' '+MON[d.getUTCMonth()]+', '+h+'.'+String(mi).padStart(2,'0')+' '+ap;
+}
+function dueLeft(paper){
+  const at=dueAt(paper); if(at===null) return '';
+  const ms=at-Date.now();
+  if(ms<=0) return 'closed';
+  const days=Math.floor(ms/864e5), hrs=Math.floor(ms%864e5/36e5), mins=Math.floor(ms%36e5/6e4);
+  return days>0 ? days+' day'+(days>1?'s':'')+' left'
+       : hrs>0  ? hrs+' hour'+(hrs>1?'s':'')+' left'
+                : mins+' min left';
+}
+function dueAt(w){
+  const pr=(w&&w.paper)||{};
+  if(!pr.due) return 0;
+  const t=(pr.dueTime||'23:59');
+  const d=new Date(pr.due+'T'+t+':00');          /* the student's own clock */
+  return isNaN(d)?0:d.getTime();
+}
+function dueText(w){
+  const pr=(w&&w.paper)||{};
+  if(!pr.due) return '';
+  const d=new Date(pr.due+'T'+(pr.dueTime||'23:59')+':00');
+  if(isNaN(d)) return '';
+  return d.toLocaleDateString('en-GB',{weekday:'short',day:'numeric',month:'short'})
+    +' at '+d.toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'});
+}
 const dshort=v=>{ if(!v) return '';
   const d=new Date(v+(String(v).length===10?'T00:00:00':''));
   return isNaN(d)?String(v):d.getDate()+' '+MON[d.getMonth()]; };
@@ -749,7 +790,8 @@ function paint(){
   const lo=rk[0], hi=nx?nx[0]:rk[0]+1;
   $('#xpFill').style.width=Math.min(100,((t.earned-lo)/(hi-lo))*100)+'%';
   $('#xpTx').textContent=nx?(hi-t.earned)+' coins to '+nx[1]:'Highest rank reached';
-  if(tab==='map') paintMap(); else if(tab==='marks') paintMarks(); else paintShop();
+  if(tab==='map') paintMap(); else if(tab==='marks') paintMarks();
+  else if(tab==='hall') paintHall(); else paintShop();
 }
 
 function paintMap(){
@@ -767,6 +809,8 @@ function paintMap(){
       '<b>'+esc(w.title||('Week '+(i+1)))+'</b>'+
       '<span>'+esc(w.unit||'')+'</span>'+
       '<span>'+dn+'/'+tot+' done'+(w.from?' \u00B7 '+dshort(w.from):'')+'</span>'+
+      (dueAt(w)&&!m?'<span style="color:'+(Date.now()>dueAt(w)?'#FF4D6D':'#FFC93C')+'">'+
+        (Date.now()>dueAt(w)?'past due':'due '+dueText(w))+'</span>':'')+
       '<span class="stars">'+[0,1,2].map(n=>'<i class="'+(n<stars?'on':'')+'"></i>').join('')+'</span>'+
     '</button>';}).join('')+'</div>';
 }
@@ -799,6 +843,58 @@ function paintMarks(){
     '</svg></div>'+
     '<div style="font-family:var(--m);font-size:12.5px;color:var(--dim);margin-top:14px;line-height:1.9">'+
       'A above 74 \u00B7 B above 64 \u00B7 C above 49 \u00B7 S above 34 \u00B7 W below 35</div>';
+}
+
+let HALL=null, hallBusy=false;
+async function paintHall(){
+  const box=$('#vHall'); if(!box) return;
+  if(HALL===null && !hallBusy){
+    hallBusy=true;
+    box.innerHTML='<div class="empty">Counting everyone\u2019s marks\u2026</div>';
+    try{
+      const q=await FB.getDocs(FB.collection(FB.db,'marks'));
+      const rows=[];
+      q.forEach(d=>{
+        const v=d.data(), weeks=v.weeks||{};
+        const ms=Object.values(weeks).map(x=>+x.mark||0);
+        if(!ms.length) return;
+        rows.push({ code:v.code||d.id, name:v.name||'', batch:v.batch||'',
+          papers:ms.length, avg:Math.round(ms.reduce((a,b)=>a+b,0)/ms.length),
+          best:Math.max(...ms) });
+      });
+      HALL=rows;
+    }catch(e){ HALL=[]; }
+    hallBusy=false;
+  }
+  const rows=(HALL||[]).slice().sort((a,b)=>b.avg-a.avg || b.papers-a.papers);
+  if(!rows.length){ box.innerHTML='<div class="empty">No papers marked yet. '
+    +'The table fills up as sir marks them.</div>'; return; }
+  const me=rows.findIndex(r=>r.code===CODE);
+  const medal=['\u2460','\u2461','\u2462'];
+  const tint=i=>i===0?'#FFC93C':i===1?'#CBD5E1':i===2?'#D9873A':'#6A77A0';
+  box.innerHTML=
+    '<div class="mk-grid" style="grid-template-columns:repeat(auto-fit,minmax(150px,1fr))">'+
+      '<div class="mk-t"><b>'+(me>=0?'#'+(me+1):'\u2014')+'</b><span>Where you stand</span></div>'+
+      '<div class="mk-t"><b>'+rows.length+'</b><span>Students ranked</span></div>'+
+      '<div class="mk-t"><b>'+rows[0].avg+'%</b><span>Top average</span></div>'+
+    '</div>'+
+    '<div class="pane"><h5>Ranked by average</h5><table class="tt"><thead><tr>'+
+      '<th style="width:56px">#</th><th>Student</th><th>Papers</th><th>Best</th><th>Average</th>'+
+      '</tr></thead><tbody>'+
+      rows.map((r,i)=>{
+        const mine=r.code===CODE;
+        return '<tr style="'+(mine?'background:rgba(56,225,255,.12)':'')+'">'+
+          '<td style="color:'+tint(i)+';font-family:var(--d);font-weight:700;font-size:16px">'+
+            (i<3?medal[i]:(i+1))+'</td>'+
+          '<td><b style="font-family:var(--b);font-size:14.5px">'+esc(r.name||r.code)+'</b>'+
+            (mine?' <span style="color:#38E1FF;font-size:12px">\u2190 you</span>':'')+
+            '<br><span style="color:#6A77A0;font-size:11.5px">'+esc(r.code)+'</span></td>'+
+          '<td>'+r.papers+'</td><td>'+r.best+'%</td>'+
+          '<td><b style="font-size:17px;color:'+(r.avg>74?'#7CF29B':r.avg>49?'#FFC93C':'#FF4D6D')+'">'+
+            r.avg+'%</b></td></tr>';}).join('')+
+    '</tbody></table></div>'+
+    '<div style="font-family:var(--m);font-size:12.5px;color:#93A0C8;margin-top:14px;line-height:1.9">'+
+      'Averages only. One weak week will not sink you, and one good week will not carry you.</div>';
 }
 
 function paintShop(){
@@ -1625,7 +1721,8 @@ async function doSend(i){
   if(!$('#edOk').classList.contains('on'))
     return toast('Confirm the access is set to Editor');
   const w=ROAD.weeks[i]||{};
-  const late=w.paper&&w.paper.due ? Date.now()>new Date(w.paper.due).getTime()+864e5 : false;
+  const at=dueAt(w.paper);
+  const late = at!==null ? Date.now()>at : false;
   SENT[i]={link:r.link, at:new Date().toISOString(), late};
   save();
   if(FB&&UID){
@@ -1663,7 +1760,11 @@ function openWeek(i){
     (w.paper&&w.paper.url?'<div class="sec"><h4>Weekend paper</h4><div class="pbox">'+
       '<b>'+esc(w.paper.title||'This week\u2019s paper')+'</b>'+
       '<div class="due">Write it on Saturday or Sunday'+
-        (w.paper.due?' \u00B7 due '+dshort(w.paper.due):'')+'</div>'+
+        (w.paper.due?' \u00B7 due <b>'+dueText(w.paper)+'</b>':'')+'</div>'+
+      (w.paper.due?'<div style="font-family:var(--m);font-size:11.5px;margin-top:5px;color:'+
+        (dueLeft(w.paper)==='closed'?'#FF4D6D':'#7CF29B')+'">'+
+        (dueLeft(w.paper)==='closed'?'The deadline has passed \u2014 you can still send it, marked late'
+                                    :dueLeft(w.paper))+'</div>':'')+
       '<div style="display:flex;gap:9px;flex-wrap:wrap;margin-top:13px">'+
         '<a class="btn b1" href="'+esc(w.paper.url)+'" target="_blank" rel="noopener">Open paper</a>'+
         (m?'':'<button class="btn b2" data-send="'+i+'">'+(SENT[i]?'Change my link':'Send my answers')+'</button>')+
@@ -1686,6 +1787,7 @@ document.addEventListener('click',e=>{
   if(tb){ tab=tb.dataset.t; $$('.tab').forEach(x=>x.classList.toggle('on',x===tb));
     $('#vMap').classList.toggle('hide',tab!=='map');
     $('#vMarks').classList.toggle('hide',tab!=='marks');
+    $('#vHall').classList.toggle('hide',tab!=='hall');
     $('#vShop').classList.toggle('hide',tab!=='shop');
     paint(); return; }
   const sd=e.target.closest('[data-send]'); if(sd) return sendSheet(+sd.dataset.send);
