@@ -11,7 +11,7 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
 <!-- End Google Tag Manager -->
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>EICT — Mission Control</title>
-<meta name="version" content="4.7.0">
+<meta name="version" content="4.7.1">
 <meta name="theme-color" content="#070B1F">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -725,19 +725,20 @@ const weekNow=()=>{ const t=Date.now();
   return Math.max(0,ROAD.weeks.length-1); };
 const MON=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
 const LK=5.5*3600e3;                       /* Sri Lanka is +05:30 all year */
-function dueAt(paper){
-  if(!paper||!paper.due) return null;
-  const [y,m,d]=String(paper.due).split('-').map(Number);
-  const t=String(paper.dueTime||'23:59').split(':').map(Number);
-  if(!y||!m||!d) return null;
-  return Date.UTC(y,m-1,d,t[0]||0,t[1]||0,0)-LK;    /* stated in Colombo time */
+/* A deadline is a moment. Accepts either a week or a paper, because both
+   are passed in from different screens. */
+function paperOf(x){ return (x && x.paper) ? x.paper : (x || {}); }
+function dueAt(x){
+  const pr=paperOf(x);
+  if(!pr.due) return null;
+  const d=new Date(pr.due+'T'+(pr.dueTime||'23:59')+':00');
+  return isNaN(d) ? null : d.getTime();
 }
-function dueText(paper){
-  const at=dueAt(paper); if(at===null) return '';
-  const d=new Date(at+LK);
-  let h=d.getUTCHours(), mi=d.getUTCMinutes();
-  const ap=h>=12?'PM':'AM'; h=h%12||12;
-  return d.getUTCDate()+' '+MON[d.getUTCMonth()]+', '+h+'.'+String(mi).padStart(2,'0')+' '+ap;
+function dueText(x){
+  const at=dueAt(x); if(at===null) return '';
+  const d=new Date(at);
+  return d.toLocaleDateString('en-GB',{weekday:'short',day:'numeric',month:'short'})
+    +' at '+d.toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'});
 }
 function dueLeft(paper){
   const at=dueAt(paper); if(at===null) return '';
@@ -747,21 +748,6 @@ function dueLeft(paper){
   return days>0 ? days+' day'+(days>1?'s':'')+' left'
        : hrs>0  ? hrs+' hour'+(hrs>1?'s':'')+' left'
                 : mins+' min left';
-}
-function dueAt(w){
-  const pr=(w&&w.paper)||{};
-  if(!pr.due) return 0;
-  const t=(pr.dueTime||'23:59');
-  const d=new Date(pr.due+'T'+t+':00');          /* the student's own clock */
-  return isNaN(d)?0:d.getTime();
-}
-function dueText(w){
-  const pr=(w&&w.paper)||{};
-  if(!pr.due) return '';
-  const d=new Date(pr.due+'T'+(pr.dueTime||'23:59')+':00');
-  if(isNaN(d)) return '';
-  return d.toLocaleDateString('en-GB',{weekday:'short',day:'numeric',month:'short'})
-    +' at '+d.toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'});
 }
 const dshort=v=>{ if(!v) return '';
   const d=new Date(v+(String(v).length===10?'T00:00:00':''));
