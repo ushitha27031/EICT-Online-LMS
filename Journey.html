@@ -11,7 +11,7 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
 <!-- End Google Tag Manager -->
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>EICT — Mission Control</title>
-<meta name="version" content="4.7.1">
+<meta name="version" content="4.8.0">
 <meta name="theme-color" content="#070B1F">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -616,7 +616,15 @@ async function loadAll(){
          MARKS=d.weeks||{}; BONUS=+d.bonus||0;
          if(firstMarks){ firstMarks=false; }
          else if(settled && BONUS>before) coinBurst(BONUS-before,'coins added');
-         else if(settled && Object.keys(MARKS).length>hadMarks){ coinBurst(0,'a paper was marked'); HALL=null; }
+         else if(settled && Object.keys(MARKS).length>hadMarks){
+           /* find the paper that just came back and celebrate what it earned */
+           const fresh=Object.keys(MARKS).find(k=>!(k in (window.__seenMarks||{})));
+           const r=fresh!==undefined?MARKS[fresh]:null;
+           const got=r?coinsFor(+r.mark||0)+(r.onTime?25:0):0;
+           coinBurst(got, r&&r.onTime?'marked '+r.mark+'% \u00b7 on time bonus':'a paper was marked');
+           HALL=null;
+         }
+         window.__seenMarks=Object.assign({},MARKS);
          if(!$('#app').classList.contains('hide')) paint(); }); }catch(e){}
 }
 function launch(){
