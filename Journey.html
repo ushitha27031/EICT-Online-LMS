@@ -11,7 +11,7 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
 <!-- End Google Tag Manager -->
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>EICT — Mission Control</title>
-<meta name="version" content="4.8.0">
+<meta name="version" content="4.10.0">
 <meta name="theme-color" content="#070B1F">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -369,6 +369,9 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
       <input id="em" type="email" placeholder="your email" autocomplete="email" class="fld1">
       <input id="pw" type="password" placeholder="password" autocomplete="current-password" class="fld1">
       <button class="go" id="goBtn" style="width:100%;margin-top:4px">Launch</button>
+      <button type="button" id="jForgot" style="display:block;margin:14px auto 0;font-family:var(--m);
+        font-size:12.5px;color:var(--dim);text-decoration:underline;text-underline-offset:3px">
+        Forgot your password?</button>
     </div>
     <div class="gerr" id="gerr"></div>
     <div style="font-size:13px;color:var(--dimmer);margin-top:16px;line-height:1.7">
@@ -420,7 +423,7 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
     const {initializeApp}=await import('https://www.gstatic.com/firebasejs/11.0.2/firebase-app.js');
     const {getFirestore,doc,getDoc,setDoc,onSnapshot,collection,addDoc,getDocs}=
       await import('https://www.gstatic.com/firebasejs/11.0.2/firebase-firestore.js');
-    const {getAuth,onAuthStateChanged,signInWithEmailAndPassword,signOut,
+    const {getAuth,onAuthStateChanged,signInWithEmailAndPassword,signOut,sendPasswordResetEmail,
            setPersistence,browserLocalPersistence}=
       await import('https://www.gstatic.com/firebasejs/11.0.2/firebase-auth.js');
     const app=initializeApp(cfg);
@@ -428,7 +431,7 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
     /* remember the sign-in on this device, so reloading does not ask again */
     try{ await setPersistence(auth,browserLocalPersistence); }catch(e){}
     return {db:getFirestore(app),auth,doc,getDoc,setDoc,onSnapshot,collection,addDoc,getDocs,
-            onAuthStateChanged,signInWithEmailAndPassword,signOut};
+            onAuthStateChanged,signInWithEmailAndPassword,signOut,sendPasswordResetEmail};
   }catch(e){ console.warn('offline',e.message); return null; }
 })().then(window.__fbDone);
 </script>
@@ -536,7 +539,7 @@ let starsOn=()=>{};
   build(); starsOn(true);
 })();
 
-const coinsFor=m=>m>=75?60:m>=65?48:m>=50?36:m>=35?24:12;
+const coinsFor=m=>m>=90?100:m>=80?75:m>=75?60:m>=65?48:m>=50?36:m>=35?24:12;
 function totals(){
   let c=DONE.size*5;
   for(const k in MARKS){ const r=MARKS[k]; c+=coinsFor(+r.mark||0); if(r.onTime) c+=25; }
@@ -671,6 +674,20 @@ async function enter(){
   }
 }
 $('#goBtn').onclick=enter;
+$('#jForgot').onclick=async()=>{
+  const email=($('#em').value||'').trim(), out=$('#gerr');
+  if(!email){ out.textContent='Type your email above, then press this again.'; $('#em').focus(); return; }
+  if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)){ out.textContent='That does not look like an email address.'; return; }
+  if(!FB) FB=await window.FB_READY;
+  if(!FB){ out.textContent='Cannot reach the database right now.'; return; }
+  out.style.color='#93A0C8'; out.textContent='Sending\u2026';
+  try{ await FB.sendPasswordResetEmail(FB.auth,email); }catch(e){
+    if(/too-many-requests/.test(e.code||'')){ out.style.color=''; out.textContent='Too many tries. Wait a few minutes.'; return; }
+    if(/network/.test(e.code||'')){ out.style.color=''; out.textContent='No connection. Check your internet.'; return; } }
+  out.style.color='#7CF29B';
+  out.innerHTML='If that address has an account, a reset link is on its way.<br>'
+    +'<span style="color:#93A0C8">Check your spam folder too.</span>';
+};
 ['#em','#pw'].forEach(q=>$(q).addEventListener('keydown',e=>{ if(e.key==='Enter') enter(); }));
 
 $('#outBtn').onclick=async()=>{ try{ await FB.signOut(FB.auth); }catch(e){} location.reload(); };
