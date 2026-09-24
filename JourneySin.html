@@ -10,8 +10,8 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
 })(window,document,'script','dataLayer','GTM-N6G3XV6G');</script>
 <!-- End Google Tag Manager -->
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<title>EICT — Mission Control</title>
-<meta name="version" content="4.13.0">
+<title>EICT — Mission Control · සිංහල</title>
+<meta name="version" data-sin="1" content="4.13.0">
 <meta name="theme-color" content="#070B1F">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -364,6 +364,7 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
       </svg>
     </div>
     <h1>Mission Control</h1>
+    <div style="font-family:var(--m);font-size:11px;letter-spacing:.24em;color:#FFC93C;margin:-4px 0 10px">සිංහල මාධ්‍යය · SINHALA MEDIUM</div>
     <p>Every week is a mission. Clear them, earn coins, climb the ranks.<br>Sign in to reach your own missions.</p>
     <div id="signRow">
       <input id="em" type="email" placeholder="your email" autocomplete="email" class="fld1">
@@ -586,12 +587,12 @@ async function boot(){
         showGate(); $('#gerr').textContent='Your account has no student number yet. Ask sir to add one.'; return; }
       /* the study world runs for the revision batch only */
       const bt=String(PROFILE.batch||'');
-      if(bt && bt!=='AL-27'){
+      if(bt && bt!=='AL-27-SI'){
         showGate();
-        $('#gerr').innerHTML='This study world is for the <b>2027 A/L English medium</b> batch.<br>'
+        $('#gerr').innerHTML='This study world is for the <b>2027 A/L Sinhala medium</b> batch.<br>'
           +'<span style="color:#93A0C8">Your class page has everything for your batch \u2014 '
           +'lessons, papers, payments and deliveries.</span><br>'
-          +'<a href="Class.html" style="color:#38E1FF">Go to my class page</a>';
+          +'<a href="2027Sinhala.html" style="color:#38E1FF">Go to my class page</a>';
         try{ await FB.signOut(FB.auth); }catch(e){}
         return;
       }
@@ -609,7 +610,7 @@ async function boot(){
 boot();
 
 async function loadAll(){
-  try{ const d=await FB.getDoc(FB.doc(FB.db,'site','roadmap'));
+  try{ const d=await FB.getDoc(FB.doc(FB.db,'site','roadmapSin'));
        if(d.exists()&&d.data().json) ROAD=JSON.parse(d.data().json); }catch(e){}
   try{ const j=await FB.getDoc(FB.doc(FB.db,'journey',CODE));
        if(j.exists()){ DONE=new Set(j.data().done||[]); OWNED=new Set(j.data().owned||[]);
@@ -1741,7 +1742,7 @@ async function doSend(i){
   if(FB&&UID){
     try{ await FB.setDoc(FB.doc(FB.db,'submissions',UID+'__JW'+i),{
       uid:UID, code:CODE, name:NAME, whatsapp:PROFILE.whatsapp||'', batch:PROFILE.batch||'',
-      track:'journey', paper:'JW'+i, week:i,
+      track:'journeySin', paper:'JW'+i, week:i,
       title:(w.title||('Week '+(i+1)))+' \u2014 weekend paper',
       link:r.link, fileId:r.id||'', late, at:new Date().toISOString(), marked:false });
     }catch(e){ return toast('Could not send: '+(e.code||e.message)); }
