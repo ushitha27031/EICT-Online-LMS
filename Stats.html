@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="robots" content="noindex, nofollow">
 <title>EICT — Visitor stats</title>
-<meta name="version" content="1.0.0">
+<meta name="version" content="1.1.0">
 <meta name="theme-color" content="#070B1C">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -217,6 +217,35 @@ details summary{cursor:pointer;font-family:var(--m);font-size:11px;letter-spacin
         </details>
       </section>
 
+      <section class="card" id="past">
+        <div class="ch-h">
+          <div><h2>Past activity</h2>
+            <p class="tiny" style="margin:4px 0 0">From records already in Firebase — before visit counting started.</p></div>
+          <button class="btn" id="pastBtn" type="button">Load past activity</button>
+        </div>
+        <p class="tiny" id="pastNote">Reads every student, episode play, enquiry, payment and paper once, so it is loaded only when you ask.</p>
+        <div id="pastBody" hidden>
+          <div class="kpis" id="pastKpis" style="margin-top:4px"></div>
+          <div class="ch-h" style="margin-top:18px">
+            <p class="sub-h" style="--c:var(--cls);margin:0"><i></i>Students who opened a lesson, per week</p>
+            <span class="tiny">Class pages · episodes and live recordings</span>
+          </div>
+          <div class="plot" id="pastTrend"></div>
+          <div class="grid2" style="margin-top:18px">
+            <div><p class="sub-h" style="--c:var(--cls)"><i></i>Most opened lessons</p><div class="hbars" id="pastTop"></div></div>
+            <div><p class="sub-h" style="--c:var(--cls)"><i></i>Lesson opens by batch</p><div class="hbars" id="pastBatch"></div></div>
+          </div>
+          <p class="sub-h" style="margin-top:18px">Month by month</p>
+          <div class="tbl"><table>
+            <thead><tr><th>Month</th><th class="n">Website enquiries</th><th class="n">Free trial requests</th><th class="n">New students</th>
+              <th class="n">Active students</th><th class="n">Lesson opens</th><th class="n">Payments</th><th class="n">Papers sent</th></tr></thead>
+            <tbody id="pastMonths"></tbody>
+          </table></div>
+          <p class="tiny" style="margin:10px 0 0">Website enquiries and trial requests come from the forms on EICT.html — the closest past measure of home page interest.
+            Everything on the class side counts signed-in students only.</p>
+        </div>
+      </section>
+
       <section class="card">
         <label class="sw"><input type="checkbox" id="countMe"> Count visits from this browser</label>
         <p class="tiny" style="margin:8px 0 0">Switch this off on your own phone and computer so your checks do not inflate the numbers.</p>
@@ -254,7 +283,7 @@ $('#themeBtn').onclick=()=>{
   const cur=document.documentElement.dataset.theme || (matchMedia('(prefers-color-scheme: light)').matches?'light':'dark');
   document.documentElement.dataset.theme=cur==='light'?'dark':'light';
   try{ localStorage.setItem('eict-stats-theme',document.documentElement.dataset.theme); }catch(e){}
-  render();
+  render(); renderPast();
 };
 try{ const t=localStorage.getItem('eict-stats-theme'); if(t) document.documentElement.dataset.theme=t; }catch(e){}
 
@@ -394,12 +423,12 @@ function render(){
 function niceMax(v){ if(v<=4) return 4; const p=10**Math.floor(Math.log10(v)), n=v/p; return (n<=2?2:n<=5?5:10)*p; }
 function ticks(max){ return [0,.25,.5,.75,1].map(f=>f*max); }
 
-function lineChart(el,labels,series){
+function lineChart(el,labels,series,label){
   const W=Math.max(280,el.clientWidth||900), H=260, L=40, R=16, T=14, B=28;
   const max=niceMax(Math.max(1,...series.flatMap(s=>s.vals)));
   const n=labels.length, x=i=>L+(n===1?(W-L-R)/2:i*(W-L-R)/(n-1)), y=v=>T+(H-T-B)*(1-v/max);
   const step=Math.ceil(n/Math.max(2,Math.floor((W-L-R)/70)));
-  let s=`<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="${esc($('#trendH').textContent)}">`;
+  let s=`<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="${esc(label||$('#trendH').textContent)}">`;
   ticks(max).forEach(t=>{ s+=`<line class="${t?'gl':'base'}" x1="${L}" x2="${W-R}" y1="${y(t)}" y2="${y(t)}"/><text x="${L-8}" y="${y(t)+3.5}" text-anchor="end">${fmt(t)}</text>`; });
   labels.forEach((l,i)=>{ if(i%step===0||i===n-1&&n<=14) s+=`<text x="${x(i)}" y="${H-8}" text-anchor="middle">${esc(l)}</text>`; });
   series.forEach(({g,vals})=>{
@@ -407,18 +436,18 @@ function lineChart(el,labels,series){
     s+=`<path d="${d}" fill="none" stroke="${g.hex}" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>`;
     if(n<=31) vals.forEach((v,i)=>{ s+=`<circle cx="${x(i)}" cy="${y(v)}" r="3" fill="${g.hex}" stroke="var(--panel)" stroke-width="2"/>`; });
   });
-  s+=`<line id="xh" class="base" y1="${T}" y2="${H-B}" x1="-10" x2="-10"/><rect x="${L}" y="${T}" width="${W-L-R}" height="${H-T-B}" fill="transparent" id="hit"/></svg><div class="tip"></div>`;
+  s+=`<line id="xh" class="base" y1="${T}" y2="${H-B}" x1="0" x2="0" visibility="hidden"/><rect x="${L}" y="${T}" width="${W-L-R}" height="${H-T-B}" fill="transparent" id="hit"/></svg><div class="tip"></div>`;
   el.innerHTML=s;
   const svg=$('svg',el), tip=$('.tip',el), xh=$('#xh',el);
   const move=e=>{
     const r=svg.getBoundingClientRect(), px=(e.clientX-r.left)*W/r.width;
     const i=Math.max(0,Math.min(n-1,Math.round(n===1?0:(px-L)/((W-L-R)/(n-1)))));
-    xh.setAttribute('x1',x(i)); xh.setAttribute('x2',x(i));
+    xh.setAttribute('x1',x(i)); xh.setAttribute('x2',x(i)); xh.setAttribute('visibility','visible');
     tip.innerHTML=`<div class="t">${esc(labels[i])}</div>`+series.map(({g,vals})=>`<div class="r" style="--c:${g.hex}"><i></i>${esc(g.name)}<b>${fmt(vals[i])}</b></div>`).join('');
     tip.style.display='block';
     const left=x(i)*r.width/W; tip.style.left=Math.min(left+12,r.width-tip.offsetWidth-4)+'px'; tip.style.top='10px';
   };
-  svg.addEventListener('pointermove',move); svg.addEventListener('pointerleave',()=>{tip.style.display='none';xh.setAttribute('x1',-10);xh.setAttribute('x2',-10);});
+  svg.addEventListener('pointermove',move); svg.addEventListener('pointerleave',()=>{tip.style.display='none';xh.setAttribute('visibility','hidden');});
 }
 
 function barChart(el,labels,vals,g){
@@ -446,7 +475,77 @@ function barChart(el,labels,vals,g){
   svg.addEventListener('pointerleave',()=>tip.style.display='none');
 }
 
-let rz; addEventListener('resize',()=>{ clearTimeout(rz); rz=setTimeout(render,150); });
+
+/* ---------- past activity, from records already in Firebase ---------- */
+function toDate(v){
+  if(!v) return null;
+  if(typeof v.toDate==='function') return v.toDate();
+  if(typeof v==='number') return new Date(v);
+  if(typeof v==='string'){ const d=new Date(v); return isNaN(d)?null:d; }
+  if(v.seconds) return new Date(v.seconds*1000);
+  return null;
+}
+const monthOf=d=>slDate(d).slice(0,7);
+function weekOf(d){ const iso=slDate(d), w=new Date(iso+'T00:00:00Z'); w.setUTCDate(w.getUTCDate()-((w.getUTCDay()+6)%7)); return w.toISOString().slice(0,10); }
+let PAST=null;
+
+$('#pastBtn').onclick=async()=>{
+  const btn=$('#pastBtn'); btn.disabled=true; btn.textContent='Loading…';
+  const names=['views','students','requests','trials','payments','submissions'], out={}, failed=[];
+  await Promise.all(names.map(async n=>{
+    try{ const snap=await FB.getDocs(FB.collection(FB.db,n)); out[n]=snap.docs.map(d=>d.data()); }
+    catch(e){ out[n]=[]; failed.push(n); }
+  }));
+  PAST=out; btn.textContent='Reload'; btn.disabled=false;
+  $('#pastNote').textContent=failed.length?'Could not read: '+failed.join(', ')+' (the Firestore rules do not let this account read them).':'';
+  renderPast();
+};
+
+function renderPast(){
+  if(!PAST) return;
+  $('#pastBody').hidden=false;
+  const css=getComputedStyle(document.documentElement), cls=css.getPropertyValue('--cls').trim();
+  const dated=list=>list.map(r=>({r,d:toDate(r.at)})).filter(x=>x.d);
+  const views=dated(PAST.views), studs=dated(PAST.students), reqs=dated(PAST.requests), trials=dated(PAST.trials),
+        pays=dated(PAST.payments), subs=dated(PAST.submissions.filter(r=>!/__slip__/.test(r.paper||'')&&r.paper));
+  const first=[...views,...studs,...reqs].map(x=>x.d).sort((a,b)=>a-b)[0];
+
+  $('#pastKpis').innerHTML=[
+    ['Students signed up',PAST.students.length],
+    ['Lesson opens',views.length],
+    ['Website enquiries',reqs.length],
+    ['Records since',first?first.toLocaleDateString('en-GB',{month:'short',year:'numeric'}):'—'],
+  ].map(([l,v])=>`<div><s>${l}</s><b>${typeof v==='number'?fmt(v):esc(v)}</b></div>`).join('');
+
+  /* weekly active students */
+  const wk=new Map();
+  views.forEach(({r,d})=>{ const k=weekOf(d); if(!wk.has(k)) wk.set(k,new Set()); wk.get(k).add(r.uid||r.name); });
+  const weeks=[]; if(wk.size){ const ks=[...wk.keys()].sort(); for(let w=ks[0]; w<=ks[ks.length-1]; w=addDays(w,7)) weeks.push(w); }
+  if(weeks.length) lineChart($('#pastTrend'),weeks.map(w=>'Wk of '+niceDate(w)),
+    [{g:{name:'Students',hex:cls},vals:weeks.map(w=>wk.has(w)?wk.get(w).size:0)}],'Students who opened a lesson, per week');
+  else $('#pastTrend').innerHTML='<p class="tiny">No lesson opens recorded yet.</p>';
+
+  /* top lessons, batches */
+  const bars=(el,pairs)=>{ const max=Math.max(1,...pairs.map(x=>x[1]));
+    el.innerHTML=pairs.length?pairs.map(([l,n])=>`<div class="hb" style="--c:${cls}" title="${esc(l)}: ${fmt(n)}"><span>${esc(l)}</span>
+      <div class="tr"><i style="width:${n/max*100}%"></i></div><b>${fmt(n)}</b></div>`).join(''):'<p class="tiny">Nothing yet.</p>'; };
+  const count=(list,key)=>{ const m=new Map(); list.forEach(({r})=>{ const k=key(r); if(k) m.set(k,(m.get(k)||0)+1); }); return [...m].sort((a,b)=>b[1]-a[1]); };
+  bars($('#pastTop'),count(views,r=>{ const e=String(r.ep||''); return e.startsWith('live:')?'Live · '+(e.slice(5)||'recording'):e?'S'+e.replace('-',' · Ep '):''; }).slice(0,10));
+  bars($('#pastBatch'),count(views,r=>r.batch||'Unknown'));
+
+  /* months */
+  const months=new Set([...views,...studs,...reqs,...trials,...pays,...subs].map(x=>monthOf(x.d)));
+  const per=(list,m)=>list.filter(x=>monthOf(x.d)===m);
+  $('#pastMonths').innerHTML=[...months].sort().reverse().map(m=>{
+    const v=per(views,m);
+    return `<tr><td>${new Date(m+'-01T00:00:00Z').toLocaleDateString('en-GB',{month:'long',year:'numeric',timeZone:'UTC'})}</td>
+      <td class="n">${fmt(per(reqs,m).length)}</td><td class="n">${fmt(per(trials,m).length)}</td><td class="n">${fmt(per(studs,m).length)}</td>
+      <td class="n">${fmt(new Set(v.map(x=>x.r.uid||x.r.name)).size)}</td><td class="n">${fmt(v.length)}</td>
+      <td class="n">${fmt(per(pays,m).length)}</td><td class="n">${fmt(per(subs,m).length)}</td></tr>`;
+  }).join('')||'<tr><td colspan="8" class="tiny">No dated records found.</td></tr>';
+}
+
+let rz; addEventListener('resize',()=>{ clearTimeout(rz); rz=setTimeout(()=>{ render(); renderPast(); },150); });
 
 /* Preview with sample numbers: open Stats.html?demo */
 if(new URLSearchParams(location.search).has('demo')){
@@ -463,6 +562,15 @@ if(new URLSearchParams(location.search).has('demo')){
       Object.entries(mix).forEach(([k,f])=>r['src_'+k]=Math.round(v*f));
       rows.push(r); }); }
   render();
+  const now=Date.now(), D=864e5, R=()=>(seed=(seed*16807)%2147483647)/2147483647;
+  PAST={views:[],students:[],requests:[],trials:[],payments:[],submissions:[]};
+  for(let i=0;i<60;i++) PAST.students.push({uid:'u'+i,at:new Date(now-R()*200*D).toISOString()});
+  for(let i=0;i<2400;i++){ const a=now-Math.pow(R(),1.4)*200*D; PAST.views.push({uid:'u'+Math.floor(R()*60),ep:(1+Math.floor(R()*6))+'-'+(1+Math.floor(R()*8)),batch:R()<.6?'AL-27':R()<.7?'AL-28':'AL-27-SI',at:new Date(a).toISOString()}); }
+  for(let i=0;i<90;i++) PAST.requests.push({at:new Date(now-R()*200*D).toISOString()});
+  for(let i=0;i<25;i++) PAST.trials.push({at:new Date(now-R()*200*D).toISOString()});
+  for(let i=0;i<120;i++) PAST.payments.push({at:new Date(now-R()*200*D).toISOString()});
+  for(let i=0;i<150;i++) PAST.submissions.push({paper:'p'+i,at:new Date(now-R()*200*D).toISOString()});
+  $('#pastBtn').onclick=()=>renderPast(); $('#pastNote').textContent='Sample data.'; renderPast();
 } else boot();
 </script>
 </body>
