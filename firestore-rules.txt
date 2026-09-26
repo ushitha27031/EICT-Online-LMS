@@ -103,5 +103,109 @@ service cloud.firestore {
       allow create: if request.auth != null;
       allow read, update, delete: if owner();
     }
+      /* ---------------------------------------------------------- page stats
+       Visitor counters written by track.js, read by Stats.html. One document
+       per page per day, id {page}_{YYYY-MM-DD}. Anyone may add one to a
+       counter; nobody may lower, reset or add anything else. Only you read. */
+    match /pageStats/{id} {
+      function statsReader() {
+        return request.auth != null
+               && (request.auth.token.email == 'ushithasamudaya@gmail.com'
+                   || get(/databases/$(database)/documents/students/$(request.auth.uid)).data.role == 'teacher');
+      }
+      function before() {
+        return resource == null ? {} : resource.data;
+      }
+      // A counter either stays the same or goes up by exactly one.
+      function step(k) {
+        return !(k in request.resource.data)
+               || request.resource.data[k] == before().get(k, 0)
+               || request.resource.data[k] == before().get(k, 0) + 1;
+      }
+      allow read: if statsReader();
+      allow create, update: if request.resource.data.keys().hasOnly(['page','date',
+                    'views',
+                    'visitors',
+                    'newVisitors',
+                    'mobile',
+                    'desktop',
+                    'h00',
+                    'h01',
+                    'h02',
+                    'h03',
+                    'h04',
+                    'h05',
+                    'h06',
+                    'h07',
+                    'h08',
+                    'h09',
+                    'h10',
+                    'h11',
+                    'h12',
+                    'h13',
+                    'h14',
+                    'h15',
+                    'h16',
+                    'h17',
+                    'h18',
+                    'h19',
+                    'h20',
+                    'h21',
+                    'h22',
+                    'h23',
+                    'src_direct',
+                    'src_site',
+                    'src_whatsapp',
+                    'src_facebook',
+                    'src_youtube',
+                    'src_google',
+                    'src_tiktok',
+                    'src_instagram',
+                    'src_other'])
+                    && request.resource.data.page is string
+                    && request.resource.data.page.matches('^[A-Za-z0-9-]{1,40}$')
+                    && request.resource.data.date is string
+                    && request.resource.data.date.matches('^20[0-9]{2}-[01][0-9]-[0-3][0-9]$')
+                    && id == request.resource.data.page + '_' + request.resource.data.date
+                    && step('views')
+                    && step('visitors')
+                    && step('newVisitors')
+                    && step('mobile')
+                    && step('desktop')
+                    && step('h00')
+                    && step('h01')
+                    && step('h02')
+                    && step('h03')
+                    && step('h04')
+                    && step('h05')
+                    && step('h06')
+                    && step('h07')
+                    && step('h08')
+                    && step('h09')
+                    && step('h10')
+                    && step('h11')
+                    && step('h12')
+                    && step('h13')
+                    && step('h14')
+                    && step('h15')
+                    && step('h16')
+                    && step('h17')
+                    && step('h18')
+                    && step('h19')
+                    && step('h20')
+                    && step('h21')
+                    && step('h22')
+                    && step('h23')
+                    && step('src_direct')
+                    && step('src_site')
+                    && step('src_whatsapp')
+                    && step('src_facebook')
+                    && step('src_youtube')
+                    && step('src_google')
+                    && step('src_tiktok')
+                    && step('src_instagram')
+                    && step('src_other');
+      allow delete: if statsReader();
+    }
   }
 }

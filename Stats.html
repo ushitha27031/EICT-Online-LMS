@@ -1,0 +1,469 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="robots" content="noindex, nofollow">
+<title>EICT — Visitor stats</title>
+<meta name="version" content="1.0.0">
+<meta name="theme-color" content="#070B1C">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@500;600;700&family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+/* ============================================================
+   EICT — visitor stats. Reads pageStats/{page}_{date}, which
+   track.js writes on EICT.html and the class pages.
+   ============================================================ */
+:root{
+  --ink:#070B1C; --panel:#0d1330; --panel-2:#111a3d; --sunk:rgba(9,14,34,.6);
+  --wire:rgba(142,164,255,.16); --wire-2:rgba(142,164,255,.28); --grid:rgba(142,164,255,.10);
+  --paper:#E9EDFF; --dim:#9AA3D6; --dimmer:#6B75AE;
+  --accent:#FF2E43; --gold:#FFC24B;
+  --web:#F03E52; --cls:#4F82F5;               /* series: website, class pages (validated on --panel) */
+  --good:#35E08F; --bad:#FF6B78;
+  --d:'Chakra Petch',system-ui,sans-serif; --b:'IBM Plex Sans',system-ui,sans-serif; --m:'IBM Plex Mono',ui-monospace,monospace;
+}
+@media (prefers-color-scheme: light){
+  :root:not([data-theme="dark"]){
+    --ink:#EDF0F9; --panel:#ffffff; --panel-2:#f5f7ff; --sunk:#f2f4fc;
+    --wire:rgba(18,38,105,.14); --wire-2:rgba(18,38,105,.26); --grid:rgba(18,38,105,.09);
+    --paper:#0C1330; --dim:#4E5985; --dimmer:#656E92;
+    --accent:#DA0F2C; --gold:#7A4E00;
+    --web:#D61F35; --cls:#2F5FD8; --good:#0E7A48; --bad:#B4152B;
+  }
+}
+:root[data-theme="light"]{
+  --ink:#EDF0F9; --panel:#ffffff; --panel-2:#f5f7ff; --sunk:#f2f4fc;
+  --wire:rgba(18,38,105,.14); --wire-2:rgba(18,38,105,.26); --grid:rgba(18,38,105,.09);
+  --paper:#0C1330; --dim:#4E5985; --dimmer:#656E92;
+  --accent:#DA0F2C; --gold:#7A4E00;
+  --web:#D61F35; --cls:#2F5FD8; --good:#0E7A48; --bad:#B4152B;
+}
+*,*::before,*::after{box-sizing:border-box}
+body{margin:0;background:var(--ink);color:var(--paper);font-family:var(--b);font-size:15px;line-height:1.5;-webkit-font-smoothing:antialiased}
+button,input,select{font:inherit;color:inherit}
+button{cursor:pointer}
+.wrap{max-width:1180px;margin:0 auto;padding:22px clamp(16px,3vw,32px) 60px}
+.eyebrow{font-family:var(--m);font-size:11px;letter-spacing:.24em;text-transform:uppercase;color:var(--gold);margin:0}
+h1{font-family:var(--d);font-weight:700;font-size:clamp(26px,4vw,36px);text-transform:uppercase;margin:4px 0 0;letter-spacing:-.01em}
+h2{font-family:var(--d);font-weight:600;font-size:16px;letter-spacing:.08em;text-transform:uppercase;margin:0}
+.muted{color:var(--dim)} .tiny{font-family:var(--m);font-size:11px;letter-spacing:.08em;color:var(--dimmer)}
+
+.top{display:flex;align-items:flex-end;justify-content:space-between;gap:16px;flex-wrap:wrap;margin-bottom:18px}
+.bar{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin:0 0 18px}
+.seg{display:inline-flex;padding:3px;gap:3px;border:1px solid var(--wire);border-radius:11px;background:var(--sunk)}
+.seg button{border:0;background:none;padding:7px 14px;border-radius:8px;font-family:var(--d);font-weight:600;font-size:12.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--dim)}
+.seg button[aria-pressed="true"]{background:var(--accent);color:#fff}
+.btn{border:1px solid var(--wire-2);background:var(--sunk);border-radius:10px;padding:8px 14px;font-family:var(--d);font-weight:600;font-size:12.5px;letter-spacing:.1em;text-transform:uppercase}
+.btn:hover{border-color:var(--gold)}
+a.btn{color:var(--paper)}
+.btn-1{background:var(--accent);border-color:var(--accent);color:#fff;width:100%;padding:12px}
+
+.card{background:var(--panel);border:1px solid var(--wire);border-radius:16px;padding:18px 18px 16px}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.stack{display:grid;gap:14px;margin-top:14px}
+.stack>*,.grid2>*{min-width:0}
+
+/* group headline cards */
+.grp{position:relative;overflow:hidden}
+.grp::before{content:'';position:absolute;left:0;top:0;bottom:0;width:3px;background:var(--c)}
+.grp-h{display:flex;align-items:center;gap:10px;justify-content:space-between;flex-wrap:wrap}
+.key{display:inline-flex;align-items:center;gap:8px}
+.key i{width:10px;height:10px;border-radius:3px;background:var(--c);display:inline-block}
+.hero{display:flex;align-items:baseline;gap:12px;margin:14px 0 2px;flex-wrap:wrap}
+.hero b{font-family:var(--d);font-weight:700;font-size:clamp(38px,6vw,54px);line-height:1;font-variant-numeric:tabular-nums}
+.delta{font-family:var(--m);font-size:12px;padding:3px 8px;border-radius:999px;border:1px solid var(--wire-2)}
+.delta.up{color:var(--good)} .delta.down{color:var(--bad)}
+.kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:1px;background:var(--wire);border:1px solid var(--wire);border-radius:12px;overflow:hidden;margin-top:14px}
+.kpis div{background:var(--panel-2);padding:10px 12px}
+.kpis s{text-decoration:none;display:block;font-family:var(--m);font-size:9.5px;letter-spacing:.16em;text-transform:uppercase;color:var(--dimmer)}
+.kpis b{font-family:var(--d);font-size:20px;font-weight:600;font-variant-numeric:tabular-nums}
+
+/* charts */
+.ch-h{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:10px}
+.legend{display:flex;gap:16px;flex-wrap:wrap;font-size:13px;color:var(--dim)}
+.plot{position:relative}
+.plot svg{display:block;width:100%;height:auto;overflow:visible}
+.plot text{font-family:var(--m);font-size:10.5px;fill:var(--dimmer)}
+.plot .gl{stroke:var(--grid)} .plot .base{stroke:var(--wire-2)}
+.tip{position:absolute;pointer-events:none;z-index:5;background:var(--panel-2);border:1px solid var(--wire-2);border-radius:10px;
+  padding:8px 10px;font-size:12.5px;white-space:nowrap;box-shadow:0 10px 30px rgba(0,0,0,.35);display:none}
+.tip .t{font-family:var(--m);font-size:10.5px;letter-spacing:.1em;color:var(--dimmer);margin-bottom:4px}
+.tip .r{display:flex;align-items:center;gap:8px}
+.tip .r i{width:8px;height:8px;border-radius:2px;background:var(--c)}
+.tip .r b{margin-left:auto;padding-left:14px;font-variant-numeric:tabular-nums}
+.sub-h{font-family:var(--m);font-size:10.5px;letter-spacing:.16em;text-transform:uppercase;color:var(--dim);margin:0 0 6px;display:flex;align-items:center;gap:8px}
+.sub-h i{width:8px;height:8px;border-radius:2px;background:var(--c)}
+
+/* source bars */
+.hbars{display:grid;gap:7px}
+.hb{display:grid;grid-template-columns:92px 1fr 64px;align-items:center;gap:10px;font-size:13px}
+.hb span{color:var(--dim)}
+.hb .tr{height:10px;border-radius:0 4px 4px 0;background:transparent;position:relative}
+.hb .tr i{position:absolute;left:0;top:0;bottom:0;border-radius:0 4px 4px 0;background:var(--c);min-width:2px}
+.hb b{font-family:var(--m);font-weight:500;font-size:12px;text-align:right;font-variant-numeric:tabular-nums}
+
+table{width:100%;border-collapse:collapse;font-size:13.5px}
+th{text-align:left;font-family:var(--m);font-weight:500;font-size:10px;letter-spacing:.16em;text-transform:uppercase;color:var(--dimmer);padding:8px 10px;border-bottom:1px solid var(--wire)}
+td{padding:9px 10px;border-bottom:1px solid var(--wire);font-variant-numeric:tabular-nums}
+td.n,th.n{text-align:right}
+.tbl{overflow-x:auto}
+details summary{cursor:pointer;font-family:var(--m);font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:var(--dim)}
+
+/* login */
+.login{max-width:380px;margin:12vh auto 0}
+.f{display:flex;flex-direction:column;gap:6px;margin-top:14px}
+.f label{font-family:var(--m);font-size:10px;letter-spacing:.2em;text-transform:uppercase;color:var(--dim)}
+.f input{padding:11px 13px;border-radius:10px;background:var(--sunk);border:1px solid var(--wire);width:100%}
+.f input:focus{outline:none;border-color:var(--gold)}
+.err{color:var(--bad);font-size:13px;min-height:1.2em;margin-top:10px}
+.note{border:1px dashed var(--wire-2);border-radius:12px;padding:12px 14px;font-size:13.5px;color:var(--dim)}
+.sw{display:inline-flex;align-items:center;gap:10px;font-size:13.5px;color:var(--dim)}
+.sw input{width:18px;height:18px;accent-color:var(--accent)}
+[hidden]{display:none!important}
+
+@media(max-width:820px){
+  .grid2{grid-template-columns:1fr}
+  .kpis{grid-template-columns:repeat(2,1fr)}
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <div class="top">
+    <div>
+      <p class="eyebrow">EICT · teacher only</p>
+      <h1>Visitor stats</h1>
+    </div>
+    <div class="bar" style="margin:0">
+      <button class="btn" id="themeBtn" type="button">Light / dark</button>
+      <a class="btn" href="Admin.html" style="text-decoration:none">Dashboard</a>
+      <button class="btn" id="outBtn" type="button" hidden>Sign out</button>
+    </div>
+  </div>
+
+  <!-- LOGIN -->
+  <section class="card login" id="loginBox" hidden>
+    <h2>Sign in</h2>
+    <p class="muted" style="margin:6px 0 0;font-size:13.5px">Same email and password as the teacher dashboard.</p>
+    <form id="loginForm">
+      <div class="f"><label for="em">Email</label><input id="em" type="email" autocomplete="username" required></div>
+      <div class="f"><label for="pw">Password</label><input id="pw" type="password" autocomplete="current-password" required></div>
+      <button class="btn btn-1" style="margin-top:18px" type="submit">Sign in</button>
+      <div class="err" id="loginErr"></div>
+    </form>
+  </section>
+
+  <p class="note" id="boot">Loading…</p>
+
+  <!-- STATS -->
+  <div id="app" hidden>
+    <div class="bar">
+      <div class="seg" id="range" role="group" aria-label="Date range">
+        <button type="button" data-days="1">Today</button>
+        <button type="button" data-days="7" aria-pressed="true">7 days</button>
+        <button type="button" data-days="30">30 days</button>
+        <button type="button" data-days="90">90 days</button>
+      </div>
+      <span class="tiny" id="rangeLbl"></span>
+      <span class="tiny" id="liveLbl" style="margin-left:auto"></span>
+    </div>
+
+    <p class="note" id="empty" hidden>No visits counted yet for this range. Counting starts once
+      <b>track.js</b> is on the site and the <b>pageStats</b> rule is published in Firestore.</p>
+
+    <div class="grid2" id="groups"></div>
+
+    <div class="stack">
+      <section class="card">
+        <div class="ch-h">
+          <h2 id="trendH">Visitors per day</h2>
+          <div class="seg" id="metric" role="group" aria-label="Measure">
+            <button type="button" data-m="visitors" aria-pressed="true">Visitors</button>
+            <button type="button" data-m="views">Page views</button>
+          </div>
+        </div>
+        <div class="legend" id="trendLegend"></div>
+        <div class="plot" id="trend"></div>
+      </section>
+
+      <section class="card">
+        <div class="ch-h"><h2>Busiest hours</h2><span class="tiny">Page views by hour · Sri Lanka time</span></div>
+        <div class="grid2" id="hours"></div>
+      </section>
+
+      <section class="card">
+        <div class="ch-h"><h2>Where visitors come from</h2><span class="tiny">First visit of the day per browser</span></div>
+        <div class="grid2" id="sources"></div>
+      </section>
+
+      <section class="card">
+        <div class="ch-h"><h2>Each page</h2><span class="tiny" id="pagesNote"></span></div>
+        <div class="tbl"><table>
+          <thead><tr><th>Page</th><th class="n">Visitors</th><th class="n">Page views</th><th class="n">New</th><th class="n">On phone</th><th class="n">Today</th></tr></thead>
+          <tbody id="pages"></tbody>
+        </table></div>
+      </section>
+
+      <section class="card">
+        <details>
+          <summary>Day by day table</summary>
+          <div class="tbl" style="margin-top:10px"><table>
+            <thead><tr><th>Date</th><th class="n">Website visitors</th><th class="n">Website views</th><th class="n">Class visitors</th><th class="n">Class views</th></tr></thead>
+            <tbody id="days"></tbody>
+          </table></div>
+        </details>
+      </section>
+
+      <section class="card">
+        <label class="sw"><input type="checkbox" id="countMe"> Count visits from this browser</label>
+        <p class="tiny" style="margin:8px 0 0">Switch this off on your own phone and computer so your checks do not inflate the numbers.</p>
+      </section>
+    </div>
+  </div>
+</div>
+
+<script src="firebase-config.js" onerror="void 0"></script>
+<script type="module">
+const $=(s,r=document)=>r.querySelector(s), $$=(s,r=document)=>[...r.querySelectorAll(s)];
+const esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const fmt=n=>Math.round(n).toLocaleString('en-US');
+
+/* ---------- which page belongs to which group ---------- */
+const GROUPS=[
+  {id:'web', name:'Website', sub:'EICT.html', color:'--web', pages:['EICT']},
+  {id:'cls', name:'Class pages', sub:'Class · Class2 · Class3 · 2027Sinhala', color:'--cls', pages:['Class','Class2','Class3','2027Sinhala']},
+];
+const PAGE_NAME={EICT:'EICT.html — home page', Class:'Class.html — A/L 2027', Class2:'Class2.html — A/L 2028',
+  Class3:'Class3.html — 2027 Sinhala (old link)', '2027Sinhala':'2027Sinhala.html — A/L 2027 Sinhala'};
+const groupOf=p=>GROUPS.find(g=>g.pages.includes(p));
+const SOURCES=[['whatsapp','WhatsApp'],['facebook','Facebook'],['youtube','YouTube'],['google','Google'],
+  ['tiktok','TikTok'],['instagram','Instagram'],['site','Your website'],['direct','Direct / typed'],['other','Other']];
+
+/* ---------- dates, in Sri Lanka ---------- */
+const TZ='Asia/Colombo';
+function slDate(d){ const p={}; new Intl.DateTimeFormat('en-GB',{timeZone:TZ,year:'numeric',month:'2-digit',day:'2-digit'})
+  .formatToParts(d).forEach(x=>p[x.type]=x.value); return `${p.year}-${p.month}-${p.day}`; }
+function addDays(iso,n){ const d=new Date(iso+'T00:00:00Z'); d.setUTCDate(d.getUTCDate()+n); return d.toISOString().slice(0,10); }
+const niceDate=iso=>new Date(iso+'T00:00:00Z').toLocaleDateString('en-GB',{day:'numeric',month:'short',timeZone:'UTC'});
+
+/* ---------- theme ---------- */
+$('#themeBtn').onclick=()=>{
+  const cur=document.documentElement.dataset.theme || (matchMedia('(prefers-color-scheme: light)').matches?'light':'dark');
+  document.documentElement.dataset.theme=cur==='light'?'dark':'light';
+  try{ localStorage.setItem('eict-stats-theme',document.documentElement.dataset.theme); }catch(e){}
+  render();
+};
+try{ const t=localStorage.getItem('eict-stats-theme'); if(t) document.documentElement.dataset.theme=t; }catch(e){}
+
+/* ---------- this browser ---------- */
+const countMe=$('#countMe');
+try{ countMe.checked=localStorage.getItem('eict-notrack')!=='1'; }catch(e){}
+countMe.onchange=()=>{ try{ countMe.checked?localStorage.removeItem('eict-notrack'):localStorage.setItem('eict-notrack','1'); }catch(e){} };
+
+/* ---------- state ---------- */
+let days=7, metric='visitors', rows=[], unsub=null, FB=null;
+
+$$('#range button').forEach(b=>b.onclick=()=>{ $$('#range button').forEach(x=>x.setAttribute('aria-pressed',x===b)); days=+b.dataset.days; listen(); });
+$$('#metric button').forEach(b=>b.onclick=()=>{ $$('#metric button').forEach(x=>x.setAttribute('aria-pressed',x===b)); metric=b.dataset.m; render(); });
+
+/* ---------- firebase ---------- */
+async function boot(){
+  const cfg=window.FIREBASE_CONFIG;
+  if(!cfg||!cfg.projectId){ $('#boot').textContent='firebase-config.js is missing — upload it next to this page.'; return; }
+  const { initializeApp }=await import('https://www.gstatic.com/firebasejs/11.0.2/firebase-app.js');
+  const fs=await import('https://www.gstatic.com/firebasejs/11.0.2/firebase-firestore.js');
+  const au=await import('https://www.gstatic.com/firebasejs/11.0.2/firebase-auth.js');
+  const app=initializeApp(cfg);
+  FB={db:fs.getFirestore(app), auth:au.getAuth(app), ...fs, ...au};
+  FB.onAuthStateChanged(FB.auth,u=>{
+    $('#boot').hidden=true;
+    $('#loginBox').hidden=!!u; $('#app').hidden=!u; $('#outBtn').hidden=!u;
+    if(u) listen(); else if(unsub){ unsub(); unsub=null; }
+  });
+}
+$('#loginForm').onsubmit=async e=>{
+  e.preventDefault(); $('#loginErr').textContent='';
+  try{ await FB.signInWithEmailAndPassword(FB.auth,$('#em').value.trim(),$('#pw').value); }
+  catch(err){ $('#loginErr').textContent=/invalid|wrong|user-not-found/i.test(err.code||'')?'Email or password is not right.':(err.message||'Could not sign in.'); }
+};
+$('#outBtn').onclick=()=>FB.signOut(FB.auth);
+
+function listen(){
+  if(unsub) unsub();
+  const today=slDate(new Date()), from=addDays(today,-(days*2-1));   // this period and the one before it
+  $('#liveLbl').textContent='Connecting…';
+  const q=FB.query(FB.collection(FB.db,'pageStats'),FB.where('date','>=',from));
+  unsub=FB.onSnapshot(q,snap=>{
+    rows=snap.docs.map(d=>d.data());
+    $('#liveLbl').textContent='Live · updated '+new Date().toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'});
+    render();
+  },err=>{
+    $('#liveLbl').textContent='';
+    $('#empty').hidden=false;
+    $('#empty').innerHTML=/permission/i.test(err.message)
+      ? 'Firestore refused to show the counters. Publish the <b>pageStats</b> block from <b>firestore-rules.txt</b> in Firebase console → Firestore → Rules, and sign in with the teacher account.'
+      : esc(err.message);
+  });
+}
+
+/* ---------- numbers ---------- */
+const V=(r,k)=>+(r[k]||0);
+function sum(list,k){ return list.reduce((a,r)=>a+V(r,k),0); }
+
+function render(){
+  if(!rows) return;
+  const today=slDate(new Date());
+  const start=addDays(today,-(days-1)), prevStart=addDays(today,-(days*2-1));
+  const dates=[]; for(let d=start; d<=today; d=addDays(d,1)) dates.push(d);
+  const cur=rows.filter(r=>r.date>=start), prev=rows.filter(r=>r.date>=prevStart&&r.date<start);
+  $('#rangeLbl').textContent=days===1?niceDate(today):`${niceDate(start)} – ${niceDate(today)}`;
+  $('#empty').hidden=cur.length>0;
+  if(!cur.length) $('#empty').innerHTML='No visits counted yet for this range. Counting starts once <b>track.js</b> is on the site and the <b>pageStats</b> rule is published in Firestore.';
+
+  const inG=(list,g)=>list.filter(r=>g.pages.includes(r.page));
+  const css=getComputedStyle(document.documentElement);
+  GROUPS.forEach(g=>g.hex=css.getPropertyValue(g.color).trim());
+
+  /* headline cards */
+  $('#groups').innerHTML=GROUPS.map(g=>{
+    const c=inG(cur,g), p=inG(prev,g), t=inG(rows.filter(r=>r.date===today),g);
+    const v=sum(c,'visitors'), pv=sum(p,'visitors');
+    const ch=pv?Math.round((v-pv)/pv*100):null;
+    const mob=sum(c,'mobile'), dev=mob+sum(c,'desktop');
+    const period=days===1?'yesterday':`previous ${days} days`;
+    return `<section class="card grp" style="--c:${g.hex}">
+      <div class="grp-h"><h2 class="key"><i></i>${esc(g.name)}</h2><span class="tiny">${esc(g.sub)}</span></div>
+      <div class="hero"><b>${fmt(v)}</b><span class="muted">visitors</span>
+        ${ch==null?'':`<span class="delta ${ch>=0?'up':'down'}" title="Compared with the ${period}">${ch>=0?'▲':'▼'} ${Math.abs(ch)}% vs ${period}</span>`}</div>
+      <div class="kpis">
+        <div><s>Page views</s><b>${fmt(sum(c,'views'))}</b></div>
+        <div><s>New visitors</s><b>${fmt(sum(c,'newVisitors'))}</b></div>
+        <div><s>Today</s><b>${fmt(sum(t,'visitors'))}</b></div>
+        <div><s>On phone</s><b>${dev?Math.round(mob/dev*100)+'%':'—'}</b></div>
+      </div></section>`;
+  }).join('');
+
+  /* trend */
+  $('#trendH').textContent=metric==='visitors'?'Visitors per day':'Page views per day';
+  $('#trendLegend').innerHTML=GROUPS.map(g=>`<span class="key" style="--c:${g.hex}"><i></i>${esc(g.name)}</span>`).join('');
+  const series=GROUPS.map(g=>({g, vals:dates.map(d=>sum(cur.filter(r=>r.date===d&&g.pages.includes(r.page)),metric))}));
+  if(days===1){
+    // one day: show it by hour instead of a single point
+    const hrs=[...Array(24).keys()].map(h=>'h'+String(h).padStart(2,'0'));
+    $('#trendH').textContent='Page views today, by hour';
+    lineChart($('#trend'),hrs.map(h=>h.slice(1)+':00'),GROUPS.map(g=>({g,vals:hrs.map(h=>sum(inG(cur,g),h))})));
+  } else lineChart($('#trend'),dates.map(niceDate),series);
+
+  /* hours */
+  const hrs=[...Array(24).keys()].map(h=>'h'+String(h).padStart(2,'0'));
+  $('#hours').innerHTML=GROUPS.map(g=>`<div><p class="sub-h" style="--c:${g.hex}"><i></i>${esc(g.name)}</p><div class="plot" data-g="${g.id}"></div></div>`).join('');
+  GROUPS.forEach(g=>barChart($(`#hours [data-g="${g.id}"]`),hrs.map(h=>h.slice(1)),hrs.map(h=>sum(inG(cur,g),h)),g));
+
+  /* sources */
+  $('#sources').innerHTML=GROUPS.map(g=>{
+    const c=inG(cur,g), vals=SOURCES.map(([k,l])=>[l,sum(c,'src_'+k)]).filter(x=>x[1]>0).sort((a,b)=>b[1]-a[1]);
+    const tot=vals.reduce((a,x)=>a+x[1],0), max=Math.max(1,...vals.map(x=>x[1]));
+    return `<div style="--c:${g.hex}"><p class="sub-h"><i></i>${esc(g.name)}</p>
+      <div class="hbars">${vals.length?vals.map(([l,n])=>`<div class="hb" title="${esc(l)}: ${fmt(n)}"><span>${esc(l)}</span>
+        <div class="tr"><i style="width:${n/max*100}%"></i></div><b>${Math.round(n/tot*100)}%</b></div>`).join(''):'<p class="tiny">No visits yet.</p>'}</div></div>`;
+  }).join('');
+
+  /* pages */
+  const pages=[...new Set([...GROUPS.flatMap(g=>g.pages),...cur.map(r=>r.page)])];
+  const todayRows=rows.filter(r=>r.date===today);
+  $('#pages').innerHTML=pages.map(p=>{
+    const c=cur.filter(r=>r.page===p), g=groupOf(p), mob=sum(c,'mobile'), dev=mob+sum(c,'desktop');
+    return `<tr><td><span class="key" style="--c:${g?g.hex:'var(--dimmer)'}"><i></i>${esc(PAGE_NAME[p]||p+'.html')}</span></td>
+      <td class="n">${fmt(sum(c,'visitors'))}</td><td class="n">${fmt(sum(c,'views'))}</td><td class="n">${fmt(sum(c,'newVisitors'))}</td>
+      <td class="n">${dev?Math.round(mob/dev*100)+'%':'—'}</td><td class="n">${fmt(sum(todayRows.filter(r=>r.page===p),'visitors'))}</td></tr>`;
+  }).join('');
+  $('#pagesNote').textContent=days===1?'Today':`Last ${days} days`;
+
+  /* day table */
+  $('#days').innerHTML=[...dates].reverse().map(d=>{
+    const r=cur.filter(x=>x.date===d), w=inG(r,GROUPS[0]), c=inG(r,GROUPS[1]);
+    return `<tr><td>${niceDate(d)}</td><td class="n">${fmt(sum(w,'visitors'))}</td><td class="n">${fmt(sum(w,'views'))}</td>
+      <td class="n">${fmt(sum(c,'visitors'))}</td><td class="n">${fmt(sum(c,'views'))}</td></tr>`;
+  }).join('');
+}
+
+/* ---------- charts (plain SVG) ---------- */
+function niceMax(v){ if(v<=4) return 4; const p=10**Math.floor(Math.log10(v)), n=v/p; return (n<=2?2:n<=5?5:10)*p; }
+function ticks(max){ return [0,.25,.5,.75,1].map(f=>f*max); }
+
+function lineChart(el,labels,series){
+  const W=Math.max(280,el.clientWidth||900), H=260, L=40, R=16, T=14, B=28;
+  const max=niceMax(Math.max(1,...series.flatMap(s=>s.vals)));
+  const n=labels.length, x=i=>L+(n===1?(W-L-R)/2:i*(W-L-R)/(n-1)), y=v=>T+(H-T-B)*(1-v/max);
+  const step=Math.ceil(n/Math.max(2,Math.floor((W-L-R)/70)));
+  let s=`<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="${esc($('#trendH').textContent)}">`;
+  ticks(max).forEach(t=>{ s+=`<line class="${t?'gl':'base'}" x1="${L}" x2="${W-R}" y1="${y(t)}" y2="${y(t)}"/><text x="${L-8}" y="${y(t)+3.5}" text-anchor="end">${fmt(t)}</text>`; });
+  labels.forEach((l,i)=>{ if(i%step===0||i===n-1&&n<=14) s+=`<text x="${x(i)}" y="${H-8}" text-anchor="middle">${esc(l)}</text>`; });
+  series.forEach(({g,vals})=>{
+    const d=vals.map((v,i)=>`${i?'L':'M'}${x(i).toFixed(1)},${y(v).toFixed(1)}`).join('');
+    s+=`<path d="${d}" fill="none" stroke="${g.hex}" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>`;
+    if(n<=31) vals.forEach((v,i)=>{ s+=`<circle cx="${x(i)}" cy="${y(v)}" r="3" fill="${g.hex}" stroke="var(--panel)" stroke-width="2"/>`; });
+  });
+  s+=`<line id="xh" class="base" y1="${T}" y2="${H-B}" x1="-10" x2="-10"/><rect x="${L}" y="${T}" width="${W-L-R}" height="${H-T-B}" fill="transparent" id="hit"/></svg><div class="tip"></div>`;
+  el.innerHTML=s;
+  const svg=$('svg',el), tip=$('.tip',el), xh=$('#xh',el);
+  const move=e=>{
+    const r=svg.getBoundingClientRect(), px=(e.clientX-r.left)*W/r.width;
+    const i=Math.max(0,Math.min(n-1,Math.round(n===1?0:(px-L)/((W-L-R)/(n-1)))));
+    xh.setAttribute('x1',x(i)); xh.setAttribute('x2',x(i));
+    tip.innerHTML=`<div class="t">${esc(labels[i])}</div>`+series.map(({g,vals})=>`<div class="r" style="--c:${g.hex}"><i></i>${esc(g.name)}<b>${fmt(vals[i])}</b></div>`).join('');
+    tip.style.display='block';
+    const left=x(i)*r.width/W; tip.style.left=Math.min(left+12,r.width-tip.offsetWidth-4)+'px'; tip.style.top='10px';
+  };
+  svg.addEventListener('pointermove',move); svg.addEventListener('pointerleave',()=>{tip.style.display='none';xh.setAttribute('x1',-10);xh.setAttribute('x2',-10);});
+}
+
+function barChart(el,labels,vals,g){
+  const W=Math.max(280,el.clientWidth||440), H=170, L=34, R=6, T=10, B=24;
+  const max=niceMax(Math.max(1,...vals)), n=vals.length, slot=(W-L-R)/n, bw=Math.max(3,slot-2);
+  const y=v=>T+(H-T-B)*(1-v/max);
+  let s=`<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Page views by hour, ${esc(g.name)}">`;
+  [0,.5,1].forEach(f=>{ const t=f*max; s+=`<line class="${t?'gl':'base'}" x1="${L}" x2="${W-R}" y1="${y(t)}" y2="${y(t)}"/><text x="${L-6}" y="${y(t)+3.5}" text-anchor="end">${fmt(t)}</text>`; });
+  vals.forEach((v,i)=>{
+    const x0=L+i*slot+1, h=(H-T-B)-(y(v)-T), top=y(v), r=Math.min(4,bw/2,h);
+    if(v>0) s+=`<path d="M${x0},${H-B} V${top+r} Q${x0},${top} ${x0+r},${top} H${x0+bw-r} Q${x0+bw},${top} ${x0+bw},${top+r} V${H-B} Z" fill="${g.hex}"/>`;
+    if(i%6===0) s+=`<text x="${x0+bw/2}" y="${H-8}" text-anchor="middle">${labels[i]}:00</text>`;
+    s+=`<rect x="${L+i*slot}" y="${T}" width="${slot}" height="${H-T-B}" fill="transparent" data-i="${i}"/>`;
+  });
+  s+=`</svg><div class="tip"></div>`;
+  el.innerHTML=s;
+  const svg=$('svg',el), tip=$('.tip',el);
+  svg.addEventListener('pointermove',e=>{
+    const i=e.target.dataset?.i; if(i==null){ tip.style.display='none'; return; }
+    const r=svg.getBoundingClientRect();
+    tip.innerHTML=`<div class="t">${labels[i]}:00 – ${labels[i]}:59</div><div class="r" style="--c:${g.hex}"><i></i>Page views<b>${fmt(vals[i])}</b></div>`;
+    tip.style.display='block';
+    tip.style.left=Math.min((L+(+i+.5)*slot)*r.width/W+10,r.width-tip.offsetWidth-4)+'px'; tip.style.top='0px';
+  });
+  svg.addEventListener('pointerleave',()=>tip.style.display='none');
+}
+
+let rz; addEventListener('resize',()=>{ clearTimeout(rz); rz=setTimeout(render,150); });
+
+/* Preview with sample numbers: open Stats.html?demo */
+if(new URLSearchParams(location.search).has('demo')){
+  $('#boot').hidden=true; $('#app').hidden=false;
+  const today=slDate(new Date()); rows=[];
+  const pages=['EICT','Class','Class2','Class3','2027Sinhala'], base={EICT:60,Class:28,Class2:14,Class3:3,'2027Sinhala':9};
+  let seed=7; const rnd=()=>(seed=(seed*16807)%2147483647)/2147483647;
+  for(let i=0;i<180;i++){ const d=addDays(today,-i);
+    pages.forEach(p=>{ const v=Math.round(base[p]*(.6+rnd()*.8)*(i%7===5?1.4:1)); if(!v) return;
+      const r={page:p,date:d,visitors:v,views:Math.round(v*(1.6+rnd())),newVisitors:Math.round(v*.3),mobile:Math.round(v*.78)};
+      r.desktop=v-r.mobile;
+      for(let h=0;h<24;h++){ const w=p==='EICT'?(h>=18&&h<=22?3:h>=7?1:.15):(h>=19&&h<=21?5:h>=16?1.2:.1); r['h'+String(h).padStart(2,'0')]=Math.round(r.views/30*w*(.6+rnd()*.8)); }
+      const mix=p==='EICT'?{whatsapp:.38,facebook:.24,google:.14,youtube:.08,tiktok:.05,direct:.11}:{site:.45,whatsapp:.3,direct:.25};
+      Object.entries(mix).forEach(([k,f])=>r['src_'+k]=Math.round(v*f));
+      rows.push(r); }); }
+  render();
+} else boot();
+</script>
+</body>
+</html>
