@@ -2123,6 +2123,10 @@ function coinPop(n,who){
 }
 
 let JW=[], jwShowDone=false;
+/* A weekly paper is marked only once a mark has been given. "Mark as done"
+   in Answer sheets sets the flag without a mark — that must not hide it here. */
+function isJourney(v){ return /^journey/.test(v.track||''); }
+function hasMark(v){ return v.mark!==undefined&&v.mark!==null&&v.mark!==''&&!isNaN(+v.mark); }
 async function loadJourneySubs(){
   const box=$('#jwList'); if(!box) return;
   const fb=await window.FB_READY;
@@ -2139,7 +2143,7 @@ async function loadJourneySubs(){
 
 function drawJourneySubs(){
   const box=$('#jwList'); if(!box) return;
-  const rows=JW.filter(r=>jwShowDone?r.marked:!r.marked);
+  const rows=JW.filter(r=>jwShowDone?hasMark(r):!hasMark(r));
   if(!rows.length){ box.innerHTML='<div class="okbox2" style="margin:0">'
     +(jwShowDone?'Nothing marked yet.':'Nothing waiting. Every paper is marked.')+'</div>'; return; }
   box.innerHTML=rows.map(r=>{
@@ -2153,7 +2157,7 @@ function drawJourneySubs(){
         <span class="jw-t ${on?'on':'late'}">${on?'ON TIME \u00b7 +25 COINS':'LATE \u00b7 NO BONUS'}</span>
         <a class="b b2" href="${esc(r.link)}" target="_blank" rel="noopener">Open sheet</a>
       </div>
-      ${r.marked?`<div class="jw-done">Marked ${esc(r.mark)}% \u00b7 sent to ${esc(r.name||'')}</div>`
+      ${hasMark(r)?`<div class="jw-done">Marked ${esc(r.mark)}% \u00b7 sent to ${esc(r.name||'')}</div>`
       :`<div class="jw-b">
         <input class="jw-mark" type="number" min="0" max="100" placeholder="Mark /100">
         <input class="jw-sheet" placeholder="Link to the paper you marked (optional)">
@@ -2239,7 +2243,7 @@ async function saveMark(){
       const sub=await fb.getDocs(fb.collection(fb.db,'submissions'));
       const jobs=[];
       sub.forEach(d=>{ const v=d.data();
-        if(v.track==='journey' && v.code===code && String(v.week)===String(wk) && !v.marked)
+        if(isJourney(v) && v.code===code && String(v.week)===String(wk) && !hasMark(v))
           jobs.push(fb.setDoc(fb.doc(fb.db,'submissions',d.id),
             {marked:true, markedAt:new Date().toISOString(), mark:val},{merge:true})); });
       await Promise.all(jobs);
@@ -2355,7 +2359,7 @@ async function drawToday(){
   const pend=(BK||[]).filter(b=>b.status==='pending'&&!b.cancelled);
   const held=(BK||[]).filter(b=>b.status==='approved'&&!b.cancelled&&b.done===undefined);
   const pay=(STU||[]).filter(st=>((st.claimedClasses||[]).filter(x=>!(st.paidClasses||[]).includes(x))).length);
-  const marks=(SUBS||[]).filter(x=>!x.marked);
+  const marks=(SUBS||[]).filter(x=>isJourney(x)?!hasMark(x):!x.marked);
   const parcels=(STU||[]).filter(st=>(st.shipments||[]).some(x=>!x.received));
 
   const tiles=$('#todayTiles');
@@ -2597,7 +2601,8 @@ async function loadSubs(){
 }
 function drawSubs(){
   const box=$('#subList'); if(!box) return;
-  const list=SUBS.filter(x=>showMarked||!x.marked);
+  const done=x=>isJourney(x)?hasMark(x):x.marked;
+  const list=SUBS.filter(x=>showMarked||!done(x));
   box.innerHTML = list.length ? list.map(x=>`<div class="item"><div class="item-h">
       <b>${esc(x.code||'—')}</b>
       <span style="font-family:var(--b);font-size:16px;font-weight:600;color:var(--paper)">${esc(x.name||'')}</span>
@@ -2607,7 +2612,10 @@ function drawSubs(){
       ${esc(x.track==='rec'?'Recorded':'Live')} · <a href="https://wa.me/${esc(String(x.whatsapp||'').replace(/[^0-9]/g,''))}" style="color:var(--live)">${esc(x.whatsapp||'')}</a></div>
     <div style="display:flex;gap:8px;flex-wrap:wrap">
       <a class="b b1" href="${esc(x.link)}" target="_blank" rel="noopener">Open answer sheet</a>
-      <button class="del" data-mark="${esc(x.id)}">${x.marked?'Put back':'Mark as done'}</button>
+      ${isJourney(x)
+        ? (hasMark(x)?`<span class="del" style="cursor:default">Marked ${esc(x.mark)}%</span>`
+                     :`<button class="del" data-s="marks">Give a mark in Weekly marks</button>`)
+        : `<button class="del" data-mark="${esc(x.id)}">${x.marked?'Put back':'Mark as done'}</button>`}
       <button class="del" data-subdel="${esc(x.id)}">Delete</button></div></div>`).join('')
     : '<div style="font-family:var(--m);font-size:13px;color:var(--dimmer)">Nothing waiting.</div>';
 }
@@ -2744,7 +2752,7 @@ function draw(){
     ['Help',       [['check','✓']]]
   ];
   const counts={ timetable:(BK||[]).filter(b=>b.status==='pending'&&!b.cancelled).length,
-                 submissions:(SUBS||[]).filter(x=>!x.marked).length };
+                 submissions:(SUBS||[]).filter(x=>isJourney(x)?!hasMark(x):!x.marked).length };
   $('#nav').innerHTML=GROUPS.map(([label,keys])=>{
     const items=keys.filter(([k])=>SECTIONS[k]).map(([k,ic])=>{
       const n=counts[k]||0;
