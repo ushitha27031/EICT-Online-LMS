@@ -910,6 +910,16 @@ timetable:{ n:'Private timetable', r:()=>`
   <div class="card"><h2>Charges and bills</h2>
     <p class="hint">Every private class you marked as held, one line per date. Open a student to see each date,
       remove one marked by mistake, or download their bill as a PDF.</p>
+    <div class="item" style="padding:16px 18px;margin-bottom:16px">
+      <div style="font-weight:600;margin-bottom:10px">Add a past class</div>
+      <div class="grid2">
+        <div class="fld"><label>Student</label><select id="pcWho"></select></div>
+        <div class="fld"><label>Date</label><input type="date" id="pcDate"></div>
+        <div class="fld"><label>Time</label><input id="pcTime" placeholder="8.30 PM"></div>
+        <div class="fld"><label>&nbsp;</label><button class="b b1" id="pcAdd">Add class</button></div>
+      </div>
+      <div id="pcMsg" style="font-size:14px"></div>
+    </div>
     <div id="chgSum">Loading…</div>
     <div id="chgOne" style="margin-top:18px"></div>
   </div>`},
@@ -1629,8 +1639,47 @@ function ordinalDate(iso){
   const n=d.getDate(), sfx=(n%100>10&&n%100<14)?'th':({1:'st',2:'nd',3:'rd'}[n%10]||'th');
   return n+sfx+' of '+d.toLocaleDateString('en-GB',{month:'long'})+' '+d.getFullYear();
 }
+/* A class that already happened, entered afterwards. It joins the student's
+   current weekly hour if they have one; otherwise it is kept on a record-only
+   booking that never shows in the timetable. */
+async function addPastClass(){
+  const fb=await window.FB_READY;
+  const say=(t,bad)=>$('#pcMsg').innerHTML='<b style="color:var(--'+(bad?'signal':'live')+')">'+t+'</b>';
+  if(!fb||!fb.auth.currentUser) return say('Sign in first.',true);
+  const uid=$('#pcWho').value, date=$('#pcDate').value, time=($('#pcTime').value||'').trim();
+  const st=STU.find(x=>x.id===uid);
+  if(!st) return say('Pick a student.',true);
+  if(!/^\d{4}-\d{2}-\d{2}$/.test(date)) return say('Pick the date.',true);
+  if(!time) return say('Type the time, such as 8.30 PM.',true);
+  if(sessionsOf(uid).some(x=>x.date===date&&String(x.time).replace(/\s/g,'').toLowerCase()===time.replace(/\s/g,'').toLowerCase()))
+    return say(ordinalDate(date)+' '+time+' is already there.',true);
+  const entry={at:new Date().toISOString(), rate:rateOf(st), time, addedLater:true};
+  try{
+    const b=BK.find(x=>x.uid===uid&&x.status==='approved'&&!x.cancelled&&!x.extra)
+          ||BK.find(x=>x.uid===uid&&x.recordOnly);
+    if(b){
+      const held=heldMap(b); held[date]=entry;
+      await fb.updateDoc(fb.doc(fb.db,'bookings',b.id),{held, done:'held'});
+      b.held=held; b.done='held';
+    }else{
+      const rec={uid, code:st.code||'', name:st.name||'', whatsapp:st.whatsapp||'', batch:st.batch||'',
+        day:DAYS[(new Date(date+'T00:00:00').getDay()+6)%7], time, status:'approved', cancelled:true,
+        recordOnly:true, extra:false, done:'held', held:{[date]:entry}, at:new Date().toISOString(), addedBy:'teacher'};
+      const ref=await fb.addDoc(fb.collection(fb.db,'bookings'),rec);
+      BK.push({id:ref.id,...rec});
+    }
+    say('Added '+ordinalDate(date)+' '+time+' for '+(st.name||'')+' — '+rs(entry.rate)+'.');
+    $('#pcTime').value=''; CHG_OPEN=uid; drawBookings();
+  }catch(e){ if(!guard('the timetable',e)) say('Could not add: '+(e.code||e.message),true); }
+}
+function fillPastWho(){
+  const sel=$('#pcWho'); if(!sel||sel.options.length) return;
+  const list=STU.slice().sort((a,b)=>(a.track==='solo'?0:1)-(b.track==='solo'?0:1)||(a.name||'').localeCompare(b.name||''));
+  sel.innerHTML=list.map(x=>`<option value="${esc(x.id)}">${esc(x.name||x.email||'')} — ${esc(x.code||'no number')}</option>`).join('');
+}
 function drawCharges(){
   const box=$('#chgSum'); if(!box) return;
+  fillPastWho();
   const uids=[...new Set(BK.filter(b=>b.status==='approved').map(b=>b.uid))];
   const rows=uids.map(uid=>{ const st=STU.find(x=>x.id===uid)||{}, ss=sessionsOf(uid);
     const tot=ss.reduce((a,x)=>a+x.amount,0), paid=ss.filter(x=>x.paid).reduce((a,x)=>a+x.amount,0);
@@ -2481,7 +2530,7 @@ async function loadBookings(){
 }
 function drawBookings(){
   const box=$('#ttGrid'); if(!box) return;
-  const rows=BK.filter(b=>showPast||(!b.cancelled&&b.status!=='declined'));
+  const rows=BK.filter(b=>!b.recordOnly&&(showPast||(!b.cancelled&&b.status!=='declined')));
   if(!rows.length){ box.innerHTML='<div class="hint">No bookings yet.</div>'; return; }
   const slots=(CO.solo&&CO.solo.slots)||[];
   const days=[...new Set(slots.map(x=>x.day).concat(rows.map(r=>r.day)))];
@@ -3200,6 +3249,7 @@ document.addEventListener('click',async e=>{
   if(chg){ CHG_OPEN=CHG_OPEN===chg.dataset.chg?null:chg.dataset.chg; drawCharges();
     if(CHG_OPEN) $('#chgOne').scrollIntoView({behavior:'smooth',block:'start'}); return; }
   if(e.target.id==='billPdf') return downloadBill();
+  if(e.target.id==='pcAdd') return addPastClass();
   const shp=e.target.closest('[data-ship]'); if(shp) return addShipment(shp.dataset.ship);
   const rmv=e.target.closest('[data-remove]'); if(rmv) return removeStudent(rmv.dataset.remove);
   const pok=e.target.closest('[data-payok]'); if(pok) return decidePayment(pok.dataset.payok,true);
