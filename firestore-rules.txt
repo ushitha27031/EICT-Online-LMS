@@ -107,6 +107,8 @@ service cloud.firestore {
       allow read: if request.auth != null;
       // You may add a class for any student from the dashboard; a student
       // may only ask for their own, and it always starts as pending.
+      // A student may move their own class for one week (moves), but never
+      // touch held / missed — only you decide what was held and charged.
       allow create: if owner() || (request.auth != null
                     && request.resource.data.uid == request.auth.uid
                     && request.resource.data.status == 'pending');
@@ -114,7 +116,7 @@ service cloud.firestore {
                     && resource.data.uid == request.auth.uid
                     && request.resource.data.uid == request.auth.uid
                     && request.resource.data.diff(resource.data)
-                         .affectedKeys().hasOnly(['cancelled','day','time','status','at','week']));
+                         .affectedKeys().hasOnly(['cancelled','day','time','status','at','week','moves']));
       allow delete: if owner();
     }
 

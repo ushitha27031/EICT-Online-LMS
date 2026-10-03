@@ -564,7 +564,7 @@ let W = merge(JSON.parse(JSON.stringify(DEFAULTS)),
   (typeof window.EICT_CONFIG==='object' && window.EICT_CONFIG) ? JSON.parse(JSON.stringify(window.EICT_CONFIG)) : {});
 let dirty=false;
 
-const RULES="rules_version = '2';\n\nservice cloud.firestore {\n  match /databases/{database}/documents {\n\n    // You. This is what separates the teacher from the students,\n    // who now have accounts on the same Firebase project.\n    function owner() {\n      return request.auth != null\n             && request.auth.token.email == 'ushithasamudaya@gmail.com';\n    }\n    function meDoc() {\n      return get(/databases/$(database)/documents/students/$(request.auth.uid)).data;\n    }\n\n    // Website content: anyone reads, only you write.\n    match /site/config {\n      allow read: if true;\n      allow write: if owner();\n    }\n\n    // Class portal settings — Zoom link, schedule, fees, bank details.\n    // One document per batch, so the two class pages never overwrite each other.\n    match /site/course {\n      allow read: if true;\n      allow write: if owner();\n    }\n    match /site/course28 {\n      allow read: if true;\n      allow write: if owner();\n    }\n    match /site/course27si {\n      allow read: if true;\n      allow write: if owner();\n    }\n\n    // Join requests: anyone may send one, only you may read them back.\n    match /requests/{id} {\n      allow create: if true;\n      allow read, update, delete: if owner();\n    }\n\n    // Private-line slot holds. No personal details, so the timetable\n    // can show a slot as taken to everyone straight away.\n    match /holds/{id} {\n      allow read, create: if true;\n      allow update, delete: if owner();\n    }\n\n    // A student sees only their own record. They may edit their own details,\n    // the track they picked and what they have watched — but NOT which seasons\n    // are unlocked, NOT whether they have paid, and NOT their student number.\n    match /students/{uid} {\n      allow create: if request.auth != null && request.auth.uid == uid;\n      allow read:   if owner() || (request.auth != null && request.auth.uid == uid);\n      allow update: if owner() || (request.auth != null && request.auth.uid == uid\n                       && request.resource.data.diff(resource.data).affectedKeys()\n                            .hasOnly(['name','whatsapp','school','address','track','watched','progress','lastWatched','shipments','claimedClasses']));\n      allow delete: if owner();\n      allow list:   if owner();\n    }\n\n    // Hands out student numbers one at a time. A student may only ever\n    // move the counter forward by exactly one.\n    match /meta/students {\n      allow read:   if request.auth != null;\n      allow create: if request.auth != null;\n      allow update: if request.auth != null\n                    && request.resource.data.next == resource.data.next + 1;\n    }\n\n    // The YouTube ids for the recorded series. A student can only ever\n    // receive a season they have paid for. This is the wall, not the login.\n    match /seasons/{id} {\n      allow read:  if owner() || (request.auth != null\n                      && resource.data.season in meDoc().unlocked);\n      allow write: if owner();\n    }\n\n    // Recordings of the live classes, for anyone who missed a session.\n    // Only students you have marked as paid can read them.\n    match /liveRecordings/{id} {\n      allow read:  if request.auth != null;   /* any student may watch a past class */\n      allow write: if owner();\n    }\n\n    // Answer sheets. A student may send their own and read their own back,\n    // but never see anyone else's. Only you can mark or delete.\n    match /submissions/{id} {\n      allow create: if request.auth != null\n                    && request.resource.data.uid == request.auth.uid;\n      /* the student may change their own link; you may mark any of them */\n      allow update: if owner() || (request.auth != null\n                    && resource.data.uid == request.auth.uid\n                    && request.resource.data.uid == request.auth.uid);\n      allow read: if owner() || (request.auth != null && resource.data.uid == request.auth.uid);\n      allow delete, list: if owner();\n    }\n\n    // Private class bookings. Everyone signed in can see which hours are taken\n    // (day and time only reveals nothing private), a student may create and\n    // cancel their own, but only you may approve or decline one.\n    match /bookings/{id} {\n      allow read: if request.auth != null;\n      // You may add a class for any student from the dashboard; a student\n      // may only ask for their own, and it always starts as pending.\n      allow create: if owner() || (request.auth != null\n                    && request.resource.data.uid == request.auth.uid\n                    && request.resource.data.status == 'pending');\n      allow update: if owner() || (request.auth != null\n                    && resource.data.uid == request.auth.uid\n                    && request.resource.data.uid == request.auth.uid\n                    && request.resource.data.diff(resource.data)\n                         .affectedKeys().hasOnly(['cancelled','day','time','status','at','week']));\n      allow delete: if owner();\n    }\n\n    // A student saying they have paid. They may say it; only you confirm it.\n    match /payments/{id} {\n      allow create: if request.auth != null && request.resource.data.uid == request.auth.uid;\n      allow read: if owner() || (request.auth != null && resource.data.uid == request.auth.uid);\n      allow update, delete, list: if owner();\n    }\n\n    // Free trial bookings from the public site. Anyone may ask for one and\n    // see which hours are gone; only you can read the personal details back.\n    match /trials/{id} {\n      allow read: if true;\n      allow create: if true;\n      allow update, delete, list: if owner();\n    }\n\n    // Study plan progress, kept against the student number. Tick boxes only —\n    // no names, no numbers, nothing personal lives here.\n    match /journey/{code} {\n      allow read: if request.auth != null;\n      allow create, update: if request.auth != null\n                            && request.resource.data.uid == request.auth.uid;\n      allow delete: if owner();\n    }\n\n    // Weekly marks. A student reads their own; only you can write them,\n    // so nobody can award themselves an A.\n    match /marks/{code} {\n      allow read: if true;\n      allow write: if owner();\n    }\n\n    // The weekly study plan the world is built from.\n    match /site/roadmap {\n      allow read: if true;\n      allow write: if owner();\n    }\n    match /site/roadmapSin {\n      allow read: if true;\n      allow write: if owner();\n    }\n\n    // Play log, so you can spot one account being used by half a class.\n    match /views/{id} {\n      allow create: if request.auth != null;\n      allow read, update, delete: if owner();\n    }\n\n    // Visitor counters written by track.js, read by Stats.html. One document\n    // per page per day, id {page}_{YYYY-MM-DD}. Anyone may add one to a\n    // counter; nobody may lower, reset or add anything else. Only you read.\n    match /pageStats/{id} {\n      function before() {\n        return resource == null ? {} : resource.data;\n      }\n      // A counter either stays the same or goes up by exactly one.\n      function step(k) {\n        return !(k in request.resource.data)\n               || request.resource.data[k] == before().get(k, 0)\n               || request.resource.data[k] == before().get(k, 0) + 1;\n      }\n      allow read, delete: if owner();\n      allow create, update: if request.resource.data.keys().hasOnly(['page','date',\n                    'views',\n                    'visitors',\n                    'newVisitors',\n                    'mobile',\n                    'desktop',\n                    'h00',\n                    'h01',\n                    'h02',\n                    'h03',\n                    'h04',\n                    'h05',\n                    'h06',\n                    'h07',\n                    'h08',\n                    'h09',\n                    'h10',\n                    'h11',\n                    'h12',\n                    'h13',\n                    'h14',\n                    'h15',\n                    'h16',\n                    'h17',\n                    'h18',\n                    'h19',\n                    'h20',\n                    'h21',\n                    'h22',\n                    'h23',\n                    'src_direct',\n                    'src_site',\n                    'src_whatsapp',\n                    'src_facebook',\n                    'src_youtube',\n                    'src_google',\n                    'src_tiktok',\n                    'src_instagram',\n                    'src_other'])\n                    && request.resource.data.page is string\n                    && request.resource.data.page.matches('^[A-Za-z0-9-]{1,40}$')\n                    && request.resource.data.date is string\n                    && request.resource.data.date.matches('^20[0-9]{2}-[01][0-9]-[0-3][0-9]$')\n                    && id == request.resource.data.page + '_' + request.resource.data.date\n                    && step('views')\n                    && step('visitors')\n                    && step('newVisitors')\n                    && step('mobile')\n                    && step('desktop')\n                    && step('h00')\n                    && step('h01')\n                    && step('h02')\n                    && step('h03')\n                    && step('h04')\n                    && step('h05')\n                    && step('h06')\n                    && step('h07')\n                    && step('h08')\n                    && step('h09')\n                    && step('h10')\n                    && step('h11')\n                    && step('h12')\n                    && step('h13')\n                    && step('h14')\n                    && step('h15')\n                    && step('h16')\n                    && step('h17')\n                    && step('h18')\n                    && step('h19')\n                    && step('h20')\n                    && step('h21')\n                    && step('h22')\n                    && step('h23')\n                    && step('src_direct')\n                    && step('src_site')\n                    && step('src_whatsapp')\n                    && step('src_facebook')\n                    && step('src_youtube')\n                    && step('src_google')\n                    && step('src_tiktok')\n                    && step('src_instagram')\n                    && step('src_other');\n    }\n  }\n}\n";
+const RULES="rules_version = '2';\n\nservice cloud.firestore {\n  match /databases/{database}/documents {\n\n    // You. This is what separates the teacher from the students,\n    // who now have accounts on the same Firebase project.\n    function owner() {\n      return request.auth != null\n             && request.auth.token.email == 'ushithasamudaya@gmail.com';\n    }\n    function meDoc() {\n      return get(/databases/$(database)/documents/students/$(request.auth.uid)).data;\n    }\n\n    // Website content: anyone reads, only you write.\n    match /site/config {\n      allow read: if true;\n      allow write: if owner();\n    }\n\n    // Class portal settings — Zoom link, schedule, fees, bank details.\n    // One document per batch, so the two class pages never overwrite each other.\n    match /site/course {\n      allow read: if true;\n      allow write: if owner();\n    }\n    match /site/course28 {\n      allow read: if true;\n      allow write: if owner();\n    }\n    match /site/course27si {\n      allow read: if true;\n      allow write: if owner();\n    }\n\n    // Join requests: anyone may send one, only you may read them back.\n    match /requests/{id} {\n      allow create: if true;\n      allow read, update, delete: if owner();\n    }\n\n    // Private-line slot holds. No personal details, so the timetable\n    // can show a slot as taken to everyone straight away.\n    match /holds/{id} {\n      allow read, create: if true;\n      allow update, delete: if owner();\n    }\n\n    // A student sees only their own record. They may edit their own details,\n    // the track they picked and what they have watched — but NOT which seasons\n    // are unlocked, NOT whether they have paid, and NOT their student number.\n    match /students/{uid} {\n      allow create: if request.auth != null && request.auth.uid == uid;\n      allow read:   if owner() || (request.auth != null && request.auth.uid == uid);\n      allow update: if owner() || (request.auth != null && request.auth.uid == uid\n                       && request.resource.data.diff(resource.data).affectedKeys()\n                            .hasOnly(['name','whatsapp','school','address','track','watched','progress','lastWatched','shipments','claimedClasses']));\n      allow delete: if owner();\n      allow list:   if owner();\n    }\n\n    // Hands out student numbers one at a time. A student may only ever\n    // move the counter forward by exactly one.\n    match /meta/students {\n      allow read:   if request.auth != null;\n      allow create: if request.auth != null;\n      allow update: if request.auth != null\n                    && request.resource.data.next == resource.data.next + 1;\n    }\n\n    // The YouTube ids for the recorded series. A student can only ever\n    // receive a season they have paid for. This is the wall, not the login.\n    match /seasons/{id} {\n      allow read:  if owner() || (request.auth != null\n                      && resource.data.season in meDoc().unlocked);\n      allow write: if owner();\n    }\n\n    // Recordings of the live classes, for anyone who missed a session.\n    // Only students you have marked as paid can read them.\n    match /liveRecordings/{id} {\n      allow read:  if request.auth != null;   /* any student may watch a past class */\n      allow write: if owner();\n    }\n\n    // Answer sheets. A student may send their own and read their own back,\n    // but never see anyone else's. Only you can mark or delete.\n    match /submissions/{id} {\n      allow create: if request.auth != null\n                    && request.resource.data.uid == request.auth.uid;\n      /* the student may change their own link; you may mark any of them */\n      allow update: if owner() || (request.auth != null\n                    && resource.data.uid == request.auth.uid\n                    && request.resource.data.uid == request.auth.uid);\n      allow read: if owner() || (request.auth != null && resource.data.uid == request.auth.uid);\n      allow delete, list: if owner();\n    }\n\n    // Private class bookings. Everyone signed in can see which hours are taken\n    // (day and time only reveals nothing private), a student may create and\n    // cancel their own, but only you may approve or decline one.\n    match /bookings/{id} {\n      allow read: if request.auth != null;\n      // You may add a class for any student from the dashboard; a student\n      // may only ask for their own, and it always starts as pending.\n      // A student may move their own class for one week (moves), but never\n      // touch held / missed — only you decide what was held and charged.\n      allow create: if owner() || (request.auth != null\n                    && request.resource.data.uid == request.auth.uid\n                    && request.resource.data.status == 'pending');\n      allow update: if owner() || (request.auth != null\n                    && resource.data.uid == request.auth.uid\n                    && request.resource.data.uid == request.auth.uid\n                    && request.resource.data.diff(resource.data)\n                         .affectedKeys().hasOnly(['cancelled','day','time','status','at','week','moves']));\n      allow delete: if owner();\n    }\n\n    // A student saying they have paid. They may say it; only you confirm it.\n    match /payments/{id} {\n      allow create: if request.auth != null && request.resource.data.uid == request.auth.uid;\n      allow read: if owner() || (request.auth != null && resource.data.uid == request.auth.uid);\n      allow update, delete, list: if owner();\n    }\n\n    // Free trial bookings from the public site. Anyone may ask for one and\n    // see which hours are gone; only you can read the personal details back.\n    match /trials/{id} {\n      allow read: if true;\n      allow create: if true;\n      allow update, delete, list: if owner();\n    }\n\n    // Study plan progress, kept against the student number. Tick boxes only —\n    // no names, no numbers, nothing personal lives here.\n    match /journey/{code} {\n      allow read: if request.auth != null;\n      allow create, update: if request.auth != null\n                            && request.resource.data.uid == request.auth.uid;\n      allow delete: if owner();\n    }\n\n    // Weekly marks. A student reads their own; only you can write them,\n    // so nobody can award themselves an A.\n    match /marks/{code} {\n      allow read: if true;\n      allow write: if owner();\n    }\n\n    // The weekly study plan the world is built from.\n    match /site/roadmap {\n      allow read: if true;\n      allow write: if owner();\n    }\n    match /site/roadmapSin {\n      allow read: if true;\n      allow write: if owner();\n    }\n\n    // Play log, so you can spot one account being used by half a class.\n    match /views/{id} {\n      allow create: if request.auth != null;\n      allow read, update, delete: if owner();\n    }\n\n    // Visitor counters written by track.js, read by Stats.html. One document\n    // per page per day, id {page}_{YYYY-MM-DD}. Anyone may add one to a\n    // counter; nobody may lower, reset or add anything else. Only you read.\n    match /pageStats/{id} {\n      function before() {\n        return resource == null ? {} : resource.data;\n      }\n      // A counter either stays the same or goes up by exactly one.\n      function step(k) {\n        return !(k in request.resource.data)\n               || request.resource.data[k] == before().get(k, 0)\n               || request.resource.data[k] == before().get(k, 0) + 1;\n      }\n      allow read, delete: if owner();\n      allow create, update: if request.resource.data.keys().hasOnly(['page','date',\n                    'views',\n                    'visitors',\n                    'newVisitors',\n                    'mobile',\n                    'desktop',\n                    'h00',\n                    'h01',\n                    'h02',\n                    'h03',\n                    'h04',\n                    'h05',\n                    'h06',\n                    'h07',\n                    'h08',\n                    'h09',\n                    'h10',\n                    'h11',\n                    'h12',\n                    'h13',\n                    'h14',\n                    'h15',\n                    'h16',\n                    'h17',\n                    'h18',\n                    'h19',\n                    'h20',\n                    'h21',\n                    'h22',\n                    'h23',\n                    'src_direct',\n                    'src_site',\n                    'src_whatsapp',\n                    'src_facebook',\n                    'src_youtube',\n                    'src_google',\n                    'src_tiktok',\n                    'src_instagram',\n                    'src_other'])\n                    && request.resource.data.page is string\n                    && request.resource.data.page.matches('^[A-Za-z0-9-]{1,40}$')\n                    && request.resource.data.date is string\n                    && request.resource.data.date.matches('^20[0-9]{2}-[01][0-9]-[0-3][0-9]$')\n                    && id == request.resource.data.page + '_' + request.resource.data.date\n                    && step('views')\n                    && step('visitors')\n                    && step('newVisitors')\n                    && step('mobile')\n                    && step('desktop')\n                    && step('h00')\n                    && step('h01')\n                    && step('h02')\n                    && step('h03')\n                    && step('h04')\n                    && step('h05')\n                    && step('h06')\n                    && step('h07')\n                    && step('h08')\n                    && step('h09')\n                    && step('h10')\n                    && step('h11')\n                    && step('h12')\n                    && step('h13')\n                    && step('h14')\n                    && step('h15')\n                    && step('h16')\n                    && step('h17')\n                    && step('h18')\n                    && step('h19')\n                    && step('h20')\n                    && step('h21')\n                    && step('h22')\n                    && step('h23')\n                    && step('src_direct')\n                    && step('src_site')\n                    && step('src_whatsapp')\n                    && step('src_facebook')\n                    && step('src_youtube')\n                    && step('src_google')\n                    && step('src_tiktok')\n                    && step('src_instagram')\n                    && step('src_other');\n    }\n  }\n}\n";
 const $=(s,r=document)=>r.querySelector(s), $$=(s,r=document)=>[...r.querySelectorAll(s)];
 
 /* A Google Drive share link is not an image address. Turn it into one so a
@@ -905,6 +905,13 @@ timetable:{ n:'Private timetable', r:()=>`
     </div>
     <button class="b b1" id="bkAdd">Add it to the timetable</button>
     <div id="bkMsg" style="font-size:14.5px;margin-top:14px"></div>
+  </div>
+
+  <div class="card"><h2>Charges and bills</h2>
+    <p class="hint">Every private class you marked as held, one line per date. Open a student to see each date,
+      remove one marked by mistake, or download their bill as a PDF.</p>
+    <div id="chgSum">Loading…</div>
+    <div id="chgOne" style="margin-top:18px"></div>
   </div>`},
 
 students:{ n:'Students', r:()=>`
@@ -1402,16 +1409,17 @@ async function toggleMonth(id,key){
 async function addExtraClass(id){
   const fb=await window.FB_READY; if(!fb) return;
   const st=STU.find(x=>x.id===id); if(!st) return;
-  const when=prompt('Which day was the extra class?\n\nWrite it as you like, for example: Tuesday 4 Nov','');
-  if(when===null||!when.trim()) return;
+  const date=askDate('Which day was the extra class?'); if(!date) return;
   const time=prompt('What time?','7.00 PM'); if(time===null) return;
-  if(!confirm('Add an extra class for '+(st.name||'')+' on '+when.trim()+' at '+time+'?\n\n'
+  const when=DAYS[(new Date(date+'T00:00:00').getDay()+6)%7];
+  if(!confirm('Add an extra class for '+(st.name||'')+' on '+ordinalDate(date)+' at '+time+'?\n\n'
     +'It will be charged like any other class they have done.')) return;
   try{
     await fb.addDoc(fb.collection(fb.db,'bookings'),{
       uid:st.id, code:st.code||'', name:st.name||'', whatsapp:st.whatsapp||'',
-      batch:st.batch||'', day:when.trim(), time:time.trim(),
-      status:'approved', cancelled:false, done:true, extra:true,
+      batch:st.batch||'', day:when, time:time.trim(),
+      status:'approved', cancelled:false, done:'held', extra:true,
+      held:{[date]:{at:new Date().toISOString(), rate:rateOf(st), time:time.trim()}},
       at:new Date().toISOString(), addedBy:'teacher' });
     toast('Extra class added and charged');
     loadBookings();
@@ -1484,8 +1492,9 @@ async function addBookingFor(){
       batch:st.batch||'', day, time,
       status:'approved', cancelled:false, extra:once, addedBy:'teacher',
       at:new Date().toISOString() };
-    /* a weekly hour has not happened yet, so it must not carry a done flag at all */
-    if(once) rec.done=true;
+    /* a weekly hour has not happened yet, so it carries no held date; an extra class does */
+    if(once){ const t=new Date(); t.setHours(0,0,0,0); t.setDate(t.getDate()-((t.getDay()+6)%7)+DAYS.indexOf(day));
+      rec.held={[localISO(t)]:{at:new Date().toISOString(), rate:rateOf(st), time}}; rec.done='held'; }
     await fb.addDoc(fb.collection(fb.db,'bookings'),rec);
     say((st.name||'Student')+' now has '+day+' at '+time
       +(once?' as an extra class, charged.':' every week. They see it on their page straight away.'));
@@ -1534,14 +1543,215 @@ async function undoMove(id){
   }catch(e){ if(!guard('the timetable',e)) alert(e.code||e.message); }
 }
 
+/* ---------- one charge per class actually held ----------
+   booking.held[YYYY-MM-DD] = {at, rate, time}. A weekly booking gathers one
+   entry per week it happened; missed[YYYY-MM-DD] records a week it did not.
+   Older bookings have a single done:true instead — that stays one class,
+   kept under the booking id so anything already paid stays paid. */
+const DAYS=['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday'];
+const localISO=d=>d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+function classDateThisWeek(b){
+  const pos=(b.moves||{})[thisWeekKey()]||b;
+  const i=DAYS.findIndex(d=>d.slice(0,3).toLowerCase()===String(pos.day||'').slice(0,3).toLowerCase());
+  if(i<0) return null;
+  const t=new Date(); t.setHours(0,0,0,0); t.setDate(t.getDate()-((t.getDay()+6)%7)+i);
+  return localISO(t);
+}
+const rateOf=st=>{ const r=(CO.solo&&CO.solo.rates)||{}; return Number(r[(st&&st.mode)||'online']||r.online||0); };
+function sessionsOf(uid){
+  const st=STU.find(x=>x.id===uid)||{}, out=[];
+  BK.filter(b=>b.uid===uid&&b.status==='approved').forEach(b=>{
+    const h=b.held||{}, ks=Object.keys(h);
+    if(ks.length) ks.forEach(d=>out.push({id:h[d]&&h[d].legacy?b.id:b.id+'@'+d, bid:b.id, date:d,
+      day:b.day, time:(h[d]&&h[d].time)||b.time, amount:Number(h[d]&&h[d].rate)||rateOf(st), extra:!!b.extra}));
+    else if(b.done===true&&!b.cancelled) out.push({id:b.id, bid:b.id, legacyOnly:true,
+      date:String(b.doneAt||b.at||'').slice(0,10), day:b.day, time:b.time, amount:rateOf(st), extra:!!b.extra});
+  });
+  const paid=new Set(st.paidClasses||[]), claimed=new Set(st.claimedClasses||[]);
+  out.forEach(x=>{ x.paid=paid.has(x.id); x.claimed=!x.paid&&claimed.has(x.id); });
+  return out.sort((a,b)=>a.date<b.date?-1:a.date>b.date?1:0);
+}
+/* turn an old single done flag into a dated entry before adding more */
+function heldMap(b){
+  const h=Object.assign({},b.held||{});
+  if(!Object.keys(h).length&&b.done===true&&!b.cancelled)
+    h[String(b.doneAt||b.at||'').slice(0,10)||localISO(new Date())]={legacy:true,time:b.time,at:b.doneAt||b.at||''};
+  return h;
+}
+function askDate(msg,def){
+  const v=prompt(msg+'\n\nWrite the date as YYYY-MM-DD.',def||localISO(new Date()));
+  if(v===null) return null;
+  const t=v.trim();
+  if(!/^\d{4}-\d{2}-\d{2}$/.test(t)||isNaN(new Date(t+'T00:00:00'))){ alert('Please write the date like 2026-09-22.'); return null; }
+  return t;
+}
 async function markClassDone(id,done){
   const fb=await window.FB_READY; if(!fb) return;
+  const b=BK.find(x=>x.id===id); if(!b) return;
+  const st=STU.find(x=>x.id===b.uid)||{};
+  const date=askDate((done?'Which day was ':'Which day was missed for ')+(b.name||'this student')+'’s class?',
+    classDateThisWeek(b)||localISO(new Date()));
+  if(!date) return;
+  const held=heldMap(b), missed=Object.assign({},b.missed||{});
+  if(done){
+    if(held[date]) return toast('Already marked held on '+date);
+    held[date]={at:new Date().toISOString(), rate:rateOf(st), time:((b.moves||{})[thisWeekKey()]||b).time};
+    delete missed[date];
+  }else{ missed[date]=true; }
   try{
-    await fb.updateDoc(fb.doc(fb.db,'bookings',id),{done, doneAt:new Date().toISOString()});
-    const b=BK.find(x=>x.id===id); if(b) b.done=done;
+    await fb.updateDoc(fb.doc(fb.db,'bookings',id),{held, missed, done:Object.keys(held).length?'held':false});
+    b.held=held; b.missed=missed; b.done=Object.keys(held).length?'held':false;
     drawBookings();
-    toast(done?'Class marked as held — it will be charged':'Marked as not held — not charged');
+    toast(done?'Held on '+date+' — charged':'Marked as missed on '+date+' — not charged');
   }catch(e){ if(!guard('the timetable',e)) alert(e.code||e.message); }
+}
+async function unmarkHeld(id,date){
+  const fb=await window.FB_READY; if(!fb) return;
+  const b=BK.find(x=>x.id===id); if(!b) return;
+  const st=STU.find(x=>x.id===b.uid)||{};
+  const s1=sessionsOf(b.uid).find(x=>x.bid===id&&x.date===date);
+  if(!confirm('Remove the class on '+date+' for '+(b.name||'this student')+'?\n\nIt will no longer be charged.'
+    +(s1&&s1.paid?'\n\nCareful: this class is already marked PAID.':''))) return;
+  const held=heldMap(b); delete held[date];
+  const left=Object.keys(held).length;
+  try{
+    await fb.updateDoc(fb.doc(fb.db,'bookings',id),{held, done:left?'held':false});
+    b.held=held; b.done=left?'held':false;
+    drawBookings(); toast('Removed — '+date+' is no longer charged');
+  }catch(e){ if(!guard('the timetable',e)) alert(e.code||e.message); }
+}
+
+/* ---------- charges and bills ---------- */
+let CHG_OPEN=null;
+const rs=n=>'Rs. '+Number(n||0).toLocaleString('en-US');
+function ordinalDate(iso){
+  const d=new Date(iso+'T00:00:00'); if(isNaN(d)) return String(iso||'');
+  const n=d.getDate(), sfx=(n%100>10&&n%100<14)?'th':({1:'st',2:'nd',3:'rd'}[n%10]||'th');
+  return n+sfx+' of '+d.toLocaleDateString('en-GB',{month:'long'})+' '+d.getFullYear();
+}
+function drawCharges(){
+  const box=$('#chgSum'); if(!box) return;
+  const uids=[...new Set(BK.filter(b=>b.status==='approved').map(b=>b.uid))];
+  const rows=uids.map(uid=>{ const st=STU.find(x=>x.id===uid)||{}, ss=sessionsOf(uid);
+    const tot=ss.reduce((a,x)=>a+x.amount,0), paid=ss.filter(x=>x.paid).reduce((a,x)=>a+x.amount,0);
+    return {uid,st,ss,tot,paid,due:tot-paid}; }).filter(r=>r.ss.length)
+    .sort((a,b)=>b.due-a.due||(a.st.code||'').localeCompare(b.st.code||''));
+  box.innerHTML=rows.length?`<div class="tbl-box"><table class="ed"><thead><tr><th>Student</th><th>Classes held</th>
+      <th>Total</th><th>Paid</th><th>Due</th><th></th></tr></thead><tbody>
+    ${rows.map(r=>`<tr><td><b>${esc(r.st.name||'')}</b><br><span style="font-family:var(--m);font-size:12px;color:var(--dim)">${esc(r.st.code||'')}</span></td>
+      <td>${r.ss.length}</td><td>${rs(r.tot)}</td><td>${rs(r.paid)}</td>
+      <td><b style="color:${r.due?'var(--signal)':'var(--live)'}">${rs(r.due)}</b></td>
+      <td><button class="b ${CHG_OPEN===r.uid?'b1':'b3'}" data-chg="${esc(r.uid)}">${CHG_OPEN===r.uid?'Open':'Open'}</button></td></tr>`).join('')}
+    </tbody></table></div>`:'<div class="hint">No class has been marked held yet.</div>';
+  drawChargeOne();
+}
+function drawChargeOne(){
+  const box=$('#chgOne'); if(!box) return;
+  if(!CHG_OPEN){ box.innerHTML=''; return; }
+  const st=STU.find(x=>x.id===CHG_OPEN)||{}, ss=sessionsOf(CHG_OPEN);
+  const tot=ss.reduce((a,x)=>a+x.amount,0), due=ss.filter(x=>!x.paid).reduce((a,x)=>a+x.amount,0);
+  box.innerHTML=`<div class="item" style="padding:18px">
+    <div style="display:flex;align-items:baseline;gap:12px;flex-wrap:wrap;margin-bottom:12px">
+      <h3 style="font-family:var(--d);font-size:20px;margin:0">${esc(st.name||'Student')}</h3>
+      <span style="font-family:var(--m);font-size:12.5px;color:var(--gold)">${esc(st.code||'')}</span>
+      <span style="margin-left:auto;font-family:var(--m);font-size:12.5px;color:var(--dim)">${rs(rateOf(st))} a class now</span></div>
+    <div class="tbl-box"><table class="ed"><thead><tr><th>Date</th><th>Time</th><th>Amount</th><th>Status</th><th></th></tr></thead><tbody>
+      ${ss.map(x=>`<tr><td>${esc(ordinalDate(x.date))}${x.extra?' <span style="color:var(--gold);font-size:12px">extra</span>':''}</td>
+        <td>${esc(x.time||'')}</td><td>${rs(x.amount)}</td>
+        <td><b style="color:${x.paid?'var(--live)':x.claimed?'var(--gold)':'var(--signal)'}">${x.paid?'Paid':x.claimed?'Says paid':'Due'}</b></td>
+        <td><button class="rm" title="Remove — marked held by mistake" data-unheld="${esc(x.bid)}|${esc(x.date)}">×</button></td></tr>`).join('')}
+      <tr><th colspan="2">Total</th><th>${rs(tot)}</th><th colspan="2" style="color:var(--signal)">Due ${rs(due)}</th></tr>
+    </tbody></table></div>
+    <div class="grid2" style="margin-top:16px">
+      <div class="fld"><label>Bill classes up to</label><input type="date" id="billTo" value="${localISO(new Date())}"></div>
+      <div class="fld"><label>Which classes?</label><select id="billWhich">
+        <option value="due">Only the ones not paid yet</option><option value="all">Every class, paid and unpaid</option></select></div>
+    </div>
+    <button class="b b1" id="billPdf">Download bill (PDF)</button>
+    <span id="billMsg" style="margin-left:12px;font-size:14px"></span>
+  </div>`;
+}
+function loadJsPDF(){
+  if(window.jspdf) return Promise.resolve(window.jspdf.jsPDF);
+  return new Promise((ok,bad)=>{ const sc=document.createElement('script');
+    sc.src='https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js';
+    sc.onload=()=>ok(window.jspdf.jsPDF); sc.onerror=()=>bad(new Error('Could not load the PDF maker. Check the internet and try again.'));
+    document.head.appendChild(sc); });
+}
+function logoPng(){
+  return new Promise(ok=>{ const src=($('img.lg-l')||{}).src; if(!src) return ok(null);
+    const im=new Image(); im.onload=()=>{ const c=document.createElement('canvas'); c.width=im.naturalWidth; c.height=im.naturalHeight;
+      c.getContext('2d').drawImage(im,0,0); try{ ok(c.toDataURL('image/png')); }catch(e){ ok(null); } };
+    im.onerror=()=>ok(null); im.src=src; });
+}
+const plain=h=>{ const d=document.createElement('div'); d.innerHTML=String(h||'').replace(/<br\s*\/?>/gi,'\n').replace(/<\/(p|div)>/gi,'\n');
+  return (d.textContent||'').split('\n').map(x=>x.trim()).filter(Boolean); };
+async function downloadBill(){
+  const st=STU.find(x=>x.id===CHG_OPEN); if(!st) return;
+  const upto=$('#billTo').value||localISO(new Date()), which=$('#billWhich').value;
+  const list=sessionsOf(CHG_OPEN).filter(x=>x.date<=upto&&(which==='all'||!x.paid));
+  const msg=$('#billMsg');
+  if(!list.length){ msg.innerHTML='<b style="color:var(--signal)">No classes to bill for those choices.</b>'; return; }
+  msg.textContent='Making the PDF…';
+  let jsPDF; try{ jsPDF=await loadJsPDF(); }catch(e){ msg.innerHTML='<b style="color:var(--signal)">'+esc(e.message)+'</b>'; return; }
+  const doc=new jsPDF({unit:'mm',format:'a4'}), W=210, L=20, R=W-20;
+  const ink=[12,19,48], dim=[90,98,130], red=[218,15,44];
+  const logo=await logoPng();
+  if(logo) doc.addImage(logo,'PNG',L,16,24,24);
+  doc.setFont('helvetica','bold'); doc.setFontSize(22); doc.setTextColor(...ink);
+  doc.text('EICT',L+(logo?30:0),26);
+  doc.setFont('helvetica','normal'); doc.setFontSize(10); doc.setTextColor(...dim);
+  doc.text('Private ICT classes · Samudaya Manurathna',L+(logo?30:0),32);
+  doc.setFont('helvetica','bold'); doc.setFontSize(16); doc.setTextColor(...red);
+  doc.text('BILL',R,24,{align:'right'});
+  doc.setFont('helvetica','normal'); doc.setFontSize(10); doc.setTextColor(...dim);
+  const today=localISO(new Date());
+  doc.text('Date: '+ordinalDate(today),R,31,{align:'right'});
+  doc.text('Bill no: '+(st.code||'EICT')+'-'+today.replace(/-/g,''),R,36,{align:'right'});
+  doc.setDrawColor(220,224,236); doc.line(L,46,R,46);
+
+  let y=56;
+  doc.setFontSize(9); doc.setTextColor(...dim); doc.text('BILLED TO',L,y);
+  doc.setFont('helvetica','bold'); doc.setFontSize(13); doc.setTextColor(...ink); doc.text(st.name||'',L,y+7);
+  doc.setFont('helvetica','normal'); doc.setFontSize(10); doc.setTextColor(...dim);
+  doc.text('Student ID: '+(st.code||'—'),L,y+13);
+  const modeLab={online:'Online on Zoom',colombo:'Home visit · Colombo',gampaha:'Home visit · Gampaha'}[st.mode||'online'];
+  doc.text(modeLab+(st.whatsapp?'   ·   '+st.whatsapp:''),L,y+18);
+
+  y+=32;
+  doc.setFillColor(245,247,255); doc.rect(L,y-6,R-L,10,'F');
+  doc.setFont('helvetica','bold'); doc.setFontSize(10); doc.setTextColor(...ink);
+  doc.text('Class date',L+3,y); doc.text('Time',L+95,y); doc.text('Amount',R-3,y,{align:'right'});
+  y+=10; doc.setFont('helvetica','normal'); doc.setFontSize(11);
+  let total=0;
+  list.forEach(x=>{
+    if(y>250){ doc.addPage(); y=24; }
+    doc.setTextColor(...ink); doc.text(ordinalDate(x.date)+(x.extra?'  (extra class)':''),L+3,y);
+    doc.setTextColor(...dim); doc.text(String(x.time||''),L+95,y);
+    doc.setTextColor(...ink); doc.text(rs(x.amount)+(which==='all'&&x.paid?'  paid':''),R-3,y,{align:'right'});
+    if(!(which==='all'&&x.paid)) total+=x.amount;
+    doc.setDrawColor(236,238,246); doc.line(L,y+3.5,R,y+3.5); y+=9;
+  });
+  y+=3; doc.setDrawColor(...ink); doc.setLineWidth(.5); doc.line(L+90,y-4,R,y-4); doc.setLineWidth(.2);
+  doc.setFont('helvetica','bold'); doc.setFontSize(13); doc.setTextColor(...ink);
+  doc.text(which==='all'?'Total due':'Total',L+95,y+3); doc.setTextColor(...red); doc.text(rs(total),R-3,y+3,{align:'right'});
+  doc.setFont('helvetica','normal'); doc.setFontSize(9.5); doc.setTextColor(...dim);
+  doc.text(list.length+' class'+(list.length>1?'es':'')+' up to '+ordinalDate(upto),L+95,y+9);
+
+  y+=22; if(y>240){ doc.addPage(); y=24; }
+  const bank=plain(CO.live&&CO.live.bank);
+  if(bank.length){
+    const h=8+bank.length*5.5;
+    doc.setFillColor(245,247,255); doc.roundedRect(L,y,R-L,h+4,2,2,'F');
+    doc.setFont('helvetica','bold'); doc.setFontSize(9); doc.setTextColor(...dim); doc.text('PAY TO',L+5,y+7);
+    doc.setFont('helvetica','normal'); doc.setFontSize(10.5); doc.setTextColor(...ink);
+    bank.forEach((ln,i)=>doc.text(doc.splitTextToSize(ln,R-L-10)[0],L+5,y+13+i*5.5));
+    y+=h+12;
+  }
+  doc.setFontSize(9.5); doc.setTextColor(...dim);
+  doc.text('Please send the payment slip in your class page or on WhatsApp. Thank you.',L,Math.min(y,280));
+  doc.save('EICT-bill-'+(st.code||'student')+'-'+today+'.pdf');
+  msg.innerHTML='<b style="color:var(--live)">Downloaded.</b>';
 }
 
 async function addShipment(id){
@@ -2284,8 +2494,11 @@ function drawBookings(){
       <span class="tt-state">${b.cancelled?'cancelled':b.status}</span>
       ${(()=>{const mv=(b.moves||{})[thisWeekKey()];
         return mv?`<span class="tt-state" style="color:var(--gold)">this week: ${esc(mv.day)} ${esc(mv.time)}</span>`:'';})()}
-      ${b.status==='approved'&&!b.cancelled?`<span class="tt-state" style="color:${b.done===true?'var(--live)':b.done===false?'var(--dimmer)':'var(--gold)'}">
-        ${b.done===true?'held · charged':b.done===false?'not held':'did it happen?'}</span>`:''}
+      ${b.status==='approved'&&!b.cancelled?(()=>{const d=classDateThisWeek(b), h=d&&heldMap(b)[d], m=d&&(b.missed||{})[d];
+        const n=sessionsOf(b.uid).filter(x=>x.bid===b.id).length;
+        return `<span class="tt-state" style="color:${h?'var(--live)':m?'var(--dimmer)':'var(--gold)'}">
+          ${h?'held this week · charged':m?'missed this week':d&&d>localISO(new Date())?'coming up':'did it happen?'}</span>
+          ${n?`<span class="tt-state" style="color:var(--dim)">${n} class${n>1?'es':''} held so far</span>`:''}`;})():''}
       <span class="tt-act">
         ${b.status==='pending'&&!b.cancelled?`<button class="del" data-ok="${esc(b.id)}">Approve</button>
         <button class="del" data-no="${esc(b.id)}">Decline</button>`:''}
@@ -2295,14 +2508,17 @@ function drawBookings(){
             ? `<button class="del" data-unmove="${esc(b.id)}" style="color:var(--gold);border-color:var(--gold)">
                  Undo move (${esc(mv.day)} ${esc(mv.time)})</button>`
             : `<button class="del" data-move="${esc(b.id)}">Move this week</button>`;})():''}
-        ${b.status==='approved'&&!b.cancelled&&b.done!==true?`<button class="del" data-classdone="${esc(b.id)}">Class held</button>`:''}
-        ${b.status==='approved'&&!b.cancelled&&b.done!==false?`<button class="del" data-classno="${esc(b.id)}">Missed</button>`:''}
+        ${b.status==='approved'&&!b.cancelled?(()=>{const d=classDateThisWeek(b), h=d&&heldMap(b)[d];
+          return h?`<button class="del" data-unheld="${esc(b.id)}|${esc(d)}" style="color:var(--signal)">Undo held</button>`
+                  :`<button class="del" data-classdone="${esc(b.id)}">Class held</button>
+                    <button class="del" data-classno="${esc(b.id)}">Missed</button>`;})():''}
         <button class="del" data-who="${esc(b.id)}">Details</button></span></td>`;
   };
   box.innerHTML=`<div class="tbl-box"><table class="tt-tbl"><thead><tr><th></th>
       ${days.map(d=>`<th>${esc(d)}</th>`).join('')}</tr></thead><tbody>
       ${times.map(t=>`<tr><th class="tt-time">${esc(t)}</th>${days.map(d=>cell(d,t)).join('')}</tr>`).join('')}
     </tbody></table></div>`;
+  drawCharges();
 }
 function panel(html){
   $('#denyBody').innerHTML=html;
@@ -2324,7 +2540,7 @@ function bookingDetails(id){
       <tr><th>School</th><td>${esc(st.school||'—')}</td></tr>
       <tr><th>Address for tutes</th><td>${esc(st.address||'not given')}</td></tr>
       <tr><th>Confirmed hours</th><td>${mineAll.length} — ${esc(mineAll.map(x=>x.day+' '+x.time).join(', ')||'none')}</td></tr>
-      <tr><th>Classes not yet paid</th><td>${mineAll.filter(x=>!paid.has(x.id)).length}</td></tr>
+      <tr><th>Classes not yet paid</th><td>${sessionsOf(b.uid).filter(x=>!x.paid).length}</td></tr>
       <tr><th>Parcels sent</th><td>${(st.shipments||[]).length} · ${(st.shipments||[]).filter(x=>x.received).length} confirmed received</td></tr>
     </tbody></table>
     <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:20px">
@@ -2357,7 +2573,8 @@ async function drawToday(){
     if(!SUBS.length) await loadSubs().catch(()=>{});
   }
   const pend=(BK||[]).filter(b=>b.status==='pending'&&!b.cancelled);
-  const held=(BK||[]).filter(b=>b.status==='approved'&&!b.cancelled&&b.done===undefined);
+  const held=(BK||[]).filter(b=>{ if(b.status!=='approved'||b.cancelled) return false;
+    const d=classDateThisWeek(b); return d&&d<=localISO(new Date())&&!heldMap(b)[d]&&!(b.missed||{})[d]; });
   const pay=(STU||[]).filter(st=>((st.claimedClasses||[]).filter(x=>!(st.paidClasses||[]).includes(x))).length);
   const marks=(SUBS||[]).filter(x=>isJourney(x)?!hasMark(x):!x.marked);
   const parcels=(STU||[]).filter(st=>(st.shipments||[]).some(x=>!x.received));
@@ -2977,6 +3194,12 @@ document.addEventListener('click',async e=>{
   const umv=e.target.closest('[data-unmove]'); if(umv) return undoMove(umv.dataset.unmove);
   const cdn=e.target.closest('[data-classdone]'); if(cdn) return markClassDone(cdn.dataset.classdone,true);
   const cno=e.target.closest('[data-classno]'); if(cno) return markClassDone(cno.dataset.classno,false);
+  const unh=e.target.closest('[data-unheld]');
+  if(unh){ const [bid,dt]=unh.dataset.unheld.split('|'); return unmarkHeld(bid,dt); }
+  const chg=e.target.closest('[data-chg]');
+  if(chg){ CHG_OPEN=CHG_OPEN===chg.dataset.chg?null:chg.dataset.chg; drawCharges();
+    if(CHG_OPEN) $('#chgOne').scrollIntoView({behavior:'smooth',block:'start'}); return; }
+  if(e.target.id==='billPdf') return downloadBill();
   const shp=e.target.closest('[data-ship]'); if(shp) return addShipment(shp.dataset.ship);
   const rmv=e.target.closest('[data-remove]'); if(rmv) return removeStudent(rmv.dataset.remove);
   const pok=e.target.closest('[data-payok]'); if(pok) return decidePayment(pok.dataset.payok,true);

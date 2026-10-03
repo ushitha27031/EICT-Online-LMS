@@ -1164,6 +1164,17 @@ document.addEventListener('click',async e=>{
 document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeAll(); });
 function closeAll(){ stopWatch(); $('#pOv').classList.remove('on'); $('#sOv').classList.remove('on');
   $('#pStage').innerHTML=''; document.body.style.overflow=''; clearInterval(markTimer); }
+/* A short note at the bottom of the screen. */
+function toast(t){
+  let el=document.getElementById('toastNote');
+  if(!el){ el=document.createElement('div'); el.id='toastNote';
+    el.style.cssText='position:fixed;left:50%;bottom:24px;transform:translateX(-50%);z-index:999;max-width:90vw;'
+      +'padding:12px 18px;border-radius:12px;background:var(--panel-b,#111a3d);color:var(--paper,#fff);'
+      +'border:1px solid var(--wire-2,#334);font-size:14px;box-shadow:0 12px 30px rgba(0,0,0,.35);transition:opacity .3s;opacity:0';
+    document.body.appendChild(el); }
+  el.textContent=t; el.style.opacity='1';
+  clearTimeout(el._t); el._t=setTimeout(()=>el.style.opacity='0',2600);
+}
 function cheer(title,line,extra){
   sheet(`<div class="cheer">
     <div class="ring2"><svg viewBox="0 0 96 96"><circle class="bg2" cx="48" cy="48" r="42"/>
@@ -1475,6 +1486,25 @@ const nextDateFor=day=>{
   t.setDate(n.getDate()+((want-n.getDay()+7)%7)); return t;
 };
 
+/* A confirmed class can be moved to another free hour in this same week.
+   From next week it is back at its usual day and time. */
+async function moveThisWeek(b,day,time){
+  const dt=nextDateFor(day);
+  if(!dt||weekKey(dt)!==weekKey()){ moveFrom=null; paintBook();
+    return toast('You can only move a class to another day this week'); }
+  if(!confirm(`Move your ${b.day} ${b.time} class to ${day} ${time}, this week only?\n\n`
+    +`From next week it is back to ${b.day} at ${b.time}.`)) { moveFrom=null; return paintBook(); }
+  const moves=Object.assign({},b.moves||{});
+  moves[weekKey()]={day,time,at:new Date().toISOString(),by:'student'};
+  try{
+    await FB.updateDoc(FB.doc(FB.db,'bookings',b.id),{moves});
+    b.moves=moves; moveFrom=null; paintBook();
+    notifyTeacher('Private class moved',
+      `${profile.name||''} (${profile.code||''}) moved ${b.day} ${b.time} to ${day} ${time}, this week only.`);
+    cheer('Moved for this week', `${day} ${time} this week. Back to ${b.day} ${b.time} from next week.`,'');
+  }catch(e){ moveFrom=null; bookingError(e); }
+}
+
 function watchBookings(){
   if(!FB||!me||bookUnsub) return;
   try{
@@ -1486,8 +1516,27 @@ function watchBookings(){
 }
 const isoOf=d=>{const t=nextDateFor(d); return t?new Date(t.getTime()-t.getTimezoneOffset()*6e4).toISOString().slice(0,10):'';};
 const awayOn=day=>((COURSE.solo&&COURSE.solo.blockedDates)||[]).includes(isoOf(day));
-const takenBy=(day,time)=>(BOOKINGS||[]).find(b=>b.day===day&&b.time===time&&b.status!=='declined'&&!b.cancelled);
+/* Where a booking sits this week — a one-week move counts, the usual hour is then free. */
+const posThisWeek=b=>(b.moves||{})[weekKey()]||b;
+const takenBy=(day,time)=>(BOOKINGS||[]).find(b=>{const p=posThisWeek(b);
+  return p.day===day&&p.time===time&&b.status!=='declined'&&!b.cancelled;});
 const mineThisWeek=()=>(BOOKINGS||[]).filter(b=>b.uid===(me&&me.uid)&&!b.cancelled&&b.status!=='declined');
+/* Every private class sir marked as held is its own charge, kept on the
+   booking as held[YYYY-MM-DD]. Older bookings carry one done flag instead,
+   which still counts as a single class. */
+function mySessions(){
+  const out=[];
+  (BOOKINGS||[]).filter(b=>b.uid===(me&&me.uid)&&b.status==='approved').forEach(b=>{
+    const h=b.held||{}, ks=Object.keys(h);
+    if(ks.length) ks.forEach(d=>out.push({id:h[d]&&h[d].legacy?b.id:b.id+'@'+d, date:d, day:b.day,
+      time:(h[d]&&h[d].time)||b.time, rate:h[d]&&h[d].rate, extra:!!b.extra}));
+    else if(b.done===true&&!b.cancelled) out.push({id:b.id, date:String(b.doneAt||b.at||'').slice(0,10),
+      day:b.day, time:b.time, extra:!!b.extra});
+  });
+  return out.sort((a,b)=>a.date<b.date?-1:a.date>b.date?1:0);
+}
+const niceClassDate=iso=>{const d=new Date(String(iso)+'T00:00:00');
+  return isNaN(d)?String(iso||''):d.toLocaleDateString('en-GB',{weekday:'short',day:'numeric',month:'long',year:'numeric'});};
 
 function paintBook(){
   const box=$('#bookPanel'); if(!box) return;
@@ -1517,7 +1566,7 @@ function paintBook(){
             back to ${esc(b.day)} ${esc(b.time)} from next week</span>`:''}</span>
         <span style="display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end">
           ${b.status==='approved'&&zoom?`<a class="btn btn-1" style="padding:10px 16px" href="${esc(zoom)}" target="_blank" rel="noopener">Join</a>`:''}
-          <button class="btn btn-2" style="padding:10px 16px" data-move="${esc(b.id)}">Move</button>
+          <button class="btn btn-2" style="padding:10px 16px" data-move="${esc(b.id)}">${b.status==='approved'?'Move this week':'Move'}</button>
           <button class="btn btn-2" style="padding:10px 16px" data-drop="${esc(b.id)}">Cancel</button>
         </span></div>`;}).join('')}</div>`:''}
 
@@ -1551,6 +1600,8 @@ function paintBook(){
 
 async function requestBooking(day,time,replaceId){
   if(!FB||!me) return toast('Sign in first');
+  const was=replaceId&&(BOOKINGS||[]).find(b=>b.id===replaceId);
+  if(was&&was.status==='approved') return moveThisWeek(was,day,time);
   if(mineThisWeek().some(b=>b.day===day&&b.time===time))
     return toast('You already hold that hour');
   const rec={ uid:me.uid, code:profile.code||'', name:profile.name||'', whatsapp:profile.whatsapp||'',
@@ -1605,7 +1656,7 @@ const modeLabel=()=>({online:'Online on Zoom',colombo:'Home visit · Colombo',ga
 
 function paintPay(){
   const box=$('#payPanel'); if(!box) return;
-  const done=(BOOKINGS||[]).filter(b=>b.uid===(me&&me.uid)&&b.status==='approved'&&!b.cancelled&&b.done===true);
+  const done=mySessions();
   const paidIds=new Set(profile.paidClasses||[]);
   const claimed=new Set(profile.claimedClasses||[]);
   const owing=done.filter(b=>!paidIds.has(b.id));
@@ -1621,13 +1672,13 @@ function paintPay(){
     <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin-bottom:20px">
       ${kpi(done.length,'Classes done')}
       ${kpi(owing.length,'Not yet paid',owing.length?'var(--signal)':'var(--live-ink)')}
-      ${kpi('Rs. '+(rate*owing.length).toLocaleString(),'Amount due','var(--gold)')}
+      ${kpi('Rs. '+owing.reduce((a,s)=>a+(Number(s.rate)||rate),0).toLocaleString(),'Amount due','var(--gold)')}
     </div>
     ${done.length?`<p class="eyebrow" style="margin:4px 0 10px">Every class · 2 hours each</p>
       ${done.slice().reverse().map(b=>{const pd=paidIds.has(b.id), cl=claimed.has(b.id);
         return `<div class="pp ${pd?'':'shut'}"><span class="pp-n">${esc(String(b.day).slice(0,3))}</span>
-          <span><span class="pp-t">${esc(b.day)} · ${esc(b.time)}</span>
-            <span class="pp-m">${esc(String(b.at||'').slice(0,10))} · Rs. ${rate.toLocaleString()}${b.extra?' · extra class':''}</span></span>
+          <span><span class="pp-t">${esc(niceClassDate(b.date))}</span>
+            <span class="pp-m">${esc(b.time)} · Rs. ${(Number(b.rate)||rate).toLocaleString()}${b.extra?' · extra class':''}</span></span>
           <span class="pp-s ${pd?'open':cl?'sent':'shut'}">${pd?'Paid':cl?'Waiting for sir':'Due'}</span></div>`;}).join('')}`
       :'<p style="color:var(--dim);margin:0">Nothing to pay yet. A class is added here once sir marks it as held.</p>'}
 
@@ -1642,11 +1693,11 @@ function paintPay(){
 }
 
 async function claimPaid(){
-  const done=(BOOKINGS||[]).filter(b=>b.uid===(me&&me.uid)&&b.status==='approved'&&!b.cancelled&&b.done===true);
+  const done=mySessions();
   const paidIds=new Set(profile.paidClasses||[]);
   const owing=done.filter(b=>!paidIds.has(b.id));
   if(!owing.length) return;
-  const rate=myRate(), amount=rate*owing.length;
+  const rate=myRate(), amount=owing.reduce((a,s)=>a+(Number(s.rate)||rate),0);
   if(!confirm(`Tell sir you have paid Rs. ${amount.toLocaleString()} for ${owing.length} class(es)?\n\n`
     +`He will confirm he received it, and then they show as paid.`)) return;
   profile.claimedClasses=[...new Set([...(profile.claimedClasses||[]),...owing.map(b=>b.id)])];
