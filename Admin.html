@@ -2105,11 +2105,12 @@ const UNITWEEKS=[2,2,1,2,2,4,5,4,5,4,1,1,1,3];
 
 async function loadRoadmap(){
   const fb=await window.FB_READY;
-  if(RM===null){
+  if(RM===null||(!RM.weeks||!RM.weeks.length)&&!RM._loaded){
     RM={weeks:[]};
     if(fb&&fb.auth.currentUser){
       try{ const d=await fb.getDoc(fb.doc(fb.db,'site',roadmapDoc()));
-           if(d.exists()&&d.data().json) RM=JSON.parse(d.data().json); }catch(e){}
+           if(d.exists()&&d.data().json) RM=JSON.parse(d.data().json);
+           RM._loaded=true; }catch(e){}
     }
   }
   drawRoadmap();
@@ -2226,7 +2227,7 @@ let MKDOC={};
 async function loadMarks(){
   const fb=await window.FB_READY;
   if(fb && fb.auth.currentUser){ try{ await loadStudents(); }catch(e){} }
-  if(RM===null) await loadRoadmap();
+  if(RM===null||!RM._loaded) await loadRoadmap();
   const who=$('#mkWho'); if(!who) return;
   const withCode=STU.filter(s=>s.code).sort((a,b)=>(a.code||'').localeCompare(b.code||''));
   const noCode=STU.filter(s=>!s.code);
@@ -2240,7 +2241,7 @@ async function loadMarks(){
     : '';
   $('#mkWeek').innerHTML=(RM.weeks||[]).map((w,i)=>
     `<option value="${i}">Week ${String(i+1).padStart(2,'0')} — ${esc(w.title||'')}</option>`).join('')
-    || '<option value="">No weeks in the study plan yet</option>';
+    || Array.from({length:30},(_,i)=>`<option value="${i}">Week ${String(i+1).padStart(2,'0')}</option>`).join('');
   $('#mkWho').onchange=showMarks; showMarks();
 }
 async function showMarks(){
@@ -2261,12 +2262,33 @@ async function showMarks(){
         <b style="font-family:var(--m);color:var(--gold);flex:none">W${String(r.w+1).padStart(2,'0')}</b>
         <span style="font-family:var(--d);font-size:19px;flex:none">${esc(r.mark)}%</span>
         <span style="font-size:13.5px;color:var(--dim);flex:1">${r.onTime?'on time':'late'}${r.note?' · '+esc(r.note):''}</span>
+        <button class="del mk-edit" data-w="${r.w}">Edit</button>
         <button class="del mk-del" data-w="${r.w}">Remove</button></div>`).join('')
       :'<div class="hint">No marks entered for this student yet.</div>');
+  const who=STU.find(x=>x.code===code)||{};
+  const keep={code, name:who.name||'', batch:who.batch||''};
   box.querySelectorAll('.mk-del').forEach(b=>b.onclick=async()=>{
+    if(!confirm('Remove the Week '+(+b.dataset.w+1)+' mark for '+code+'?\n\nUse Edit instead if only the number is wrong.')) return;
     delete MKDOC[b.dataset.w];
-    try{ await fb.setDoc(fb.doc(fb.db,'marks',code),{weeks:MKDOC,updated:fb.serverTimestamp()});
+    try{ await fb.updateDoc(fb.doc(fb.db,'marks',code),{weeks:MKDOC,...keep,updated:fb.serverTimestamp()});
          showMarks(); toast('Mark removed'); }catch(e){ guard('marks',e); }});
+  /* change only the number — the note, the marked-paper link and on time stay */
+  box.querySelectorAll('.mk-edit').forEach(b=>b.onclick=async()=>{
+    const w=b.dataset.w, cur=MKDOC[w]||{};
+    const v=prompt('New mark for '+code+', Week '+(+w+1)+' (now '+cur.mark+'%)',cur.mark);
+    if(v===null) return;
+    const val=+String(v).trim();
+    if(String(v).trim()===''||!(val>=0&&val<=100)) return alert('A mark must be between 0 and 100.');
+    MKDOC[w]={...cur, mark:val, editedAt:new Date().toISOString()};
+    try{
+      await fb.updateDoc(fb.doc(fb.db,'marks',code),{weeks:MKDOC,...keep,updated:fb.serverTimestamp()});
+      try{ const sub=await fb.getDocs(fb.collection(fb.db,'submissions'));
+           const jobs=[]; sub.forEach(d=>{ const x=d.data();
+             if(isJourney(x)&&x.code===code&&String(x.week)===String(w))
+               jobs.push(fb.setDoc(fb.doc(fb.db,'submissions',d.id),{marked:true,mark:val},{merge:true})); });
+           await Promise.all(jobs); }catch(e){}
+      showMarks(); toast(code+' Week '+(+w+1)+' is now '+val+'%');
+    }catch(e){ if(!guard('marks',e)) alert(e.code||e.message); }});
 }
 /* ---------- progress and coins ---------- */
 let PG=[], pgBy='code', pgBusy=false;
