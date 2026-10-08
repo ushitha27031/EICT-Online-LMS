@@ -1708,9 +1708,12 @@ function drawChargeOne(){
     <div class="tbl-box"><table class="ed"><thead><tr><th>Date</th><th>Time</th><th>Amount</th><th>Status</th><th></th></tr></thead><tbody>
       ${ss.map(x=>`<tr><td>${esc(ordinalDate(x.date))}${x.extra?' <span style="color:var(--gold);font-size:12px">extra</span>':''}</td>
         <td>${esc(x.time||'')}</td><td>${rs(x.amount)}</td>
-        <td><b style="color:${x.paid?'var(--live)':x.claimed?'var(--gold)':'var(--signal)'}">${x.paid?'Paid':x.claimed?'Says paid':'Due'}</b></td>
+        <td><b style="color:${x.paid?'var(--live)':x.claimed?'var(--gold)':'var(--signal)'}">${x.paid?'Paid':x.claimed?'Says paid':'Due'}</b>
+          ${x.paid?`<button class="del" style="margin-left:8px" data-unpay="${esc(x.id)}">Undo</button>`
+                  :`<button class="del" style="margin-left:8px;color:var(--live);border-color:var(--live)" data-pay="${esc(x.id)}">Mark paid</button>`}</td>
         <td><button class="rm" title="Remove — marked held by mistake" data-unheld="${esc(x.bid)}|${esc(x.date)}">×</button></td></tr>`).join('')}
-      <tr><th colspan="2">Total</th><th>${rs(tot)}</th><th colspan="2" style="color:var(--signal)">Due ${rs(due)}</th></tr>
+      <tr><th colspan="2">Total</th><th>${rs(tot)}</th><th colspan="2" style="color:var(--signal)">Due ${rs(due)}
+        ${due?`<button class="del" style="margin-left:8px;color:var(--live);border-color:var(--live)" data-payall="1">Mark all due as paid</button>`:''}</th></tr>
     </tbody></table></div>
     <div class="grid2" style="margin-top:16px">
       <div class="fld"><label>Bill classes up to</label><input type="date" id="billTo" value="${localISO(new Date())}"></div>
@@ -1720,6 +1723,27 @@ function drawChargeOne(){
     <button class="b b1" id="billPdf">Download bill (PDF)</button>
     <span id="billMsg" style="margin-left:12px;font-size:14px"></span>
   </div>`;
+}
+/* You mark a class paid yourself when the money reached you without a slip.
+   It is the same paidClasses list the student's payments page reads, so
+   their class turns green there too. Undo puts it back to due. */
+async function setPaid(ids,paid){
+  const fb=await window.FB_READY; if(!fb||!fb.auth.currentUser) return alert('Sign in first.');
+  const st=STU.find(x=>x.id===CHG_OPEN); if(!st||!ids.length) return;
+  const ss=sessionsOf(CHG_OPEN).filter(x=>ids.includes(x.id));
+  const sum=ss.reduce((a,x)=>a+x.amount,0);
+  const what=ss.length===1?ordinalDate(ss[0].date):ss.length+' classes';
+  if(!paid&&!confirm('Mark '+what+' for '+(st.name||'this student')+' as NOT paid?\n\nIt goes back to due.')) return;
+  if(paid&&ss.length>1&&!confirm('Mark '+ss.length+' classes ('+rs(sum)+') for '+(st.name||'this student')+' as paid?')) return;
+  const pd=new Set(st.paidClasses||[]), cl=new Set(st.claimedClasses||[]);
+  ids.forEach(id=>{ if(paid){ pd.add(id); cl.delete(id); } else pd.delete(id); });
+  const paidClasses=[...pd], claimedClasses=[...cl];
+  try{
+    await fb.updateDoc(fb.doc(fb.db,'students',st.id),{paidClasses,claimedClasses});
+    st.paidClasses=paidClasses; st.claimedClasses=claimedClasses;
+    drawCharges();
+    toast(paid?what+' marked paid — '+rs(sum):what+' is due again');
+  }catch(e){ if(!guard('payments',e)) alert(e.code||e.message); }
 }
 function loadJsPDF(){
   if(window.jspdf) return Promise.resolve(window.jspdf.jsPDF);
@@ -3251,6 +3275,9 @@ document.addEventListener('click',async e=>{
     if(CHG_OPEN) $('#chgOne').scrollIntoView({behavior:'smooth',block:'start'}); return; }
   if(e.target.id==='billPdf') return downloadBill();
   if(e.target.id==='pcAdd') return addPastClass();
+  const pay=e.target.closest('[data-pay]'); if(pay) return setPaid([pay.dataset.pay],true);
+  const unp=e.target.closest('[data-unpay]'); if(unp) return setPaid([unp.dataset.unpay],false);
+  if(e.target.closest('[data-payall]')) return setPaid(sessionsOf(CHG_OPEN).filter(x=>!x.paid).map(x=>x.id),true);
   const shp=e.target.closest('[data-ship]'); if(shp) return addShipment(shp.dataset.ship);
   const rmv=e.target.closest('[data-remove]'); if(rmv) return removeStudent(rmv.dataset.remove);
   const pok=e.target.closest('[data-payok]'); if(pok) return decidePayment(pok.dataset.payok,true);
