@@ -18,6 +18,7 @@
     if(!cfg||!cfg.projectId||!cfg.apiKey||/PASTE/i.test(cfg.projectId)) return;
     if(navigator.webdriver||/bot|crawl|spider|slurp|preview/i.test(navigator.userAgent)) return;
     if(location.protocol!=='https:') return;             // local copies do not count
+    if(window.top!==window) return;                       // inside the home page popup: that visit is EICT's
     var ls=window.localStorage;
     if(ls.getItem('eict-notrack')==='1') return;
 
