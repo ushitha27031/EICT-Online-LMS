@@ -65,6 +65,13 @@ header{display:flex;align-items:center;justify-content:space-between;gap:14px;ma
 .sum{display:grid;grid-template-columns:auto 1fr;gap:4px 12px;margin-top:8px;font-size:14px}
 .sum span{color:var(--dim)}
 .ok{color:#63e6bf;font-weight:700}
+.feat{display:grid;grid-template-columns:auto 1fr;gap:4px 12px;align-items:start;padding:10px 0;border-top:1px solid #2a4566}
+.feat:first-of-type{border-top:0}
+.feat i{font-style:normal;font-size:22px;line-height:1;width:38px;height:38px;border-radius:11px;background:#132c49;display:grid;place-items:center;grid-row:span 2}
+.feat b{font-size:14.5px}.feat span{color:#b7c7de;font-size:13.5px;line-height:1.55}
+.soon{display:inline-block;margin-left:6px;padding:1px 7px;border-radius:999px;font-size:10.5px;font-weight:800;letter-spacing:.06em;background:#3a2f12;color:var(--gold);vertical-align:middle}
+.free{background:#123a2e;color:#63e6bf}
+.code-big{font-size:26px;font-weight:900;letter-spacing:.06em;color:var(--gold);margin:6px 0}
 footer{text-align:center;color:#7890af;font-size:12px;margin-top:22px}
 a{color:#6eead0}
 @media(max-width:760px){.layout{grid-template-columns:1fr}.chat{height:60vh}.side{padding:16px}.bubble,.bubble.card{max-width:94%;width:auto}}
@@ -87,8 +94,8 @@ html.embed header{margin-bottom:12px;padding-right:46px}html.embed .chat{height:
     <h2 id="pricesTitle"></h2>
     <div class="price"><b id="groupName"></b><strong>Rs. 4,000</strong><small id="groupInfo"></small></div>
     <div class="price"><b id="onlineName"></b><strong>Rs. 2,000</strong><small id="onlineInfo"></small></div>
-    <div class="price"><b id="physicalName"></b><strong>Rs. 5,000</strong><small id="physicalInfo"></small></div>
-    <div class="quick"><button class="btn primary" id="qTrial" type="button"></button><button class="btn" id="qSample" type="button"></button><button class="btn" id="qTimes" type="button"></button></div>
+    <div class="price"><b id="physicalName"></b><strong>Rs. 5,000 – 6,500</strong><small id="physicalInfo"></small></div>
+    <div class="quick"><button class="btn primary" id="qTrial" type="button"></button><button class="btn" id="qSample" type="button"></button><button class="btn" id="qTimes" type="button"></button><button class="btn" id="qReg" type="button"></button></div>
     <p class="note" id="note"></p>
   </aside>
 </main>
@@ -106,7 +113,7 @@ html.embed header{margin-bottom:12px;padding-right:46px}html.embed .chat{height:
    A trial booked here is saved exactly like the trial form on EICT.html
    (requests + trials + holds) and alerts sir's phone.
    ===================================================================== */
-const CONFIG={whatsappNumber:'94719780807',groupMonthly:4000,onlineSession:2000,physicalSession:5000,
+const CONFIG={whatsappNumber:'94719780807',groupMonthly:4000,onlineSession:2000,colomboSession:5000,gampahaSession:6500,
   introVideo:'VBH-VRKpBI0'};
 const FALLBACK_TRIAL=[['Monday',['7.00 AM','1.00 PM','7.00 PM']],['Tuesday',['7.00 AM','1.00 PM','7.00 PM']],
   ['Thursday',['7.00 AM','1.00 PM','7.00 PM']],['Friday',['7.00 AM','1.00 PM','7.00 PM']],
@@ -120,7 +127,7 @@ si:{tag:'ඔයාගේ ICT පන්ති මඟපෙන්වන්නා',
  intro:'පන්ති වේලාවන්, නොමිලේ trial class එකක්, sample lessons, fees — ඔක්කොම මෙතැනින්.',
  status:'● Online · සාමාන්‍යයෙන් තත්පරයකින් උත්තර',restart:'↻ නැවත පටන්ගන්න',
  prices:'පන්ති සහ ගාස්තු',group:'Online Group Class',online:'Online Individual Class',physical:'Physical Individual Class',
- groupInfo:'මාසයකට · කණ්ඩායම් පන්ති',onlineInfo:'පැය 2ක session එකකට · sessions 4 = Rs. 8,000',physicalInfo:'පැය 2ක session එකකට · sessions 4 = Rs. 20,000',
+ groupInfo:'මාසයකට · කණ්ඩායම් පන්ති',onlineInfo:'පැය 2ක session එකකට · sessions 4 = Rs. 8,000',physicalInfo:'පැය 2ක session එකකට · කොළඹ Rs. 5,000 · ගම්පහ Rs. 6,500 (දුර නිසා)',
  note:'පන්ති වේලාවන් සහ ඉඩකඩ ගුරුතුමා තහවුරු කරනවා. ඔයාගේ නම සහ අංකය save වෙන්නේ trial එකක් book කළොත් විතරයි.',
  qTrial:'🧪 නොමිලේ trial class එකක්',qSample:'🎬 Sample lesson එකක් බලන්න',qTimes:'🗓 පන්ති වේලාවන්',
  askName:'නියමයි! 😊 ඔයාගේ නම මොකක්ද? (කැමති නම් skip කරන්නත් පුළුවන්)',namePh:'ඔයාගේ නම',ok:'හරි',skip:'Skip',
@@ -144,25 +151,56 @@ si:{tag:'ඔයාගේ ICT පන්ති මඟපෙන්වන්නා',
  sampleIntro:'මෙන්න අපේ live පන්තියකින් කොටසක් 🎬 සර් උගන්වන විදිහ බලන්න.',sampleOther:'මේක අනෙක් මාධ්‍යයේ පන්තියකින්. ඔයාගේ මාධ්‍යයේ sample එකක් ඉක්මනින් එනවා.',
  sampleNone:'Sample recordings ඉක්මනින් එනවා! දැනට මේ intro video එකෙන් පන්තිය ගැන දැනගන්න 👇',
  sampleAfter:'කැමති වුණාද? 😄 නොමිලේ trial class එකකින් සර් එක්ක කෙලින්ම බලන්නත් පුළුවන්.',
- fees:`අපේ fees මෙන්න 💰\n\n💻 Online Group: Rs. 4,000 / මාසයට\n👤 Online Individual: Rs. 2,000 / පැය 2ක session එකට\n🏫 Physical Individual: Rs. 5,000 / පැය 2ක session එකට\n\nIndividual sessions 4ක් ගත්තොත් Rs. 8,000 (online) / Rs. 20,000 (physical).`,
+ fees:`අපේ fees මෙන්න 💰\n\n💻 Online Group: Rs. 4,000 / මාසයට\n👤 Online Individual: Rs. 2,000 / පැය 2ක session එකට\n🏫 Physical Individual (ගෙදරට ඇවිත්), පැය 2ක session එකට:\n   • කොළඹ — Rs. 5,000\n   • ගම්පහ — Rs. 6,500 (දුර වැඩි නිසා)\n\nOnline sessions 4ක් = Rs. 8,000.\n\n🎁 Group පන්තියේ අයට ඉරිදා Q&A පන්තිය නොමිලේ!`,
  findY:'ඔයා A/L කරන්නේ කුමන අවුරුද්දේද?',need:'වැඩිපුරම ඕන උදව් මොකක්ද?',foundation:'ICT මුල ඉඳන්',topics:'අමාරු topics',papers:'Past papers / revision',
  format:'ඉගෙනගන්න කැමති ක්‍රමය?',budget:'Group පන්තිය',personal:'Online 1-to-1',face:'Face-to-face 1-to-1',unsure:'තාම තීරණයක් නෑ',
  recGroup:'ඔයාට Online Group පන්තිය (Rs. 4,000/මාසය) හොඳ ආරම්භයක් 👍 සතියකට live පන්තියක්, recordings, tutes, papers.',
  recOnline:'ඔයාට Online Individual (Rs. 2,000 / පැය 2) ගැළපෙයි 👍 අමාරු topics වලට සර්ගේ සම්පූර්ණ අවධානය.',
- recPhysical:'ඔයාට Physical Individual (Rs. 5,000 / පැය 2) ගැළපෙයි 👍 Face-to-face guidance.',
+ recPhysical:'ඔයාට Physical Individual ගැළපෙයි 👍 සර් ගෙදරටම ඇවිත් උගන්වනවා — පැය 2ට කොළඹ Rs. 5,000, ගම්පහ Rs. 6,500.',
  recEnd:'මුලින්ම නොමිලේ trial එකකින් බලන්නත් පුළුවන්.',
  faqQ:'මොකක් ගැනද දැනගන්න ඕන?',fTimes:'🕒 වේලාවන්',fOnline:'💻 Online පන්ති වැඩ කරන්නේ කොහොමද?',fRec:'📼 Recordings තියෙනවද?',fPay:'💳 Payment',fMedium:'🌐 මාධ්‍යය',
  aOnline:'Group පන්තිය Zoom එකෙන් live. Individual එකේදී සර් එක්ක one-to-one පැය 2ක session එකක්. Class portal එකේ recordings, papers, marks ඔක්කොම තියෙනවා.',
  aRec:'ඔව් ✅ පන්තියට එන්න බැරි වුණොත් recording එක class portal එකෙන් බලන්න පුළුවන්.',
- aPay:'Online Group Rs. 4,000/මාසය. Individual පන්ති session එකට ගෙවනවා. Bank transfer කරලා slip එක portal එකෙන් යවන්න පුළුවන්.',
+ aPay:'Online Group Rs. 4,000/මාසය. Individual පන්ති session එකට ගෙවනවා (online Rs. 2,000 · කොළඹ Rs. 5,000 · ගම්පහ Rs. 6,500). Bank transfer කරලා slip එක portal එකෙන් යවන්න පුළුවන්.',
  aMedium:'සිංහල සහ English මාධ්‍ය දෙකටම පන්ති තියෙනවා. ඔයාට ගැළපෙන එකට සර් යොමු කරයි.',
  contactQ:'සර්ට යවන්න message එකක් හදමු. කෙටියෙන් ලියන්න ✍️',contactPh:'ඔයාගේ ප්‍රශ්නය',sendWa:'WhatsApp එකෙන් යවන්න',
+ mWhat:'📚 අපේ පන්තියේ තියෙන දේවල්',mReg:'📝 දැන්ම Register වෙන්න',qReg:'📝 Register වෙන්න',
+ whatIntro:n=>`${n?n+', ':''}අපේ පන්තියට ආවොත් ඔයාට ලැබෙන දේවල් මෙන්න ✨`,
+ feats:[
+  ['🎥','සතිපතා Live පන්තිය','සතියකට එක දවසක් Zoom එකෙන් live. ප්‍රශ්නයක් ආවොත් එතනම අහන්න. එන්න බැරි වුණොත් recording එක class portal එකේ.'],
+  ['🗺️','Study plan — සතිපතා Missions','හැම සතියකටම පොඩි missions ටිකක් (lesson, notes, practice) සහ weekly paper එකක්. ඒවා කරද්දී ඔයාගේ progress එක portal එකේ map එකක වගේ පේනවා.'],
+  ['📝','Weekly papers + marks','Answer sheet එක portal එකෙන් එවන්න. සර් mark කරලා feedback එක්කම ආපහු එවනවා — My Marks එකේ grade එකත් එක්ක.'],
+  ['🪙','Coins, ranks, Hall of Fame','හොඳ marks වලට සහ වෙලාවට paper එවන්න coins (වෙලාවට එවුවොත් +25). Coins එකතු වෙද්දී Recruit → Cadet → … → Legend rank එක වැඩි වෙනවා. Hall of Fame එකේ නම දාගන්නත් පුළුවන් 🏆'],
+  ['📦','Tutes, papers ගෙදරටම','Tutes, past papers, short notes courier එකෙන් ගෙදරටම.'],
+  ['🧾','Term tests','වාරෙට term test එකක් — exam එකට වගේම පුහුණු වෙන්න.'],
+  ['🙋','ඉරිදා Q&A පන්තිය — නොමිලේ','හැම ඉරිදාම Question Asking පන්තියක්. සතිය පුරා ආපු ඕනම ප්‍රශ්නයක් අහන්න. ගාස්තුවක් නෑ!','free']],
+ soonT:'ඉක්මනින්ම එනවා 🚀',
+ soon:[
+  ['🧪','Practical පන්ති','Programming, databases, networking අතින්ම කරලා බලන practical sessions.'],
+  ['📈','Monthly Progress Chart','මාසෙන් මාසෙට ඔයාගේ marks, missions, coins chart එකක — කොහෙද හොඳ, කොහෙද තව වැඩ කරන්න ඕන කියලා පැහැදිලිව.'],
+  ['✅','MCQ Papers','Exam එකේ වගේම MCQ papers — ඉක්මනින් කරලා marks එක එතනම බලන්න.'],
+  ['🧠','Brain Bite','පොඩි, ඉක්මන් ICT challenge / revision කෑලි — දවසට විනාඩි කීපයක්, මොළේට පොඩි කෑමක් වගේ 😄']],
+ soonBadge:'ඉක්මනින්',freeBadge:'නොමිලේ',whatAfter:'කොහොමද? 😊 කැමති නම් දැන්ම register වෙන්න, නැත්නම් මුලින් නොමිලේ trial එකක් කරලා බලන්න.',
+ regIntro:'නියමයි! 🎉 Register වෙන්න විනාඩි 2ක් විතරයි. ඔයාගේ class page එකට log වෙන්න account එකක් හැදෙනවා.',
+ regYear:'ඔයා A/L ලියන්නේ කවදද?',regOL:'O/L / වෙනත්',regOther:'O/L සහ අනෙක් පන්ති වලට සර් කෙලින්ම register කරනවා. Message එකක් යවමු 👇',
+ regTrack:'කොහොමද ඉගෙනගන්න කැමති?',tLive:'🎥 Live group පන්තිය',tRec:'📼 Recorded lessons',tSolo:'👤 One-to-one',
+ regMode:'One-to-one එක කොහොමද?',moOnline:'💻 Online (Zoom)',moColombo:'🏠 ගෙදරට — කොළඹ',moGampaha:'🏠 ගෙදරට — ගම්පහ',
+ regName:'ඔයාගේ සම්පූර්ණ නම?',regSchool:'ඔයාගේ පාසල?',privateC:'Private candidate',regSchoolPh:'පාසලේ නම',
+ regAddr:'Tutes, papers එවන්න ලිපිනය?',regAddrHome:'සර් එන්න ඕන ගෙදර ලිපිනය?',regAddrPh:'ලිපිනය',
+ regEmail:'ඔයාගේ email එක? Log වෙන්නේ මේකෙන් 📧',regEmailBad:'Email එක හරියට ගහන්න.',
+ regPass:'Password එකක් හදන්න (අකුරු 6ක් වත්) 🔒',regPassBad:'Password එකට අකුරු 6ක් වත් ඕන.',
+ regSum:'මේ විස්තර හරිද? 👀',regBatch:'Batch',regClass:'පන්තිය',regEmailL:'Email',regSchoolL:'පාසල',regAddrL:'ලිපිනය',
+ regGo:'✅ Account එක හදන්න',regRedo:'✏️ නැවත',regMaking:'Account එක හදනවා…',
+ regDone:n=>`සුභ පැතුම් ${n}! 🎉 ඔයා EICT පවුලට එකතු වුණා.\nඔයාගේ student number එක:`,
+ regNext:'සර් ඔයාගේ registration එක approve කරාම class page එකේ ඔක්කොම open වෙනවා. Payment විස්තරත් එතන තියෙනවා.',
+ openPortal:'🚪 මගේ class page එකට යන්න',
+ regInUse:'මේ email එකෙන් account එකක් දැනටමත් තියෙනවා. Class page එකට ගිහින් log වෙන්න.',regFail:'Account එක හදන්න බැරි වුණා 😕 ',regNet:'Internet එක බලලා ආයෙ try කරන්න.',
  away:'(සර් ඒ දවසේ නෑ)',today:'අද',tomorrow:'හෙට'},
 en:{tag:'Your ICT class guide',headline:'Let’s find the right A/L ICT class for you.',
  intro:'Class times, a free trial class, sample lessons and fees — all in one quick chat.',
  status:'● Online · replies instantly',restart:'↻ Start over',
  prices:'Classes & fees',group:'Online Group Class',online:'Online Individual Class',physical:'Physical Individual Class',
- groupInfo:'per month · group class',onlineInfo:'per 2-hour session · 4 sessions = Rs. 8,000',physicalInfo:'per 2-hour session · 4 sessions = Rs. 20,000',
+ groupInfo:'per month · group class',onlineInfo:'per 2-hour session · 4 sessions = Rs. 8,000',physicalInfo:'per 2-hour session · Colombo Rs. 5,000 · Gampaha Rs. 6,500 (further away)',
  note:'Times and availability are confirmed by sir. Your name and number are only saved if you book a trial.',
  qTrial:'🧪 Free trial class',qSample:'🎬 Watch a sample lesson',qTimes:'🗓 Class times',
  askName:'Great! 😊 What’s your name? (You can skip this.)',namePh:'Your name',ok:'OK',skip:'Skip',
@@ -183,19 +221,50 @@ en:{tag:'Your ICT class guide',headline:'Let’s find the right A/L ICT class fo
  sampleIntro:'Here’s a part of one of our live classes 🎬 See how sir teaches.',sampleOther:'This one is from the other medium’s class. One in your medium is coming soon.',
  sampleNone:'Sample recordings are coming soon! For now, this intro video explains how the class works 👇',
  sampleAfter:'Liked it? 😄 You can also try a class with sir for free.',
- fees:`Here are our fees 💰\n\n💻 Online Group: Rs. 4,000 / month\n👤 Online Individual: Rs. 2,000 / 2-hour session\n🏫 Physical Individual: Rs. 5,000 / 2-hour session\n\nFour individual sessions: Rs. 8,000 online / Rs. 20,000 in person.`,
+ fees:`Here are our fees 💰\n\n💻 Online Group: Rs. 4,000 / month\n👤 Online Individual: Rs. 2,000 / 2-hour session\n🏫 Physical Individual (sir comes to you), per 2-hour session:\n   • Colombo — Rs. 5,000\n   • Gampaha — Rs. 6,500 (further to travel)\n\nFour online sessions = Rs. 8,000.\n\n🎁 The Sunday Q&A class is free!`,
  findY:'Which A/L year are you preparing for?',need:'What do you need most?',foundation:'ICT from the basics',topics:'Difficult topics',papers:'Past papers / revision',
  format:'How would you like to learn?',budget:'Group class',personal:'Online 1-to-1',face:'Face-to-face 1-to-1',unsure:'Not sure yet',
  recGroup:'The Online Group class (Rs. 4,000/month) is a great start for you 👍 A live class every week, recordings, tutes and papers.',
  recOnline:'Online Individual (Rs. 2,000 / 2 hours) suits you 👍 Sir’s full attention on your difficult topics.',
- recPhysical:'Physical Individual (Rs. 5,000 / 2 hours) suits you 👍 Face-to-face guidance.',
+ recPhysical:'Physical Individual suits you 👍 Sir comes to your home — 2 hours for Rs. 5,000 in Colombo, Rs. 6,500 in Gampaha.',
  recEnd:'You can try a free trial class first.',
  faqQ:'What would you like to know?',fTimes:'🕒 Class times',fOnline:'💻 How do online classes work?',fRec:'📼 Are there recordings?',fPay:'💳 Payments',fMedium:'🌐 Medium',
  aOnline:'The group class is live on Zoom. Individual classes are a one-to-one 2-hour session with sir. Recordings, papers and marks are all in your class portal.',
  aRec:'Yes ✅ Missed a class? Watch the recording in your class portal.',
- aPay:'Online Group is Rs. 4,000/month. Individual classes are paid per session. Pay by bank transfer and send the slip in your portal.',
+ aPay:'Online Group is Rs. 4,000/month. Individual classes are paid per session (online Rs. 2,000 · Colombo Rs. 5,000 · Gampaha Rs. 6,500). Pay by bank transfer and send the slip in your portal.',
  aMedium:'Classes are available in both Sinhala and English medium. Sir will guide you to the right one.',
  contactQ:'Let’s write a message to sir. Keep it short ✍️',contactPh:'Your question',sendWa:'Send on WhatsApp',
+ mWhat:'📚 What you get',mReg:'📝 Register now',qReg:'📝 Register',
+ whatIntro:n=>`${n?n+', h':'H'}ere’s what you get in our class ✨`,
+ feats:[
+  ['🎥','Weekly live class','One day a week, live on Zoom. Ask your questions right there. Missed it? The recording is in your class portal.'],
+  ['🗺️','Study plan — weekly missions','Every week has a few missions (lesson, notes, practice) and a weekly paper. Your progress shows like a map in the portal.'],
+  ['📝','Weekly papers + marks','Send your answer sheet in the portal. Sir marks it and sends it back with feedback — with your grade in My Marks.'],
+  ['🪙','Coins, ranks, Hall of Fame','Good marks and on-time papers earn coins (+25 for on time). Coins lift your rank from Recruit → Cadet → … → Legend. Get your name on the Hall of Fame 🏆'],
+  ['📦','Tutes & papers at home','Tutes, past papers and short notes couriered to your home.'],
+  ['🧾','Term tests','A term test every term — practise just like the real exam.'],
+  ['🙋','Sunday Q&A class — free','A Question Asking class every Sunday. Bring any question from the week. No fee!','free']],
+ soonT:'Coming soon 🚀',
+ soon:[
+  ['🧪','Practical classes','Hands-on sessions — programming, databases and networking, done for real.'],
+  ['📈','Monthly Progress Chart','Your marks, missions and coins month by month on a chart — see clearly where you are strong and what needs work.'],
+  ['✅','MCQ papers','Exam-style MCQ papers — do them fast and see your marks instantly.'],
+  ['🧠','Brain Bite','Small, quick ICT challenges and revision bites — a few minutes a day, a snack for your brain 😄']],
+ soonBadge:'Soon',freeBadge:'Free',whatAfter:'Sounds good? 😊 Register now, or try a free trial class first.',
+ regIntro:'Awesome! 🎉 Registering takes about 2 minutes. You get an account to sign in to your class page.',
+ regYear:'When do you sit your A/L?',regOL:'O/L / other',regOther:'For O/L and other classes sir registers you directly. Let’s send him a message 👇',
+ regTrack:'How would you like to learn?',tLive:'🎥 Live group class',tRec:'📼 Recorded lessons',tSolo:'👤 One-to-one',
+ regMode:'How should the one-to-one happen?',moOnline:'💻 Online (Zoom)',moColombo:'🏠 At home — Colombo',moGampaha:'🏠 At home — Gampaha',
+ regName:'Your full name?',regSchool:'Your school?',privateC:'Private candidate',regSchoolPh:'School name',
+ regAddr:'Address for tutes and papers?',regAddrHome:'Home address for sir to visit?',regAddrPh:'Address',
+ regEmail:'Your email? You sign in with it 📧',regEmailBad:'Please enter a valid email.',
+ regPass:'Create a password (at least 6 characters) 🔒',regPassBad:'The password needs at least 6 characters.',
+ regSum:'Are these right? 👀',regBatch:'Batch',regClass:'Class',regEmailL:'Email',regSchoolL:'School',regAddrL:'Address',
+ regGo:'✅ Create my account',regRedo:'✏️ Start again',regMaking:'Creating your account…',
+ regDone:n=>`Congratulations ${n}! 🎉 Welcome to the EICT family.\nYour student number:`,
+ regNext:'Once sir approves your registration, everything opens in your class page. Payment details are there too.',
+ openPortal:'🚪 Go to my class page',
+ regInUse:'There is already an account with this email. Go to your class page and sign in.',regFail:'Could not create the account 😕 ',regNet:'Check your internet and try again.',
  away:'(sir is away)',today:'Today',tomorrow:'Tomorrow'}};
 
 /* ---------------- state ---------------- */
@@ -249,9 +318,9 @@ function buttons(items){ const my=runId; clearActions(); queue.then(()=>{ if(my!
   items.forEach(([label,fn,primary])=>{ const b=document.createElement('button'); b.type='button';
     b.className='btn'+(primary?' primary':''); b.textContent=label;
     b.addEventListener('click',()=>{ say(label,'user'); fn(); }); $('actions').appendChild(b); }); }); }
-function ask(ph,onOk,{skip,validate,lessons}={}){ const my=runId; clearActions(); queue.then(()=>{ if(my!==runId) return; clearActions();
+function ask(ph,onOk,{skip,validate,lessons,type,secret}={}){ const my=runId; clearActions(); queue.then(()=>{ if(my!==runId) return; clearActions();
   const f=document.createElement('form'); f.className='formarea';
-  const i=document.createElement('input'); i.placeholder=ph; i.maxLength=120; i.autocomplete='off';
+  const i=document.createElement('input'); i.placeholder=ph; i.maxLength=160; i.autocomplete=type==='email'?'email':type==='password'?'new-password':'off'; if(type) i.type=type;
   const go=document.createElement('button'); go.className='btn primary'; go.textContent=t('ok');
   const er=document.createElement('div'); er.className='err';
   f.append(i,go);
@@ -259,7 +328,7 @@ function ask(ph,onOk,{skip,validate,lessons}={}){ const my=runId; clearActions()
     s.onclick=()=>{ say(t('skip'),'user'); onOk(''); }; f.append(s); }
   f.append(er);
   f.onsubmit=e=>{ e.preventDefault(); const v=i.value.trim(); if(!v) return i.focus();
-    const bad=validate&&validate(v); if(bad){ er.textContent=bad; return; } say(v,'user'); onOk(v); };
+    const bad=validate&&validate(v); if(bad){ er.textContent=bad; return; } say(secret?'•'.repeat(v.length):v,'user'); onOk(v); };
   $('actions').append(f); setTimeout(()=>i.focus(),50);
   if(lessons){ const c=document.createElement('div'); c.className='chips'; c.style.cssText='width:100%;margin-top:4px';
     lessons.forEach(l=>{ const b=document.createElement('button'); b.type='button'; b.className='chip'; b.textContent=l;
@@ -275,7 +344,7 @@ function start(){
 function pickMedium(m){ medium=m; lang=m; $('language').value=m; paintStatic(); say(t('askName')); ask(t('namePh'),n=>{ st.name=n; if(n) say(t('hello')(n)); menu(); },{skip:true}); }
 function menu(again){
   say(again?t('menuAgain'):t('menuQ')(st.name||''));
-  buttons([[t('mTrial'),trial,true],[t('mTimes'),times],[t('mSample'),sample],[t('mFees'),fees],[t('mFind'),findYear],[t('mFaq'),faq],[t('mContact'),contact]]);
+  buttons([[t('mTrial'),trial,true],[t('mWhat'),what],[t('mTimes'),times],[t('mSample'),sample],[t('mFees'),fees],[t('mReg'),register],[t('mFind'),findYear],[t('mFaq'),faq],[t('mContact'),contact]]);
 }
 const backBtn=()=>[t('back'),()=>menu(true)];
 
@@ -290,7 +359,7 @@ async function times(){
     <div class="meta">🗓 ${esc(m(b,'Day'))} · ⏰ ${esc(m(b,'Time'))}<br>🌐 ${esc(m(b,'Medium'))} · ${esc(m(b,'Starts'))}${m(b,'Seats')?' · '+esc(m(b,'Seats')):''}</div>
     <a class="btn primary" style="margin-top:9px;font-size:13px;padding:8px 12px" target="_top" href="${esc(b.portal||'EICT.html#batches')}">${esc(t('join'))}</a></div>`).join(''),'bot',true);
   say(t('timesAfter'));
-  buttons([[t('mTrial'),trial,true],[t('mSample'),sample],backBtn()]);
+  buttons([[t('mReg'),register,true],[t('mTrial'),trial],[t('mWhat'),what],backBtn()]);
 }
 
 /* free trial */
@@ -382,7 +451,99 @@ async function sample(){
   if(!show.length){ say(t('sampleNone')); say(vidCard({yt:CONFIG.introVideo,title:'EICT · Intro'}),'bot',true); }
   else{ say(t('sampleIntro')); show.slice(0,3).forEach(s=>say(vidCard(s),'bot',true)); if(other) say(t('sampleOther')); }
   say(t('sampleAfter'));
-  buttons([[t('mTrial'),trial,true],[t('mTimes'),times],backBtn()]);
+  buttons([[t('mTrial'),trial,true],[t('mReg'),register],[t('mWhat'),what],backBtn()]);
+}
+
+
+/* what the class gives you */
+function what(){
+  say(t('whatIntro')(st.name||''));
+  const card=(rows,badge,cls)=>rows.map(([i,b,x,f])=>`<div class="feat"><i>${i}</i><b>${esc(b)}${f?` <span class="soon free">${esc(t('freeBadge'))}</span>`:''}${badge?` <span class="soon">${esc(badge)}</span>`:''}</b><span>${esc(x)}</span></div>`).join('');
+  say(card(t('feats')),'bot',true);
+  say(`<b>${esc(t('soonT'))}</b>`+card(t('soon'),t('soonBadge')),'bot',true);
+  say(t('whatAfter'));
+  buttons([[t('mReg'),register,true],[t('mTrial'),trial],[t('mTimes'),times],backBtn()]);
+}
+
+/* register — the same account and record Class.html makes, so the student
+   is already signed in when they open their class page */
+const PORTAL={'AL-27':['Class.html','2027 A/L · English medium'],'AL-27-SI':['2027Sinhala.html','2027 A/L · Sinhala medium'],'AL-28':['Class2.html','2028 A/L']};
+let FBX=null;
+async function fbx(){
+  if(FBX) return FBX;
+  const cfg=window.FIREBASE_CONFIG; if(!cfg||!cfg.projectId) throw new Error('no firebase');
+  const {initializeApp}=await import('https://www.gstatic.com/firebasejs/11.0.2/firebase-app.js');
+  const fs=await import('https://www.gstatic.com/firebasejs/11.0.2/firebase-firestore.js');
+  const au=await import('https://www.gstatic.com/firebasejs/11.0.2/firebase-auth.js');
+  const app=initializeApp(cfg);                       // default app, so the class page sees the same sign-in
+  return FBX={db:fs.getFirestore(app),auth:au.getAuth(app),...fs,...au};
+}
+function register(){
+  const r=st.reg={};
+  say(t('regIntro')); say(t('regYear'));
+  buttons([[t('y27'),()=>{ r.batch=medium==='si'?'AL-27-SI':'AL-27'; regTrack(); }],[t('y28'),()=>{ r.batch='AL-28'; regTrack(); }],
+    [t('regOL'),()=>{ say(t('regOther')); contact(); }]]);
+}
+function regTrack(){ const r=st.reg; say(t('regTrack'));
+  buttons([[t('tLive'),()=>{r.track='live';r.mode='online';regName();},true],[t('tRec'),()=>{r.track='rec';r.mode='online';regName();}],
+    [t('tSolo'),()=>{ r.track='solo'; say(t('regMode')); buttons([[t('moOnline'),()=>{r.mode='online';regName();}],
+      [t('moColombo'),()=>{r.mode='colombo';regName();}],[t('moGampaha'),()=>{r.mode='gampaha';regName();}]]); }]]); }
+function regName(){ const r=st.reg; say(t('regName')); ask(t('namePh'),v=>{ r.name=v; if(!st.name) st.name=v.split(' ')[0];
+  if(st.phone){ r.whatsapp=st.phone; return regSchool(); }
+  say(t('phoneQ')); ask(t('phonePh'),w=>{ r.whatsapp=w; st.phone=w; regSchool(); },
+    {validate:v=>/^(\+?94|0)?7\d{8}$/.test(v.replace(/[\s-]/g,''))?'':t('phoneBad')}); }); }
+function regSchool(){ const r=st.reg; say(t('regSchool'));
+  ask(t('regSchoolPh'),v=>{ r.school=v; regAddr(); },{lessons:[t('privateC')]}); }
+function regAddr(){ const r=st.reg; const home=r.track==='solo'&&r.mode!=='online';
+  say(home?t('regAddrHome'):t('regAddr')); ask(t('regAddrPh'),v=>{ r.address=v; regEmail(); }); }
+function regEmail(){ const r=st.reg; say(t('regEmail'));
+  ask('you@gmail.com',v=>{ r.email=v.toLowerCase(); regPass(); },{type:'email',validate:v=>/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(v)?'':t('regEmailBad')}); }
+function regPass(){ const r=st.reg; say(t('regPass'));
+  ask('••••••',v=>{ r.pass=v; regSum(); },{type:'password',secret:true,validate:v=>v.length>=6?'':t('regPassBad')}); }
+const trackName=r=>({live:t('tLive'),rec:t('tRec'),solo:t('tSolo')+' · '+({online:t('moOnline'),colombo:t('moColombo'),gampaha:t('moGampaha')})[r.mode]})[r.track];
+function regSum(){ const r=st.reg;
+  say(`<b>${esc(t('regSum'))}</b><div class="sum"><span>${esc(t('regBatch'))}</span><b>${esc(PORTAL[r.batch][1])}</b>
+    <span>${esc(t('regClass'))}</span><b>${esc(trackName(r))}</b><span>${esc(t('sumName'))}</span><b>${esc(r.name)}</b>
+    <span>${esc(t('sumPhone'))}</span><b>${esc(r.whatsapp)}</b><span>${esc(t('regSchoolL'))}</span><b>${esc(r.school)}</b>
+    <span>${esc(t('regAddrL'))}</span><b>${esc(r.address)}</b><span>${esc(t('regEmailL'))}</span><b>${esc(r.email)}</b></div>`,'bot',true);
+  buttons([[t('regGo'),regCreate,true],[t('regRedo'),register]]);
+}
+async function regCreate(){
+  const r=st.reg; clearActions(); say(t('regMaking'));
+  let code='';
+  try{
+    const F=await fbx();
+    const c=await F.createUserWithEmailAndPassword(F.auth,r.email,r.pass);
+    try{
+      const ref=F.doc(F.db,'meta','students');
+      const n=await F.runTransaction(F.db,async tx=>{ const d=await tx.get(ref);
+        const next=(d.exists()&&Number(d.data().next))?Number(d.data().next):1; tx.set(ref,{next:next+1},{merge:true}); return next; });
+      code='EICT-'+String(n).padStart(4,'0');
+    }catch(e){ code='EICT-'+String(Date.now()).slice(-4); }
+    await F.setDoc(F.doc(F.db,'students',c.user.uid),{
+      code, name:r.name, whatsapp:r.whatsapp, school:r.school, address:r.address, email:r.email, mode:r.mode,
+      batch:r.batch, track:r.track, unlocked:[], watched:[], paidLive:false, shipments:[], at:F.serverTimestamp(),
+      source:'advisor' });
+  }catch(e){
+    const c=e.code||'';
+    say(/email-already-in-use/.test(c)?t('regInUse'):t('regFail')+(/network/.test(c)?t('regNet'):(c||e.message||'')));
+    const a=PORTAL[r.batch][0];
+    return queue.then(()=>{ clearActions(); const l=document.createElement('a'); l.className='btn primary'; l.href=a; l.target='_top'; l.textContent=t('openPortal');
+      $('actions').append(l); const b=document.createElement('button'); b.className='btn'; b.type='button'; b.textContent=t('regRedo'); b.onclick=register; $('actions').append(b); });
+  }
+  delete r.pass;
+  const f=window.EICT_ALERTS||{}, topic=(f.ntfyTopic||'').trim();
+  if(topic) try{ const q=new URLSearchParams({title:'EICT - New student registered (advisor)',priority:'high',tags:'bell',
+    message:`${r.name} joined ${PORTAL[r.batch][1]}.\nClass: ${r.track}${r.track==='solo'?' · '+r.mode:''}\nNumber: ${code}\nWhatsApp: ${r.whatsapp}\nSchool: ${r.school}\nEmail: ${r.email}\nSend tutes to: ${r.address}`});
+    fetch(`https://ntfy.sh/${encodeURIComponent(topic)}/publish?${q}`,{mode:'no-cors'}); }catch(e){}
+  say(t('regDone')(r.name.split(' ')[0]));
+  say(`<div class="code-big">${esc(code)}</div><div class="vm">${esc(PORTAL[r.batch][1])}</div>`,'bot',true);
+  say(t('regNext'));
+  queue.then(()=>{ clearActions(); const l=document.createElement('a'); l.className='btn primary big'; l.href=PORTAL[r.batch][0]; l.target='_top';
+    l.textContent=t('openPortal'); $('actions').append(l);
+    const w=document.createElement('a'); w.className='btn'; w.target='_blank'; w.rel='noopener noreferrer';
+    w.href='https://wa.me/'+CONFIG.whatsappNumber+'?text='+encodeURIComponent(`Hello Sir! I just registered on the EICT website.\nName: ${r.name}\nStudent number: ${code}\n${PORTAL[r.batch][1]}`);
+    w.textContent=t('waBtn'); $('actions').append(w); });
 }
 
 /* fees, recommendation, questions, contact */
@@ -391,7 +552,7 @@ function findYear(){ say(t('findY')); buttons([[t('y27'),()=>{st.year='2027';fin
 function findNeed(){ say(t('need')); buttons([[t('foundation'),()=>findFormat('foundation')],[t('topics'),()=>findFormat('topics')],[t('papers'),()=>findFormat('papers')]]); }
 function findFormat(n){ st.need=n; say(t('format')); buttons([[t('budget'),()=>rec('group')],[t('personal'),()=>rec('online')],[t('face'),()=>rec('physical')],[t('unsure'),()=>rec(n==='topics'?'online':'group')]]); }
 function rec(p){ st.pkg=p; say(t('rec'+{group:'Group',online:'Online',physical:'Physical'}[p])); say(t('recEnd'));
-  buttons([[t('mTrial'),trial,true],[t('mTimes'),times],[t('mContact'),contact],backBtn()]); }
+  buttons([[t('mReg'),register,true],[t('mTrial'),trial],[t('mWhat'),what],backBtn()]); }
 function faq(){ say(t('faqQ')); buttons([[t('fTimes'),times],[t('fOnline'),()=>ans('aOnline')],[t('fRec'),()=>ans('aRec')],[t('fPay'),()=>ans('aPay')],[t('fMedium'),()=>ans('aMedium')],backBtn()]); }
 function ans(k){ say(t(k)); buttons([[t('mFaq'),faq],[t('mTrial'),trial,true],backBtn()]); }
 function contact(){ say(t('contactQ')); ask(t('contactPh'),q=>{
@@ -405,11 +566,11 @@ function paintStatic(){
   ['tag','headline','intro','status'].forEach(k=>$(k).textContent=t(k));
   $('restart').textContent=t('restart'); $('pricesTitle').textContent=t('prices');
   ['group','online','physical'].forEach(k=>{ $(k+'Name').textContent=t(k); $(k+'Info').textContent=t(k+'Info'); });
-  $('note').textContent=t('note'); $('qTrial').textContent=t('qTrial'); $('qSample').textContent=t('qSample'); $('qTimes').textContent=t('qTimes');
+  $('note').textContent=t('note'); $('qTrial').textContent=t('qTrial'); $('qSample').textContent=t('qSample'); $('qTimes').textContent=t('qTimes'); $('qReg').textContent=t('qReg');
 }
 $('language').addEventListener('change',e=>{ lang=e.target.value; paintStatic(); if(!medium) start(); else menu(true); });
 $('restart').addEventListener('click',()=>{ paintStatic(); start(); });
 const quick=fn=>()=>{ if(!medium){ medium=lang; } say(document.activeElement.textContent,'user'); fn(); };
-$('qTrial').addEventListener('click',quick(trial)); $('qSample').addEventListener('click',quick(sample)); $('qTimes').addEventListener('click',quick(times));
+$('qTrial').addEventListener('click',quick(trial)); $('qSample').addEventListener('click',quick(sample)); $('qTimes').addEventListener('click',quick(times)); $('qReg').addEventListener('click',quick(register));
 paintStatic(); start();
 </script></body></html>
