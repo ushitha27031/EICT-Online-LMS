@@ -1,32 +1,415 @@
 <!doctype html>
-<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#0b1730"><title>EICT | Student Admission Advisor</title>
+<html lang="si"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#0b1730">
+<title>EICT | Student Admission Advisor</title>
 <script>if(/[?&]embed\b/.test(location.search))document.documentElement.classList.add('embed');</script>
 <style>
-:root{font-family:system-ui,-apple-system,'Segoe UI',Arial,sans-serif;color:#eaf2ff;background:#071020}*{box-sizing:border-box}body{margin:0;background:radial-gradient(ellipse at 10% 0%,#153a62 0%,transparent 40%),#071020;min-height:100vh}.wrap{max-width:1060px;margin:auto;padding:28px 16px 50px}header{display:flex;align-items:center;justify-content:space-between;gap:14px;margin-bottom:25px}.brand{display:flex;align-items:center;gap:12px}.logo{background:linear-gradient(135deg,#00d4b4,#2676ef);width:49px;height:49px;border-radius:15px;display:grid;place-items:center;color:#071020;font-weight:900}.brand strong{font-size:22px}.muted{color:#9eb0ca}.brand small{display:block;color:#9eb0ca}.lang{background:#172a47;color:white;border:1px solid #395476;border-radius:10px;padding:10px;cursor:pointer}.hero{padding:24px 0 25px}.hero h1{font-size:clamp(30px,5vw,50px);line-height:1.12;max-width:780px;margin:0 0 12px}.hero p{max-width:720px;line-height:1.6;color:#b7c7de}.tag{color:#50e7c8;font-size:12px;letter-spacing:1.5px;font-weight:800;text-transform:uppercase}.layout{display:grid;grid-template-columns:minmax(0,1.55fr) minmax(260px,1fr);gap:18px}.panel{background:#0f2038;border:1px solid #27405d;border-radius:22px;overflow:hidden;box-shadow:0 12px 40px #0003}.chathead{display:flex;align-items:center;justify-content:space-between;padding:17px 20px;border-bottom:1px solid #2b4261}.status{font-size:12px;color:#63e6bf}.chat{height:435px;overflow-y:auto;padding:20px;display:flex;flex-direction:column;gap:13px;scroll-behavior:smooth}.bubble{max-width:91%;padding:12px 15px;line-height:1.65;border-radius:16px;font-size:14px;white-space:pre-line}.bot{background:#1b3150;align-self:flex-start;border-bottom-left-radius:4px}.user{background:#167b86;align-self:flex-end;border-bottom-right-radius:4px}.actions{padding:15px 18px 20px;border-top:1px solid #2b4261;display:flex;gap:9px;flex-wrap:wrap;min-height:82px;align-items:center}.btn{background:#1c3555;color:#eef7ff;border:1px solid #416080;padding:11px 14px;border-radius:12px;cursor:pointer;font-weight:600;text-align:left;line-height:1.35}.btn:hover,.btn:focus-visible{border-color:#54dfcb;background:#224768;outline:2px solid transparent}.primary{background:#25c7a6;color:#061b26;border-color:#25c7a6}.primary:hover{background:#62e2c8;color:#061b26}.side{padding:22px}.side h2{margin:0 0 16px;font-size:19px}.price{border:1px solid #294665;border-radius:15px;padding:15px;margin:10px 0;background:#122943}.price b{display:block;font-size:16px;margin-bottom:7px}.price strong{font-size:22px;color:#66ebc9}.price small{display:block;color:#a9bbd4;margin-top:7px;line-height:1.5}.note{color:#9eb0ca;font-size:12px;line-height:1.6;margin-top:18px}.field{display:flex;flex-direction:column;gap:5px;margin:7px 0;width:100%}.field label{font-size:13px;color:#c7d8ea}.field input,.field select,.field textarea{width:100%;background:#07172b;color:white;border:1px solid #4b6684;border-radius:9px;padding:11px;font:inherit}.field textarea{min-height:72px;resize:vertical}.formarea{width:100%}.row{display:flex;gap:9px;flex-wrap:wrap}.hidden{display:none!important}footer{text-align:center;color:#7890af;font-size:12px;margin-top:25px}a{color:#6eead0}@media(max-width:760px){.layout{grid-template-columns:1fr}.chat{height:450px}.hero{padding-top:6px}.side{padding:18px}}@media(prefers-reduced-motion:reduce){.chat{scroll-behavior:auto}}html.embed body{background:#071020}html.embed .wrap{padding:14px 12px 16px}html.embed .hero,html.embed footer{display:none}html.embed header{margin-bottom:12px;padding-right:46px}html.embed .chat{height:min(52vh,430px)}.back{color:#9eb0ca;font-size:13px;text-decoration:none;margin-right:10px}html.embed .back{display:none}
-</style></head><body><div class="wrap"><header><div class="brand"><div class="logo">E</div><div><strong>EICT</strong><small id="brandSub">A/L ICT Learning</small></div></div><div><a class="back" href="EICT.html">← EICT home</a><select class="lang" id="language" aria-label="Language"><option value="si">සිංහල</option><option value="en">English</option></select></div></header><section class="hero"><div class="tag" id="tag">YOUR PERSONAL ICT CLASS GUIDE</div><h1 id="headline">ඔයාට ගැළපෙන A/L ICT class එක හොයාගමු.</h1><p id="intro">Fees, class types, ICT අමාරු topics සහ enrollment ගැන ඔයාට තියෙන ප්‍රශ්නවලට මෙතැනින් උත්තර ලබාගන්න.</p></section><main class="layout"><section class="panel" aria-label="Interactive admission assistant"><div class="chathead"><div><b id="advisor">EICT Admission Advisor</b><div class="status" id="status">● Ready to help</div></div><button class="btn" id="restart" type="button">↻ Restart</button></div><div class="chat" id="chat" aria-live="polite" aria-relevant="additions"></div><div class="actions" id="actions"></div></section><aside class="panel side"><h2 id="pricesTitle">Class options & fees</h2><div class="price"><b id="groupName">Online Group</b><strong>Rs. 4,000</strong><small id="groupInfo">per month · Structured group learning</small></div><div class="price"><b id="onlineName">Online Individual</b><strong>Rs. 2,000</strong><small id="onlineInfo">per 2-hour session · 4 sessions = Rs. 8,000</small></div><div class="price"><b id="physicalName">Physical Individual</b><strong>Rs. 5,000</strong><small id="physicalInfo">per 2-hour session · 4 sessions = Rs. 20,000</small></div><p class="note" id="note">Availability, class schedules and any travel arrangements are confirmed directly by the teacher. This advisor does not automatically send messages or save your details.</p></aside></main><footer>© EICT · Student Admission Advisor</footer></div>
+:root{font-family:system-ui,-apple-system,'Segoe UI',Arial,sans-serif;color:#eaf2ff;background:#071020;
+  --teal:#25c7a6;--teal-2:#62e2c8;--ink:#071020;--panel:#0f2038;--line:#27405d;--bot:#1b3150;--user:#167b86;--dim:#9eb0ca;--gold:#ffc24b}
+*{box-sizing:border-box}
+body{margin:0;background:radial-gradient(ellipse at 10% 0%,#153a62 0%,transparent 40%),radial-gradient(ellipse at 100% 100%,#3a1530 0%,transparent 35%),#071020;min-height:100vh}
+.wrap{max-width:1080px;margin:auto;padding:28px 16px 50px}
+header{display:flex;align-items:center;justify-content:space-between;gap:14px;margin-bottom:22px}
+.brand{display:flex;align-items:center;gap:12px}
+.logo{background:linear-gradient(135deg,#00d4b4,#2676ef);width:49px;height:49px;border-radius:15px;display:grid;place-items:center;color:#071020;font-weight:900;font-size:20px}
+.brand strong{font-size:22px}.brand small{display:block;color:var(--dim)}
+.lang{background:#172a47;color:white;border:1px solid #395476;border-radius:10px;padding:10px;cursor:pointer}
+.back{color:var(--dim);font-size:13px;text-decoration:none;margin-right:10px}
+.hero{padding:10px 0 22px}.hero h1{font-size:clamp(28px,5vw,46px);line-height:1.12;max-width:780px;margin:0 0 10px}
+.hero p{max-width:720px;line-height:1.6;color:#b7c7de;margin:0}
+.tag{color:#50e7c8;font-size:12px;letter-spacing:1.5px;font-weight:800;text-transform:uppercase;margin-bottom:8px}
+.layout{display:grid;grid-template-columns:minmax(0,1.6fr) minmax(260px,1fr);gap:18px}
+.panel{background:var(--panel);border:1px solid var(--line);border-radius:22px;overflow:hidden;box-shadow:0 12px 40px #0003}
+.chathead{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:14px 18px;border-bottom:1px solid #2b4261}
+.who{display:flex;align-items:center;gap:11px}
+.av{width:40px;height:40px;border-radius:50%;background:linear-gradient(135deg,#00d4b4,#2676ef);display:grid;place-items:center;font-weight:900;color:#071020;position:relative;flex:none}
+.av::after{content:'';position:absolute;right:0;bottom:0;width:10px;height:10px;border-radius:50%;background:#35e08f;border:2px solid var(--panel)}
+.status{font-size:12px;color:#63e6bf}
+.chat{height:470px;overflow-y:auto;padding:18px;display:flex;flex-direction:column;gap:11px;scroll-behavior:smooth}
+.bubble{max-width:88%;padding:11px 14px;line-height:1.62;border-radius:16px;font-size:14.5px;white-space:pre-line;animation:pop .28s cubic-bezier(.2,.9,.3,1.2)}
+@keyframes pop{from{opacity:0;transform:translateY(8px) scale(.97)}}
+.bot{background:var(--bot);align-self:flex-start;border-bottom-left-radius:4px}
+.user{background:var(--user);align-self:flex-end;border-bottom-right-radius:4px}
+.bubble.card{white-space:normal;width:88%}
+.typing{align-self:flex-start;background:var(--bot);border-radius:16px;border-bottom-left-radius:4px;padding:12px 15px;display:flex;gap:5px}
+.typing i{width:7px;height:7px;border-radius:50%;background:#8fb2d6;animation:blink 1s infinite}
+.typing i:nth-child(2){animation-delay:.15s}.typing i:nth-child(3){animation-delay:.3s}
+@keyframes blink{0%,80%,100%{opacity:.25;transform:translateY(0)}40%{opacity:1;transform:translateY(-3px)}}
+.actions{padding:13px 16px 16px;border-top:1px solid #2b4261;display:flex;gap:8px;flex-wrap:wrap;min-height:74px;align-items:center}
+.btn{background:#1c3555;color:#eef7ff;border:1px solid #416080;padding:10px 14px;border-radius:12px;cursor:pointer;font-weight:600;text-align:left;line-height:1.35;font:inherit;font-weight:600;font-size:14px;text-decoration:none;display:inline-block}
+.btn:hover,.btn:focus-visible{border-color:#54dfcb;background:#224768;outline:2px solid transparent}
+.primary{background:var(--teal);color:#061b26;border-color:var(--teal)}.primary:hover{background:var(--teal-2);color:#061b26}
+.big{font-size:15px;padding:13px 18px}
+.side{padding:20px}.side h2{margin:0 0 14px;font-size:18px}
+.price{border:1px solid #294665;border-radius:15px;padding:13px 15px;margin:9px 0;background:#122943}
+.price b{display:block;font-size:15px;margin-bottom:5px}.price strong{font-size:21px;color:#66ebc9}
+.price small{display:block;color:#a9bbd4;margin-top:5px;line-height:1.5}
+.quick{display:grid;gap:8px;margin-top:16px}
+.note{color:var(--dim);font-size:12px;line-height:1.6;margin-top:16px}
+.formarea{width:100%;display:flex;gap:8px;flex-wrap:wrap}
+.formarea input,.formarea textarea{flex:1 1 220px;background:#07172b;color:white;border:1px solid #4b6684;border-radius:11px;padding:11px 12px;font:inherit}
+.formarea input:focus,.formarea textarea:focus{outline:none;border-color:#54dfcb}
+.formarea .err{flex-basis:100%;color:#ff8a95;font-size:13px}
+/* cards inside the chat */
+.slots{display:grid;gap:10px;margin-top:8px}
+.sday b{display:block;font-size:13px;color:#cfe0f3;margin-bottom:6px}
+.sday b span{color:var(--dim);font-weight:500}
+.chips{display:flex;gap:7px;flex-wrap:wrap}
+.chip{background:#122943;border:1px solid #3d6187;color:#eaf6ff;border-radius:10px;padding:8px 11px;cursor:pointer;font:inherit;font-size:13.5px;font-weight:600}
+.chip:hover{border-color:var(--teal);background:#16405a}
+.bt{border:1px solid #2f4d70;border-radius:13px;padding:11px 13px;margin-top:9px;background:#132c49}
+.bt b{font-size:15px}.bt .meta{color:#b7c7de;font-size:13.5px;margin-top:3px}
+.bt .code{font-size:11px;letter-spacing:.14em;color:var(--gold);font-weight:800}
+.vid{position:relative;width:100%;aspect-ratio:16/9;border-radius:12px;overflow:hidden;margin-top:9px;background:#000}
+.vid iframe{position:absolute;inset:0;width:100%;height:100%;border:0}
+.vt{font-weight:700;margin-top:8px}.vm{color:var(--dim);font-size:12.5px}
+.sum{display:grid;grid-template-columns:auto 1fr;gap:4px 12px;margin-top:8px;font-size:14px}
+.sum span{color:var(--dim)}
+.ok{color:#63e6bf;font-weight:700}
+footer{text-align:center;color:#7890af;font-size:12px;margin-top:22px}
+a{color:#6eead0}
+@media(max-width:760px){.layout{grid-template-columns:1fr}.chat{height:60vh}.side{padding:16px}.bubble,.bubble.card{max-width:94%;width:auto}}
+@media(prefers-reduced-motion:reduce){.chat{scroll-behavior:auto}.bubble,.typing i{animation:none}}
+html.embed body{background:#071020}html.embed .wrap{padding:14px 12px 16px}html.embed .hero,html.embed footer{display:none}
+html.embed header{margin-bottom:12px;padding-right:46px}html.embed .chat{height:min(56vh,470px)}html.embed .back{display:none}
+</style></head>
+<body><div class="wrap">
+<header><div class="brand"><div class="logo">E</div><div><strong>EICT</strong><small id="brandSub">A/L ICT</small></div></div>
+  <div><a class="back" href="EICT.html">← EICT home</a><select class="lang" id="language" aria-label="Language"><option value="si">සිංහල</option><option value="en">English</option></select></div></header>
+<section class="hero"><div class="tag" id="tag"></div><h1 id="headline"></h1><p id="intro"></p></section>
+<main class="layout">
+  <section class="panel" aria-label="Admission advisor chat">
+    <div class="chathead"><div class="who"><div class="av">E</div><div><b id="advisor">EICT Advisor</b><div class="status" id="status"></div></div></div>
+      <button class="btn" id="restart" type="button"></button></div>
+    <div class="chat" id="chat" aria-live="polite" aria-relevant="additions"></div>
+    <div class="actions" id="actions"></div>
+  </section>
+  <aside class="panel side">
+    <h2 id="pricesTitle"></h2>
+    <div class="price"><b id="groupName"></b><strong>Rs. 4,000</strong><small id="groupInfo"></small></div>
+    <div class="price"><b id="onlineName"></b><strong>Rs. 2,000</strong><small id="onlineInfo"></small></div>
+    <div class="price"><b id="physicalName"></b><strong>Rs. 5,000</strong><small id="physicalInfo"></small></div>
+    <div class="quick"><button class="btn primary" id="qTrial" type="button"></button><button class="btn" id="qSample" type="button"></button><button class="btn" id="qTimes" type="button"></button></div>
+    <p class="note" id="note"></p>
+  </aside>
+</main>
+<footer>© EICT · Student Admission Advisor</footer></div>
+
+<script src="firebase-config.js" onerror="void 0"></script>
 <script>
 'use strict';
-// SETUP: Replace the empty value below with YOUR WhatsApp number in international format, digits only.
-// Example format for Sri Lanka: 947XXXXXXXX (remove the initial 0). Never include + or spaces.
-const CONFIG={whatsappNumber:'94719780807',teacherName:'EICT',groupMonthly:4000,onlineSession:2000,physicalSession:5000};
+/* =====================================================================
+   EICT admission advisor.
+   Reads live from the website's public Firestore records:
+     site/config   class times (batches), trial hours, contact
+     trials        trial hours already asked for (shown as gone)
+     site/samples  recordings ticked as Sample in the dashboard
+   A trial booked here is saved exactly like the trial form on EICT.html
+   (requests + trials + holds) and alerts sir's phone.
+   ===================================================================== */
+const CONFIG={whatsappNumber:'94719780807',groupMonthly:4000,onlineSession:2000,physicalSession:5000,
+  introVideo:'VBH-VRKpBI0'};
+const FALLBACK_TRIAL=[['Monday',['7.00 AM','1.00 PM','7.00 PM']],['Tuesday',['7.00 AM','1.00 PM','7.00 PM']],
+  ['Thursday',['7.00 AM','1.00 PM','7.00 PM']],['Friday',['7.00 AM','1.00 PM','7.00 PM']],
+  ['Saturday',['7.00 AM','1.00 PM','7.00 PM']],['Sunday',['7.00 AM','1.00 PM','7.00 PM']]]
+  .flatMap(([day,ts])=>ts.map(time=>({day,time})));
 const $=id=>document.getElementById(id);
+
+/* ---------------- words ---------------- */
 const copy={
-si:{headline:'ඔයාට ගැළපෙන A/L ICT class එක හොයාගමු.',intro:'Fees, class types, අමාරු topics සහ enrollment ගැන ප්‍රශ්නවලට මෙතැනින් උත්තර ලබාගන්න.',prices:'අපේ පන්ති සහ ගාස්තු',group:'Online Group Class',online:'Online Individual Class',physical:'Physical Individual Class',groupInfo:'මාසයකට · කණ්ඩායම් පන්ති',onlineInfo:'පැය 2ක session එකකට · මාසයට sessions 4ක් = Rs. 8,000',physicalInfo:'පැය 2ක session එකකට · මාසයට sessions 4ක් = Rs. 20,000',note:'පන්ති වේලාවන්, ඉඩකඩ සහ ගමන් පහසුකම් ගුරුවරයාගෙන් තහවුරු කරගන්න. මෙම page එකෙන් ස්වයංක්‍රීයව WhatsApp පණිවිඩ යවන්නේවත් ඔබේ දත්ත server එකක save කරන්නේවත් නැහැ.',welcome:'ආයුබෝවන්! 👋 EICT A/L ICT advisor වෙත සාදරයෙන් පිළිගන්නවා.\nඔයාට උදව් ඕන මොන දේටද?',fees:'💰 Fees බලන්න',choose:'🎯 මට ගැළපෙන class එක',faq:'❓ ප්‍රශ්න අහන්න',contact:'📲 Join / Contact',feeText:'අපේ fees මෙන්න:\n💻 Online Group: Rs. 4,000 / මාසය\n👤 Online Individual: Rs. 2,000 / පැය 2ක session එක\n🏫 Physical Individual: Rs. 5,000 / පැය 2ක session එක\n\nIndividual sessions 4ක් ගත්තොත් මාසික එකතුව පිළිවෙළින් Rs. 8,000 සහ Rs. 20,000.\nඔයාගේ ඉගෙනීමේ අවශ්‍යතාවට ගැළපෙන option එක තෝරන්න මම උදව් කරන්නම්.',afterFees:'ඊළඟට මොකක්ද දැනගන්න ඕන?',year:'ඔයා A/L කරන්නේ කුමන අවුරුද්දේද?',y27:'2027 A/L',y28:'2028 A/L',otherYear:'වෙනත් / Not sure',need:'ඔයාට වැඩිපුරම අවශ්‍ය උදව් මොනවාටද?',foundation:'ICT මුල ඉඳන්',topics:'අමාරු topics',papers:'Past papers / revision',format:'ඔයා කැමති ඉගෙනගන්න ක්‍රමය?',budget:'අඩු වියදමින් group',personal:'Online 1-to-1',face:'Face-to-face 1-to-1',unsure:'තවම තීරණයක් නෑ',recGroup:'ඔයාගේ පිළිතුරු අනුව Online Group (Rs. 4,000/month) හොඳ ආරම්භයක් වෙන්න පුළුවන්. Structured learning සහ group practice වලට ගැළපෙනවා.',recOnline:'ඔයාගේ පිළිතුරු අනුව Online Individual (Rs. 2,000/2-hour session) සලකා බලන්න. අමාරු topics වලට පෞද්ගලික අවධානය ලබාගන්න පුළුවන්.',recPhysical:'ඔයාගේ පිළිතුරු අනුව Physical Individual (Rs. 5,000/2-hour session) සලකා බලන්න. Face-to-face guidance අවශ්‍ය නම් ගැළපෙනවා.',recEnd:'මේක මුල් recommendation එකක් විතරයි. Timetable සහ lesson plan එක teacher සමඟ තහවුරු කරගන්න.',trial:'🧪 Trial / sample ගැන',trialText:'Sample lesson එකක් හෝ short consultation එකක් ලබාගන්න පුළුවන්ද කියලා teacher ගෙන් විමසන්න. Free trial එකක් තිබෙන බව මෙහි සහතික කරන්නේ නැහැ.',faqAsk:'ඔයාට දැනගන්න ඕන කුමක්ද?',faqTimes:'🕒 Class times',faqOnline:'💻 Online class කොහොමද?',faqSupport:'📚 අමාරු ICT topics',faqPay:'💳 Payment',faqTrial:'🧪 Sample lesson',timesAnswer:'Class timetable එක batch එක සහ available individual slots අනුව වෙනස් වෙන්න පුළුවන්. නිවැරදි වේලාව teacher ගෙන් confirm කරගන්න.',onlineAnswer:'Online Group එකේ කණ්ඩායමක් සමඟ ඉගෙනගන්න පුළුවන්. Online Individual එකේ ගුරුවරයා සමඟ one-to-one පැය 2ක session එකක් ලැබෙනවා. භාවිතා කරන platform එක සහ recordings ගැන teacher ගෙන් confirm කරගන්න.',supportAnswer:'Programming, database, networking, theory හෝ past papers වලින් අමාරුම topic එක teacher ට කියන්න. ඒ අනුව lesson plan එකක් සාකච්ඡා කරගන්න පුළුවන්.',payAnswer:'Online Group Rs. 4,000/මාසය. Online Individual Rs. 2,000/පැය 2ක session. Physical Individual Rs. 5,000/පැය 2ක session. Payment method සහ due dates teacher ගෙන් තහවුරු කරගන්න.',details:'Enrollment inquiry එක සකස් කරමු. මේ තොරතුරු ඔයා WhatsApp යවන්න තෝරන තුරු මෙහිම පවතිනවා.',name:'නම',phone:'දුරකථන අංකය (විකල්ප)',question:'අමතර ප්‍රශ්නයක් (විකල්ප)',send:'WhatsApp message සූදානම් කරන්න',missing:'කරුණාකර නම ඇතුළත් කරන්න.',invalid:'WhatsApp number එක configure කර නැහැ. පහත message එක copy කරලා teacher ට WhatsApp මගින් යවන්න.',copy:'Message එක copy කරන්න',copied:'Copy කළා ✓',openWa:'WhatsApp විවෘත කරන්න',back:'↩ මුල් menu එක',askAgain:'තවත් ප්‍රශ්නයක්',notSet:'WhatsApp අංකය තවම configure කර නැහැ.',ready:'ඔයාගේ inquiry එක සූදානම්. WhatsApp විවෘත කර Send ඔබන්න. Message එක ස්වයංක්‍රීයව යවන්නේ නැහැ.',topicLabel:'අමාරු topic / ඉලක්කය',yearLabel:'A/L වසර',classLabel:'කැමති class එක',nameLabel:'නම',phoneLabel:'දුරකථන අංකය',questionLabel:'ප්‍රශ්නය',custom:'වෙනත් ප්‍රශ්නයක් ලියන්න',submitQuestion:'ප්‍රශ්නය පෙන්වන්න',customAnswer:'මේ ප්‍රශ්නයට නිවැරදි පිළිතුරක් ලබාගන්න teacher ට message එකක් යවමු. මම නොදන්නා විස්තර අනුමාන කරන්නේ නැහැ.'},
-en:{headline:'Find the right A/L ICT class for you.',intro:'Explore class fees, learning formats, difficult topics and enrollment options through a guided conversation.',prices:'Classes & fees',group:'Online Group Class',online:'Online Individual Class',physical:'Physical Individual Class',groupInfo:'per month · Structured group learning',onlineInfo:'per 2-hour session · 4 sessions = Rs. 8,000',physicalInfo:'per 2-hour session · 4 sessions = Rs. 20,000',note:'Schedules, availability and travel arrangements must be confirmed with the teacher. This page does not automatically send WhatsApp messages or store your details on a server.',welcome:'Hello! 👋 Welcome to the EICT A/L ICT advisor.\nHow can I help you today?',fees:'💰 View fees',choose:'🎯 Find my class',faq:'❓ Ask a question',contact:'📲 Join / Contact',feeText:'Here are our fees:\n💻 Online Group: Rs. 4,000 / month\n👤 Online Individual: Rs. 2,000 / 2-hour session\n🏫 Physical Individual: Rs. 5,000 / 2-hour session\n\nFour individual sessions cost Rs. 8,000 online or Rs. 20,000 in person. I can help you choose based on your needs.',afterFees:'What would you like to do next?',year:'Which A/L year are you preparing for?',y27:'2027 A/L',y28:'2028 A/L',otherYear:'Other / Not sure',need:'What kind of help do you need most?',foundation:'Start ICT from basics',topics:'Improve difficult topics',papers:'Past papers / revision',format:'Which learning format would you prefer?',budget:'Affordable group learning',personal:'Online one-to-one',face:'Face-to-face one-to-one',unsure:'Not sure yet',recGroup:'Based on your answers, Online Group (Rs. 4,000/month) could be a good starting point for structured lessons and group practice.',recOnline:'Based on your answers, Online Individual (Rs. 2,000/2-hour session) may suit you if you want personal support with difficult topics.',recPhysical:'Based on your answers, Physical Individual (Rs. 5,000/2-hour session) may suit you if you prefer face-to-face guidance.',recEnd:'This is an initial recommendation. Confirm the schedule and lesson plan with the teacher.',trial:'🧪 Trial / sample lesson',trialText:'You can ask the teacher whether a sample lesson or short consultation is available. A free trial is not guaranteed.',faqAsk:'What would you like to know?',faqTimes:'🕒 Class schedules',faqOnline:'💻 How online works',faqSupport:'📚 Difficult ICT topics',faqPay:'💳 Payments',faqTrial:'🧪 Sample lesson',timesAnswer:'Timetables depend on the batch and available one-to-one slots. Please confirm the exact schedule with the teacher.',onlineAnswer:'Online Group is a shared class; Online Individual is a private two-hour lesson. Confirm the meeting platform and recording availability with the teacher.',supportAnswer:'Tell the teacher which topic you find difficult—programming, databases, networking, theory or past papers—to discuss a suitable learning plan.',payAnswer:'Online Group is Rs. 4,000/month. Online Individual is Rs. 2,000 per two-hour session. Physical Individual is Rs. 5,000 per two-hour session. Confirm payment methods and deadlines with the teacher.',details:'Let’s prepare your enrollment inquiry. Your details stay in this browser until you choose to send them via WhatsApp.',name:'Your name',phone:'Phone number (optional)',question:'Additional question (optional)',send:'Prepare WhatsApp message',missing:'Please enter your name.',invalid:'The teacher’s WhatsApp number has not been configured. Copy the message below and send it to the teacher yourself.',copy:'Copy message',copied:'Copied ✓',openWa:'Open WhatsApp',back:'↩ Main menu',askAgain:'Another question',notSet:'WhatsApp number is not configured yet.',ready:'Your message is ready. Open WhatsApp and press Send. It is not sent automatically.',topicLabel:'Learning goal',yearLabel:'A/L year',classLabel:'Preferred class',nameLabel:'Name',phoneLabel:'Phone',questionLabel:'Question',custom:'Type another question',submitQuestion:'Ask question',customAnswer:'I don’t have a verified answer for that question. Please send it to the teacher for a precise response.'}}
-let lang='si',state={year:'',need:'',format:'',package:'',customQuestion:''},current='menu';
-function t(k){return copy[lang][k]}function say(msg,who='bot'){const b=document.createElement('div');b.className='bubble '+who;b.textContent=msg;$('chat').appendChild(b);$('chat').scrollTop=$('chat').scrollHeight}
-function clearActions(){$('actions').replaceChildren()}function action(label,fn,primary=false){const b=document.createElement('button');b.type='button';b.className='btn'+(primary?' primary':'');b.textContent=label;b.addEventListener('click',()=>{say(label,'user');fn()});$('actions').appendChild(b)}
-function buttons(items){clearActions();items.forEach(x=>action(t(x[0]),x[1],!!x[2]))}
-function menu(greet=false){current='menu';if(greet)say(t('welcome'));buttons([['fees',fees],['choose',year],['faq',faq],['contact',contact]])}
-function fees(){current='fees';say(t('feeText'));say(t('afterFees'));buttons([['choose',year,true],['trial',()=>{say(t('trialText'));menu()}],['contact',contact],['back',()=>menu(true)]])}
-function year(){current='year';say(t('year'));buttons([['y27',()=>setYear('2027')],['y28',()=>setYear('2028')],['otherYear',()=>setYear('Other')],['back',()=>menu(true)]])}
-function setYear(y){state.year=y;say(t('need'));buttons([['foundation',()=>setNeed('foundation')],['topics',()=>setNeed('topics')],['papers',()=>setNeed('papers')],['back',()=>menu(true)]])}
-function setNeed(n){state.need=n;say(t('format'));buttons([['budget',()=>recommend('group')],['personal',()=>recommend('online')],['face',()=>recommend('physical')],['unsure',()=>recommend(n==='topics'?'online':'group')],['back',()=>menu(true)]])}
-function recommend(p){state.package=p;say(t('rec'+({group:'Group',online:'Online',physical:'Physical'}[p]))+'\n'+t('recEnd'));buttons([['contact',contact,true],['fees',fees],['faq',faq],['back',()=>menu(true)]])}
-function faq(){current='faq';say(t('faqAsk'));buttons([['faqTimes',()=>answer('timesAnswer')],['faqOnline',()=>answer('onlineAnswer')],['faqSupport',()=>answer('supportAnswer')],['faqPay',()=>answer('payAnswer')],['faqTrial',()=>answer('trialText')],['custom',customQuestion],['back',()=>menu(true)]])}
-function answer(key){say(t(key));buttons([['askAgain',faq],['contact',contact,true],['back',()=>menu(true)]])}
-function customQuestion(){clearActions();const form=document.createElement('form');form.className='formarea';const textarea=document.createElement('textarea');textarea.setAttribute('aria-label',t('custom'));textarea.placeholder=t('custom');textarea.required=true;textarea.maxLength=500;textarea.className='field';textarea.style.cssText='width:100%;min-height:80px;border-radius:10px;background:#07172b;color:white;padding:12px;border:1px solid #4b6684;font:inherit';const submit=document.createElement('button');submit.className='btn primary';submit.textContent=t('submitQuestion');form.append(textarea,submit);form.onsubmit=e=>{e.preventDefault();state.customQuestion=textarea.value.trim();if(!state.customQuestion)return;say(state.customQuestion,'user');say(t('customAnswer'));buttons([['contact',contact,true],['back',()=>menu(true)]])};$('actions').append(form)}
-function contact(){current='contact';say(t('details'));clearActions();const form=document.createElement('form');form.className='formarea';function field(label,id,required=false,area=false){const wrap=document.createElement('div');wrap.className='field';const l=document.createElement('label');l.textContent=label;l.htmlFor=id;const inp=document.createElement(area?'textarea':'input');inp.id=id;inp.required=required;inp.maxLength=area?500:80;if(!area)inp.type='text';wrap.append(l,inp);form.append(wrap);return inp}const name=field(t('name'),'leadName',true),phone=field(t('phone'),'leadPhone'),question=field(t('question'),'leadQuestion',false,true);const submit=document.createElement('button');submit.type='submit';submit.className='btn primary';submit.textContent=t('send');form.append(submit);form.onsubmit=e=>{e.preventDefault();if(!name.value.trim()){name.focus();return}const p={group:'Online Group',online:'Online Individual',physical:'Physical Individual'}[state.package]||'Not decided';const message=['Hello EICT! I would like to inquire about A/L ICT classes.',t('nameLabel')+': '+name.value.trim(),t('phoneLabel')+': '+(phone.value.trim()||'Not provided'),t('yearLabel')+': '+(state.year||'Not specified'),t('classLabel')+': '+p,t('topicLabel')+': '+(state.need||'Not specified'),t('questionLabel')+': '+(question.value.trim()||state.customQuestion||'Please share class availability and next steps.')].join('\n');say(t('ready'));clearActions();const valid=/^[1-9][0-9]{7,14}$/.test(CONFIG.whatsappNumber);if(valid){const a=document.createElement('a');a.href='https://wa.me/'+CONFIG.whatsappNumber+'?text='+encodeURIComponent(message);a.target='_blank';a.rel='noopener noreferrer';a.className='btn primary';a.textContent=t('openWa');$('actions').append(a)}else say(t('invalid'));const copyBtn=document.createElement('button');copyBtn.type='button';copyBtn.className='btn';copyBtn.textContent=t('copy');copyBtn.onclick=async()=>{try{await navigator.clipboard.writeText(message);copyBtn.textContent=t('copied')}catch{const ta=document.createElement('textarea');ta.value=message;ta.style.width='100%';$('actions').append(ta);ta.select()}};$('actions').append(copyBtn);action(t('back'),()=>menu(true));};$('actions').append(form)}
-function refresh(){document.documentElement.lang=lang;$('headline').textContent=t('headline');$('intro').textContent=t('intro');$('pricesTitle').textContent=t('prices');$('groupName').textContent=t('group');$('onlineName').textContent=t('online');$('physicalName').textContent=t('physical');$('groupInfo').textContent=t('groupInfo');$('onlineInfo').textContent=t('onlineInfo');$('physicalInfo').textContent=t('physicalInfo');$('note').textContent=t('note');$('restart').textContent=lang==='si'?'↻ නැවත පටන්ගන්න':'↻ Restart';$('chat').replaceChildren();state={year:'',need:'',format:'',package:'',customQuestion:''};menu(true)}
-$('language').addEventListener('change',e=>{lang=e.target.value;refresh()});$('restart').addEventListener('click',refresh);refresh();
+si:{tag:'ඔයාගේ ICT පන්ති මඟපෙන්වන්නා',headline:'ඔයාට ගැළපෙන A/L ICT පන්තිය එකට හොයමු.',
+ intro:'පන්ති වේලාවන්, නොමිලේ trial class එකක්, sample lessons, fees — ඔක්කොම මෙතැනින්.',
+ status:'● Online · සාමාන්‍යයෙන් තත්පරයකින් උත්තර',restart:'↻ නැවත පටන්ගන්න',
+ prices:'පන්ති සහ ගාස්තු',group:'Online Group Class',online:'Online Individual Class',physical:'Physical Individual Class',
+ groupInfo:'මාසයකට · කණ්ඩායම් පන්ති',onlineInfo:'පැය 2ක session එකකට · sessions 4 = Rs. 8,000',physicalInfo:'පැය 2ක session එකකට · sessions 4 = Rs. 20,000',
+ note:'පන්ති වේලාවන් සහ ඉඩකඩ ගුරුතුමා තහවුරු කරනවා. ඔයාගේ නම සහ අංකය save වෙන්නේ trial එකක් book කළොත් විතරයි.',
+ qTrial:'🧪 නොමිලේ trial class එකක්',qSample:'🎬 Sample lesson එකක් බලන්න',qTimes:'🗓 පන්ති වේලාවන්',
+ askName:'නියමයි! 😊 ඔයාගේ නම මොකක්ද? (කැමති නම් skip කරන්නත් පුළුවන්)',namePh:'ඔයාගේ නම',ok:'හරි',skip:'Skip',
+ hello:n=>`ආයුබෝවන් ${n}! 👋 දැනගන්න සතුටුයි.`,menuQ:n=>`${n?n+', ':''}මට ඔයාට මොකක්ද උදව් කරන්න පුළුවන්?`,
+ menuAgain:'තව මොනවද දැනගන්න ඕන?',
+ mTrial:'🧪 නොමිලේ trial class',mTimes:'🗓 පන්ති වේලාවන්',mSample:'🎬 Sample lesson',mFees:'💰 Fees',mFind:'🎯 මට ගැළපෙන පන්තිය',mFaq:'❓ ප්‍රශ්න',mContact:'📲 සර්ට message එකක්',back:'↩ ප්‍රධාන menu එක',
+ timesIntro:'මෙන්න අපේ group පන්ති වේලාවන් 🗓',timesNone:'පන්ති වේලාවන් තවම load වුණේ නැහැ. සර්ගෙන් WhatsApp එකෙන් අහමු.',
+ timesAfter:'සතියකට එක දවසයි — පැය 2½ ක පමණ live Zoom පන්තිය. Recordings, tutes, papers ඔක්කොම තියෙනවා.',
+ join:'මේ batch එකට join වෙන්න',
+ trialIntro:'නියම තීරණයක්! 🎉 පැයක trial class එකක් සර් එක්ක one-to-one, සම්පූර්ණයෙන්ම නොමිලේ. ඔයාට අමාරුම lesson එක ගෙනෙන්න.\n\nපහළින් ඔයාට පහසු වේලාවක් තෝරන්න 👇',
+ trialNone:'අයියෝ, දැනට trial වේලාවන් ඔක්කොම පිරිලා 😕 සර්ට message එකක් දාලා අලුත් වේලාවක් ඉල්ලමු.',
+ picked:s=>`${s} — හරි! 👍`,yearQ:'ඔයා A/L ලියන්නේ කවදද?',y27:'2027 A/L',y28:'2028 A/L',yOther:'වෙනත් / තාම නෑ',
+ lessonQ:'Trial එකේදී කරන්න ඕන lesson එක මොකක්ද? පහළින් තෝරන්න නැත්නම් ලියන්න ✍️',lessonPh:'උදා: Python loops',
+ lessons:['Python programming','Database / SQL','Networking','Logic gates','Number systems','Web (HTML/PHP)','Theory / past papers'],
+ nameQ:'ඔයාගේ නම?',phoneQ:'ඔයාගේ WhatsApp අංකය? සර් confirm කරන්නේ ඒකට 📱',phonePh:'07X XXX XXXX',phoneBad:'අංකය හරියට ගහන්න (ඉලක්කම් 10).',
+ sumT:'මේක හරිද? 👀',sumSlot:'වේලාව',sumYear:'A/L',sumLesson:'Lesson',sumName:'නම',sumPhone:'WhatsApp',
+ confirm:'✅ Book කරන්න',change:'✏️ වෙනස් කරන්න',saving:'Book කරනවා…',
+ booked:n=>`වැඩේ හරි ${n||''}! 🎉 ඔයාගේ trial එක සර්ට ගියා. සර් WhatsApp එකෙන් confirm කරයි — සාමාන්‍යයෙන් එදාම.\n\nඉක්මනින්ම තහවුරු කරගන්න ඕන නම් පහළ button එකෙන් සර්ට message එකකුත් යවන්න.`,
+ bookFail:'Save කරන්න බැරි වුණා 😕 කමක් නෑ — පහළ button එකෙන් සර්ට කෙලින්ම WhatsApp කරන්න.',
+ waBtn:'💬 සර්ට WhatsApp කරන්න',
+ sampleIntro:'මෙන්න අපේ live පන්තියකින් කොටසක් 🎬 සර් උගන්වන විදිහ බලන්න.',sampleOther:'මේක අනෙක් මාධ්‍යයේ පන්තියකින්. ඔයාගේ මාධ්‍යයේ sample එකක් ඉක්මනින් එනවා.',
+ sampleNone:'Sample recordings ඉක්මනින් එනවා! දැනට මේ intro video එකෙන් පන්තිය ගැන දැනගන්න 👇',
+ sampleAfter:'කැමති වුණාද? 😄 නොමිලේ trial class එකකින් සර් එක්ක කෙලින්ම බලන්නත් පුළුවන්.',
+ fees:`අපේ fees මෙන්න 💰\n\n💻 Online Group: Rs. 4,000 / මාසයට\n👤 Online Individual: Rs. 2,000 / පැය 2ක session එකට\n🏫 Physical Individual: Rs. 5,000 / පැය 2ක session එකට\n\nIndividual sessions 4ක් ගත්තොත් Rs. 8,000 (online) / Rs. 20,000 (physical).`,
+ findY:'ඔයා A/L කරන්නේ කුමන අවුරුද්දේද?',need:'වැඩිපුරම ඕන උදව් මොකක්ද?',foundation:'ICT මුල ඉඳන්',topics:'අමාරු topics',papers:'Past papers / revision',
+ format:'ඉගෙනගන්න කැමති ක්‍රමය?',budget:'Group පන්තිය',personal:'Online 1-to-1',face:'Face-to-face 1-to-1',unsure:'තාම තීරණයක් නෑ',
+ recGroup:'ඔයාට Online Group පන්තිය (Rs. 4,000/මාසය) හොඳ ආරම්භයක් 👍 සතියකට live පන්තියක්, recordings, tutes, papers.',
+ recOnline:'ඔයාට Online Individual (Rs. 2,000 / පැය 2) ගැළපෙයි 👍 අමාරු topics වලට සර්ගේ සම්පූර්ණ අවධානය.',
+ recPhysical:'ඔයාට Physical Individual (Rs. 5,000 / පැය 2) ගැළපෙයි 👍 Face-to-face guidance.',
+ recEnd:'මුලින්ම නොමිලේ trial එකකින් බලන්නත් පුළුවන්.',
+ faqQ:'මොකක් ගැනද දැනගන්න ඕන?',fTimes:'🕒 වේලාවන්',fOnline:'💻 Online පන්ති වැඩ කරන්නේ කොහොමද?',fRec:'📼 Recordings තියෙනවද?',fPay:'💳 Payment',fMedium:'🌐 මාධ්‍යය',
+ aOnline:'Group පන්තිය Zoom එකෙන් live. Individual එකේදී සර් එක්ක one-to-one පැය 2ක session එකක්. Class portal එකේ recordings, papers, marks ඔක්කොම තියෙනවා.',
+ aRec:'ඔව් ✅ පන්තියට එන්න බැරි වුණොත් recording එක class portal එකෙන් බලන්න පුළුවන්.',
+ aPay:'Online Group Rs. 4,000/මාසය. Individual පන්ති session එකට ගෙවනවා. Bank transfer කරලා slip එක portal එකෙන් යවන්න පුළුවන්.',
+ aMedium:'සිංහල සහ English මාධ්‍ය දෙකටම පන්ති තියෙනවා. ඔයාට ගැළපෙන එකට සර් යොමු කරයි.',
+ contactQ:'සර්ට යවන්න message එකක් හදමු. කෙටියෙන් ලියන්න ✍️',contactPh:'ඔයාගේ ප්‍රශ්නය',sendWa:'WhatsApp එකෙන් යවන්න',
+ away:'(සර් ඒ දවසේ නෑ)',today:'අද',tomorrow:'හෙට'},
+en:{tag:'Your ICT class guide',headline:'Let’s find the right A/L ICT class for you.',
+ intro:'Class times, a free trial class, sample lessons and fees — all in one quick chat.',
+ status:'● Online · replies instantly',restart:'↻ Start over',
+ prices:'Classes & fees',group:'Online Group Class',online:'Online Individual Class',physical:'Physical Individual Class',
+ groupInfo:'per month · group class',onlineInfo:'per 2-hour session · 4 sessions = Rs. 8,000',physicalInfo:'per 2-hour session · 4 sessions = Rs. 20,000',
+ note:'Times and availability are confirmed by sir. Your name and number are only saved if you book a trial.',
+ qTrial:'🧪 Free trial class',qSample:'🎬 Watch a sample lesson',qTimes:'🗓 Class times',
+ askName:'Great! 😊 What’s your name? (You can skip this.)',namePh:'Your name',ok:'OK',skip:'Skip',
+ hello:n=>`Nice to meet you, ${n}! 👋`,menuQ:n=>`${n?n+', w':'W'}hat can I help you with?`,menuAgain:'What else would you like to know?',
+ mTrial:'🧪 Free trial class',mTimes:'🗓 Class times',mSample:'🎬 Sample lesson',mFees:'💰 Fees',mFind:'🎯 Find my class',mFaq:'❓ Questions',mContact:'📲 Message sir',back:'↩ Main menu',
+ timesIntro:'Here are our group class times 🗓',timesNone:'Class times did not load. Let’s ask sir on WhatsApp.',
+ timesAfter:'One day a week — about 2½ hours live on Zoom. Recordings, tutes and papers included.',join:'Join this batch',
+ trialIntro:'Great choice! 🎉 A one-hour trial class with sir, one-to-one and completely free. Bring the lesson you find hardest.\n\nPick a time that suits you 👇',
+ trialNone:'Oh no, all trial times are taken right now 😕 Let’s message sir to ask for a new time.',
+ picked:s=>`${s} — got it! 👍`,yearQ:'When do you sit your A/L?',y27:'2027 A/L',y28:'2028 A/L',yOther:'Other / not sure',
+ lessonQ:'Which lesson would you like to do in the trial? Pick one or type your own ✍️',lessonPh:'e.g. Python loops',
+ lessons:['Python programming','Databases / SQL','Networking','Logic gates','Number systems','Web (HTML/PHP)','Theory / past papers'],
+ nameQ:'What’s your name?',phoneQ:'Your WhatsApp number? Sir confirms there 📱',phonePh:'07X XXX XXXX',phoneBad:'Please enter a valid number (10 digits).',
+ sumT:'Is this right? 👀',sumSlot:'Time',sumYear:'A/L',sumLesson:'Lesson',sumName:'Name',sumPhone:'WhatsApp',
+ confirm:'✅ Book it',change:'✏️ Change',saving:'Booking…',
+ booked:n=>`All done${n?' '+n:''}! 🎉 Your trial request has reached sir. He confirms on WhatsApp, usually the same day.\n\nWant it confirmed faster? Send him a message with the button below.`,
+ bookFail:'Could not save it 😕 No problem — message sir directly with the button below.',waBtn:'💬 WhatsApp sir',
+ sampleIntro:'Here’s a part of one of our live classes 🎬 See how sir teaches.',sampleOther:'This one is from the other medium’s class. One in your medium is coming soon.',
+ sampleNone:'Sample recordings are coming soon! For now, this intro video explains how the class works 👇',
+ sampleAfter:'Liked it? 😄 You can also try a class with sir for free.',
+ fees:`Here are our fees 💰\n\n💻 Online Group: Rs. 4,000 / month\n👤 Online Individual: Rs. 2,000 / 2-hour session\n🏫 Physical Individual: Rs. 5,000 / 2-hour session\n\nFour individual sessions: Rs. 8,000 online / Rs. 20,000 in person.`,
+ findY:'Which A/L year are you preparing for?',need:'What do you need most?',foundation:'ICT from the basics',topics:'Difficult topics',papers:'Past papers / revision',
+ format:'How would you like to learn?',budget:'Group class',personal:'Online 1-to-1',face:'Face-to-face 1-to-1',unsure:'Not sure yet',
+ recGroup:'The Online Group class (Rs. 4,000/month) is a great start for you 👍 A live class every week, recordings, tutes and papers.',
+ recOnline:'Online Individual (Rs. 2,000 / 2 hours) suits you 👍 Sir’s full attention on your difficult topics.',
+ recPhysical:'Physical Individual (Rs. 5,000 / 2 hours) suits you 👍 Face-to-face guidance.',
+ recEnd:'You can try a free trial class first.',
+ faqQ:'What would you like to know?',fTimes:'🕒 Class times',fOnline:'💻 How do online classes work?',fRec:'📼 Are there recordings?',fPay:'💳 Payments',fMedium:'🌐 Medium',
+ aOnline:'The group class is live on Zoom. Individual classes are a one-to-one 2-hour session with sir. Recordings, papers and marks are all in your class portal.',
+ aRec:'Yes ✅ Missed a class? Watch the recording in your class portal.',
+ aPay:'Online Group is Rs. 4,000/month. Individual classes are paid per session. Pay by bank transfer and send the slip in your portal.',
+ aMedium:'Classes are available in both Sinhala and English medium. Sir will guide you to the right one.',
+ contactQ:'Let’s write a message to sir. Keep it short ✍️',contactPh:'Your question',sendWa:'Send on WhatsApp',
+ away:'(sir is away)',today:'Today',tomorrow:'Tomorrow'}};
+
+/* ---------------- state ---------------- */
+let lang='si', medium='', st={}, LIVE={config:null,held:new Set(),samples:[]};
+const t=k=>copy[lang][k];
+const esc=s=>String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+
+/* ---------------- live data (public Firestore records) ---------------- */
+function fsVal(v){ const k=Object.keys(v)[0], x=v[k];
+  if(k==='mapValue') return Object.fromEntries(Object.entries(x.fields||{}).map(([a,b])=>[a,fsVal(b)]));
+  if(k==='arrayValue') return (x.values||[]).map(fsVal);
+  if(k==='integerValue') return +x; if(k==='nullValue') return null; return x; }
+const FS=()=>{ const c=window.FIREBASE_CONFIG||{}; return c.projectId?{p:c.projectId,k:c.apiKey}:null; };
+const fsBase=()=>`https://firestore.googleapis.com/v1/projects/${FS().p}/databases/(default)/documents`;
+async function fsGet(path){ const r=await fetch(`${fsBase()}/${path}?key=${FS().k}`); if(!r.ok) throw new Error(r.status); return r.json(); }
+async function fsAdd(coll,obj){
+  const enc=v=>v===null?{nullValue:null}:typeof v==='boolean'?{booleanValue:v}:typeof v==='number'?{integerValue:String(v)}:{stringValue:String(v)};
+  const fields=Object.fromEntries(Object.entries(obj).map(([a,b])=>[a,enc(b)]));
+  const r=await fetch(`${fsBase()}/${coll}?key=${FS().k}`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({fields})});
+  if(!r.ok) throw new Error(r.status); }
+const ready=(async()=>{
+  if(!FS()) return;
+  await Promise.all([
+    fsGet('site/config').then(d=>{ LIVE.config=JSON.parse(d.fields.json.stringValue); }).catch(()=>{}),
+    fsGet('trials?pageSize=300').then(d=>{ (d.documents||[]).forEach(x=>{ const v=Object.fromEntries(Object.entries(x.fields||{}).map(([a,b])=>[a,fsVal(b)]));
+      if(v.slot&&v.status!=='declined') LIVE.held.add(v.slot); }); }).catch(()=>{}),
+    fsGet('site/samples').then(d=>{ LIVE.samples=(d.fields&&d.fields.list?fsVal(d.fields.list):[])||[]; }).catch(()=>{})
+  ]);
+  const w=LIVE.config&&LIVE.config.contact&&LIVE.config.contact.whatsapp;
+  if(w&&/^[1-9][0-9]{7,14}$/.test(String(w))) CONFIG.whatsappNumber=String(w);
+})();
+
+/* ---------------- chat mechanics ---------------- */
+let queue=Promise.resolve(), runId=0;
+const scroll=()=>{ const c=$('chat'); c.scrollTop=c.scrollHeight; };
+const wait=ms=>new Promise(r=>setTimeout(r,ms));
+function say(msg,who='bot',html=false){
+  const my=runId;
+  queue=queue.then(async()=>{
+    if(my!==runId) return;
+    if(who==='bot'){ const ty=document.createElement('div'); ty.className='typing'; ty.innerHTML='<i></i><i></i><i></i>';
+      $('chat').appendChild(ty); scroll(); await wait(Math.min(900,300+String(msg).length*6)); ty.remove(); if(my!==runId) return; }
+    const b=document.createElement('div'); b.className='bubble '+who+(html?' card':'');
+    if(html) b.innerHTML=msg; else b.textContent=msg;
+    $('chat').appendChild(b); scroll();
+  });
+  return queue;
+}
+function clearActions(){ $('actions').replaceChildren(); }
+function buttons(items){ const my=runId; clearActions(); queue.then(()=>{ if(my!==runId) return; clearActions();
+  items.forEach(([label,fn,primary])=>{ const b=document.createElement('button'); b.type='button';
+    b.className='btn'+(primary?' primary':''); b.textContent=label;
+    b.addEventListener('click',()=>{ say(label,'user'); fn(); }); $('actions').appendChild(b); }); }); }
+function ask(ph,onOk,{skip,validate,lessons}={}){ const my=runId; clearActions(); queue.then(()=>{ if(my!==runId) return; clearActions();
+  const f=document.createElement('form'); f.className='formarea';
+  const i=document.createElement('input'); i.placeholder=ph; i.maxLength=120; i.autocomplete='off';
+  const go=document.createElement('button'); go.className='btn primary'; go.textContent=t('ok');
+  const er=document.createElement('div'); er.className='err';
+  f.append(i,go);
+  if(skip){ const s=document.createElement('button'); s.type='button'; s.className='btn'; s.textContent=t('skip');
+    s.onclick=()=>{ say(t('skip'),'user'); onOk(''); }; f.append(s); }
+  f.append(er);
+  f.onsubmit=e=>{ e.preventDefault(); const v=i.value.trim(); if(!v) return i.focus();
+    const bad=validate&&validate(v); if(bad){ er.textContent=bad; return; } say(v,'user'); onOk(v); };
+  $('actions').append(f); setTimeout(()=>i.focus(),50);
+  if(lessons){ const c=document.createElement('div'); c.className='chips'; c.style.cssText='width:100%;margin-top:4px';
+    lessons.forEach(l=>{ const b=document.createElement('button'); b.type='button'; b.className='chip'; b.textContent=l;
+      b.onclick=()=>{ say(l,'user'); onOk(l); }; c.append(b); }); $('actions').prepend(c); }
+}); }
+
+/* ---------------- flow ---------------- */
+function start(){
+  runId++; queue=Promise.resolve(); $('chat').replaceChildren(); clearActions(); st={};
+  medium=''; say('ආයුබෝවන්! 👋 Hi! මම EICT advisor.\nමුලින්ම, ඔයා A/L ICT කරන්නේ කුමන මාධ්‍යයෙන්ද? / Which medium do you study in?');
+  buttons([['සිංහල මාධ්‍යය',()=>pickMedium('si')],['English medium',()=>pickMedium('en')]]);
+}
+function pickMedium(m){ medium=m; lang=m; $('language').value=m; paintStatic(); say(t('askName')); ask(t('namePh'),n=>{ st.name=n; if(n) say(t('hello')(n)); menu(); },{skip:true}); }
+function menu(again){
+  say(again?t('menuAgain'):t('menuQ')(st.name||''));
+  buttons([[t('mTrial'),trial,true],[t('mTimes'),times],[t('mSample'),sample],[t('mFees'),fees],[t('mFind'),findYear],[t('mFaq'),faq],[t('mContact'),contact]]);
+}
+const backBtn=()=>[t('back'),()=>menu(true)];
+
+/* class times */
+async function times(){
+  await ready;
+  const B=((LIVE.config&&LIVE.config.batches)||[]).filter(b=>b.open!==false);
+  if(!B.length){ say(t('timesNone')); return buttons([[t('mContact'),contact,true],backBtn()]); }
+  say(t('timesIntro'));
+  const m=(b,k)=>((b.meta||[]).find(x=>x[0]===k)||[])[1]||'';
+  say(B.map(b=>`<div class="bt"><div class="code">${esc(b.code)}</div><b>${esc(b.top)} ${esc(b.year)}</b>
+    <div class="meta">🗓 ${esc(m(b,'Day'))} · ⏰ ${esc(m(b,'Time'))}<br>🌐 ${esc(m(b,'Medium'))} · ${esc(m(b,'Starts'))}${m(b,'Seats')?' · '+esc(m(b,'Seats')):''}</div>
+    <a class="btn primary" style="margin-top:9px;font-size:13px;padding:8px 12px" target="_top" href="${esc(b.portal||'EICT.html#batches')}">${esc(t('join'))}</a></div>`).join(''),'bot',true);
+  say(t('timesAfter'));
+  buttons([[t('mTrial'),trial,true],[t('mSample'),sample],backBtn()]);
+}
+
+/* free trial */
+function nextDate(day){ const D={mon:1,tue:2,wed:3,thu:4,fri:5,sat:6,sun:0}; const w=D[String(day).slice(0,3).toLowerCase()];
+  if(w===undefined) return null; const n=new Date(); n.setHours(0,0,0,0); n.setDate(n.getDate()+((w-n.getDay()+7)%7)); return n; }
+/* a time already gone today moves the slot to next week */
+function slotDate(day,time){ const d=nextDate(day); if(!d) return null;
+  const m=String(time).match(/(\d{1,2})[.:](\d{2})\s*([AP]M)?/i);
+  if(m){ let h=+m[1]%12; if(/pm/i.test(m[3]||'')) h+=12; const at=new Date(d); at.setHours(h,+m[2],0,0);
+    if(at-Date.now()<60*60*1000) d.setDate(d.getDate()+7); }
+  return d; }
+const iso=d=>d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+const slotKey=(d,tm)=>`${String(d).trim()} · ${String(tm).trim()}`;
+function dayLabel(d){ const n=new Date(); n.setHours(0,0,0,0); const diff=Math.round((d-n)/864e5);
+  return diff===0?t('today'):diff===1?t('tomorrow'):d.toLocaleDateString(lang==='si'?'si-LK':'en-GB',{day:'numeric',month:'short'}); }
+async function trial(){
+  await ready;
+  const T=(LIVE.config&&(LIVE.config.trial||LIVE.config.solo))||{};
+  const slots=(T.slots&&T.slots.length?T.slots:FALLBACK_TRIAL);
+  const away=T.blockedDates||[];
+  const free=slots.filter(s=>{ const s0=s.status||(s.closed?'taken':'open'); const d=slotDate(s.day,s.time);
+    return s0==='open'&&!LIVE.held.has(slotKey(s.day,s.time))&&!(d&&away.includes(iso(d))); });
+  if(!free.length){ say(t('trialNone')); return buttons([[t('mContact'),contact,true],backBtn()]); }
+  say(t('trialIntro'));
+  free.forEach(s=>s._d=slotDate(s.day,s.time));
+  free.sort((a,b)=>(a._d||0)-(b._d||0));
+  const days=[...new Set(free.map(s=>s.day+'|'+(s._d?iso(s._d):'')))];
+  const id='sl'+Date.now();
+  await say(`<div class="slots" id="${id}">${days.map(k=>{ const [d,ds]=k.split('|'); const dt=ds?new Date(ds+'T00:00:00'):null;
+    return `<div class="sday"><b>${esc(d)} <span>· ${esc(dt?dayLabel(dt):'')}</span></b><div class="chips">${
+      free.filter(s=>s.day+'|'+(s._d?iso(s._d):'')===k).map(s=>`<button class="chip" type="button" data-slot="${esc(slotKey(s.day,s.time))}" data-date="${ds}">${esc(s.time)}</button>`).join('')}</div></div>`;}).join('')}</div>`,'bot',true);
+  const box=$(id); if(box) box.addEventListener('click',e=>{ const b=e.target.closest('[data-slot]'); if(!b||st.slot) return;
+    st.slot=b.dataset.slot; st.slotDate=b.dataset.date;
+    box.querySelectorAll('.chip').forEach(c=>{ c.disabled=true; c.style.opacity=c===b?'1':'.35'; });
+    say(b.closest('.sday').querySelector('b').textContent.split('·')[0].trim()+' '+b.textContent,'user');
+    say(t('picked')(st.slot)); trialYear(); });
+  buttons([backBtn()]);
+}
+function trialYear(){ say(t('yearQ')); buttons([[t('y27'),()=>{st.year='2027';trialLesson();}],[t('y28'),()=>{st.year='2028';trialLesson();}],[t('yOther'),()=>{st.year='Other';trialLesson();}]]); }
+function trialLesson(){ say(t('lessonQ')); ask(t('lessonPh'),v=>{ st.lesson=v; st.name?trialPhone():(say(t('nameQ')),ask(t('namePh'),n=>{st.name=n;trialPhone();})); },{lessons:t('lessons')}); }
+function trialPhone(){ say(t('phoneQ')); ask(t('phonePh'),v=>{ st.phone=v; trialSummary(); },
+  {validate:v=>/^(\+?94|0)?7\d{8}$/.test(v.replace(/[\s-]/g,''))?'':t('phoneBad')}); }
+function trialSummary(){
+  say(`<b>${esc(t('sumT'))}</b><div class="sum"><span>${esc(t('sumSlot'))}</span><b>${esc(st.slot)}${st.slotDate?' ('+esc(st.slotDate)+')':''}</b>
+    <span>${esc(t('sumYear'))}</span><b>${esc(st.year)}</b><span>${esc(t('sumLesson'))}</span><b>${esc(st.lesson)}</b>
+    <span>${esc(t('sumName'))}</span><b>${esc(st.name)}</b><span>${esc(t('sumPhone'))}</span><b>${esc(st.phone)}</b></div>`,'bot',true);
+  buttons([[t('confirm'),bookTrial,true],[t('change'),()=>{ st.slot=null; trial(); }]]);
+}
+async function bookTrial(){
+  clearActions(); const at=new Date().toISOString();
+  const med=medium==='si'?'Sinhala medium':'English medium';
+  let ok=true;
+  try{
+    if(!FS()) throw new Error('no firebase');
+    await fsAdd('requests',{name:st.name,whatsapp:st.phone,school:'',type:'one-to-one',batch:null,slot:st.slot,fee:'',at,
+      note:`Free trial via advisor · ${med} · A/L ${st.year} · ${st.lesson}`});
+    await fsAdd('trials',{name:st.name,whatsapp:st.phone,school:'',type:'one-to-one',slot:st.slot,date:st.slotDate||'',
+      alYear:st.year,lesson:st.lesson,medium:med,kind:'trial',source:'advisor',status:'pending',at});
+    fsAdd('holds',{slot:st.slot,at}).catch(()=>{});
+    LIVE.held.add(st.slot);
+  }catch(e){ ok=false; }
+  const f=window.EICT_ALERTS||{}, topic=(f.ntfyTopic||'').trim();
+  if(topic) try{ const q=new URLSearchParams({title:'EICT - Free trial request (advisor)',priority:'high',tags:'bell',
+      message:`${st.name} · ${st.phone}\n${st.slot}${st.slotDate?' ('+st.slotDate+')':''}\nA/L ${st.year} · ${med} · wants: ${st.lesson}`});
+    fetch(`https://ntfy.sh/${encodeURIComponent(topic)}/publish?${q}`,{mode:'no-cors'}); }catch(e){}
+  say(ok?t('booked')(st.name):t('bookFail'));
+  const msg=`Hello Sir! I booked a free trial class on the EICT website.\nName: ${st.name}\nTime: ${st.slot}${st.slotDate?' ('+st.slotDate+')':''}\nA/L: ${st.year} · ${med}\nLesson: ${st.lesson}`;
+  waButtons(msg,[[t('mSample'),sample],backBtn()]);
+}
+function waButtons(msg,more){ const my=runId; queue.then(()=>{ if(my!==runId) return; clearActions();
+  const a=document.createElement('a'); a.className='btn primary big'; a.target='_blank'; a.rel='noopener noreferrer';
+  a.href='https://wa.me/'+CONFIG.whatsappNumber+'?text='+encodeURIComponent(msg); a.textContent=t('waBtn'); $('actions').append(a);
+  (more||[]).forEach(([l,fn])=>{ const b=document.createElement('button'); b.type='button'; b.className='btn'; b.textContent=l;
+    b.onclick=()=>{ say(l,'user'); fn(); }; $('actions').append(b); }); }); }
+
+/* sample lessons */
+function embedUrl(v){ v=String(v||'').trim();
+  const d=v.match(/drive\.google\.com\/(?:file\/d\/|open\?id=)([A-Za-z0-9_-]{10,})/); if(d) return 'https://drive.google.com/file/d/'+d[1]+'/preview';
+  const y=v.match(/(?:youtu\.be\/|v=|embed\/|shorts\/)([A-Za-z0-9_-]{11})/)||v.match(/^([A-Za-z0-9_-]{11})$/);
+  return y?'https://www.youtube-nocookie.com/embed/'+y[1]+'?rel=0':''; }
+const vidCard=(s)=>{ const u=embedUrl(s.yt); return u?`<div class="vid"><iframe src="${esc(u)}" loading="lazy" allow="encrypted-media; picture-in-picture; fullscreen" allowfullscreen title="${esc(s.title||'Sample lesson')}"></iframe></div>
+  <div class="vt">${esc(s.title||'')}</div><div class="vm">${esc([s.date,s.mins?s.mins+' min':''].filter(Boolean).join(' · '))}</div>`:''; };
+async function sample(){
+  await ready;
+  const mine=s=>medium==='si'?s.batch==='AL-27-SI':s.batch!=='AL-27-SI';
+  const list=(LIVE.samples||[]).filter(s=>embedUrl(s.yt));
+  let show=list.filter(mine), other=false;
+  if(!show.length&&list.length){ show=list; other=true; }
+  if(!show.length){ say(t('sampleNone')); say(vidCard({yt:CONFIG.introVideo,title:'EICT · Intro'}),'bot',true); }
+  else{ say(t('sampleIntro')); show.slice(0,3).forEach(s=>say(vidCard(s),'bot',true)); if(other) say(t('sampleOther')); }
+  say(t('sampleAfter'));
+  buttons([[t('mTrial'),trial,true],[t('mTimes'),times],backBtn()]);
+}
+
+/* fees, recommendation, questions, contact */
+function fees(){ say(t('fees')); buttons([[t('mFind'),findYear,true],[t('mTrial'),trial],backBtn()]); }
+function findYear(){ say(t('findY')); buttons([[t('y27'),()=>{st.year='2027';findNeed();}],[t('y28'),()=>{st.year='2028';findNeed();}],[t('yOther'),()=>{st.year='Other';findNeed();}]]); }
+function findNeed(){ say(t('need')); buttons([[t('foundation'),()=>findFormat('foundation')],[t('topics'),()=>findFormat('topics')],[t('papers'),()=>findFormat('papers')]]); }
+function findFormat(n){ st.need=n; say(t('format')); buttons([[t('budget'),()=>rec('group')],[t('personal'),()=>rec('online')],[t('face'),()=>rec('physical')],[t('unsure'),()=>rec(n==='topics'?'online':'group')]]); }
+function rec(p){ st.pkg=p; say(t('rec'+{group:'Group',online:'Online',physical:'Physical'}[p])); say(t('recEnd'));
+  buttons([[t('mTrial'),trial,true],[t('mTimes'),times],[t('mContact'),contact],backBtn()]); }
+function faq(){ say(t('faqQ')); buttons([[t('fTimes'),times],[t('fOnline'),()=>ans('aOnline')],[t('fRec'),()=>ans('aRec')],[t('fPay'),()=>ans('aPay')],[t('fMedium'),()=>ans('aMedium')],backBtn()]); }
+function ans(k){ say(t(k)); buttons([[t('mFaq'),faq],[t('mTrial'),trial,true],backBtn()]); }
+function contact(){ say(t('contactQ')); ask(t('contactPh'),q=>{
+  const med=medium==='si'?'Sinhala medium':'English medium';
+  const msg=`Hello Sir! I have a question from the EICT website.\n${st.name?'Name: '+st.name+'\n':''}Medium: ${med}${st.year?'\nA/L: '+st.year:''}\n\n${q}`;
+  waButtons(msg,[backBtn()]); }); }
+
+/* ---------------- page text ---------------- */
+function paintStatic(){
+  document.documentElement.lang=lang;
+  ['tag','headline','intro','status'].forEach(k=>$(k).textContent=t(k));
+  $('restart').textContent=t('restart'); $('pricesTitle').textContent=t('prices');
+  ['group','online','physical'].forEach(k=>{ $(k+'Name').textContent=t(k); $(k+'Info').textContent=t(k+'Info'); });
+  $('note').textContent=t('note'); $('qTrial').textContent=t('qTrial'); $('qSample').textContent=t('qSample'); $('qTimes').textContent=t('qTimes');
+}
+$('language').addEventListener('change',e=>{ lang=e.target.value; paintStatic(); if(!medium) start(); else menu(true); });
+$('restart').addEventListener('click',()=>{ paintStatic(); start(); });
+const quick=fn=>()=>{ if(!medium){ medium=lang; } say(document.activeElement.textContent,'user'); fn(); };
+$('qTrial').addEventListener('click',quick(trial)); $('qSample').addEventListener('click',quick(sample)); $('qTimes').addEventListener('click',quick(times));
+paintStatic(); start();
 </script></body></html>

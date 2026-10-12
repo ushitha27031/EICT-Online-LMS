@@ -161,6 +161,13 @@ service cloud.firestore {
       allow write: if owner();
     }
 
+    // Free sample lessons for the website advisor: the recordings you tick
+    // as Sample, copied here. Anyone reads; only you write.
+    match /site/samples {
+      allow read: if true;
+      allow write: if owner();
+    }
+
     // Play log, so you can spot one account being used by half a class.
     match /views/{id} {
       allow create: if request.auth != null;
