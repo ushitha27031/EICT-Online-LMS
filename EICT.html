@@ -835,6 +835,7 @@ window.FB_READY = new Promise(r=>{ window.__fbDone = r; setTimeout(()=>r(null), 
 </script>
 <script src="firebase-config.js" onerror="void 0"></script>
 <script src="track.js" defer></script>
+<script src="schedule.js" onerror="void 0"></script>
 <script type="module">
 /* Firebase is optional. Without firebase-config.js the site runs on local content. */
 (async () => {
@@ -1142,7 +1143,7 @@ function paint(){
     <span class="bt-status"><span class="dot"></span>${b.open?'Enrolment open':'Closed'}</span>
     <div class="bt-code">${esc(b.code)}</div>
     <h3 class="bt-name">${esc(b.top)}<span>${esc(b.year)}</span></h3>
-    <ul class="bt-meta">${(b.meta||[]).map(m=>`<li>${esc(m[0])}<b>${esc(m[1])}</b></li>`).join('')}</ul>
+    <ul class="bt-meta">${batchMeta(b).map(m=>`<li>${esc(m[0])}<b>${esc(m[1])}</b></li>`).join('')}</ul>
     ${b.portal?`<a class="btn btn-1" href="${esc(b.portal)}"><span class="btn-s"></span>Join this batch</a>`
              :`<button class="btn btn-1" data-join="${i}"><span class="btn-s"></span>Join this batch</button>`}</article>`).join('');
 
@@ -1193,6 +1194,25 @@ function paint(){
     +`<option value="solo">One to one — private slot</option>`;
 
   observe();
+}
+
+/* A/L batches show each medium's group class day from schedule.js — the
+   same days the advisor chat gives — instead of one Day / Time / Medium. */
+function batchMeta(b){
+  const m=b.meta||[], S=(window.EICT_SCHEDULE||{})[String(b.year)];
+  if(/^OL/i.test(b.code||'')&&window.EICT_SCHEDULE&&String(b.year)===String(window.EICT_OL_YEAR)){
+    const keep=m.filter(x=>!/^(day|time)$/i.test(String(x[0]).trim()));
+    const at=Math.max(0,keep.findIndex(x=>/^starts$/i.test(String(x[0]).trim()))+1);
+    keep.splice(at,0,['Class','Individual · one to one'],['Time','A time you choose']);
+    return keep;
+  }
+  if(!S||!/^AL/i.test(b.code||'')) return m;
+  const row=x=>x?`${x.day} · ${x.time}`:'—';
+  const kind=(S.si||S.en||{}).kind;
+  const keep=m.filter(x=>!/^(day|time|medium)$/i.test(String(x[0]).trim()));
+  const at=Math.max(0,keep.findIndex(x=>/^starts$/i.test(String(x[0]).trim()))+1);
+  keep.splice(at,0,...[kind?['Class',kind+' class']:null,['Sinhala medium',row(S.si)],['English medium',row(S.en)]].filter(Boolean));
+  return keep;
 }
 
 /* ---------- countdown ---------- */

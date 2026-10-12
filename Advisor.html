@@ -1,6 +1,11 @@
 <!doctype html>
 <html lang="si"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#0b1730">
 <title>EICT | Student Admission Advisor</title>
+<meta name="description" content="Class times, a free trial class, sample lessons, results and registration — chat with the EICT advisor.">
+<meta property="og:title" content="EICT — Find your ICT class in a one-minute chat 💬">
+<meta property="og:description" content="Class times · Free trial class · Sample lessons · Results · Register. ඔයාට ගැළපෙන ICT පන්තිය හොයාගමු.">
+<meta property="og:image" content="https://eictonline.com/og-chat.jpg">
+<meta property="og:url" content="https://eictonline.com/chat">
 <script>if(/[?&]embed\b/.test(location.search))document.documentElement.classList.add('embed');</script>
 <style>
 :root{font-family:system-ui,-apple-system,'Segoe UI',Arial,sans-serif;color:#eaf2ff;background:#071020;
@@ -71,6 +76,18 @@ header{display:flex;align-items:center;justify-content:space-between;gap:14px;ma
 .feat b{font-size:14.5px}.feat span{color:#b7c7de;font-size:13.5px;line-height:1.55}
 .soon{display:inline-block;margin-left:6px;padding:1px 7px;border-radius:999px;font-size:10.5px;font-weight:800;letter-spacing:.06em;background:#3a2f12;color:var(--gold);vertical-align:middle}
 .free{background:#123a2e;color:#63e6bf}
+.res{display:grid;grid-template-columns:1fr auto;gap:2px 10px;padding:7px 0;border-top:1px solid #2a4566;font-size:13.5px}
+.res:first-of-type{border-top:0}.res span{color:var(--dim);font-size:12.5px;grid-column:1}.res em{font-style:normal;grid-row:span 2;align-self:center;
+  width:32px;height:32px;border-radius:9px;display:grid;place-items:center;font-weight:900;background:#123a2e;color:#63e6bf}
+.res em.b{background:#1b3a5c;color:#8fc1ff}.res em.c{background:#3a2f12;color:var(--gold)}
+.big3{display:flex;gap:8px;margin:8px 0}.big3 div{flex:1;background:#132c49;border:1px solid #2f4d70;border-radius:12px;padding:9px;text-align:center}
+.big3 b{display:block;font-size:22px;color:#66ebc9}.big3 span{font-size:11.5px;color:var(--dim)}
+.gal{display:grid;grid-template-columns:repeat(3,1fr);gap:7px;margin-top:8px}
+.gal button{padding:0;border:1px solid #2f4d70;border-radius:10px;overflow:hidden;cursor:zoom-in;background:#0a1a30;aspect-ratio:3/4}
+.gal img{width:100%;height:100%;object-fit:cover;display:block}
+.gal small{display:block;font-size:10.5px;color:var(--dim);padding:3px}
+.lb{position:fixed;inset:0;z-index:50;background:#000c;display:none;place-items:center;padding:14px;cursor:zoom-out}
+.lb.on{display:grid}.lb img{max-width:100%;max-height:92vh;border-radius:12px}
 .code-big{font-size:26px;font-weight:900;letter-spacing:.06em;color:var(--gold);margin:6px 0}
 footer{text-align:center;color:#7890af;font-size:12px;margin-top:22px}
 a{color:#6eead0}
@@ -95,13 +112,16 @@ html.embed header{margin-bottom:12px;padding-right:46px}html.embed .chat{height:
     <div class="price"><b id="groupName"></b><strong>Rs. 4,000</strong><small id="groupInfo"></small></div>
     <div class="price"><b id="onlineName"></b><strong>Rs. 2,000</strong><small id="onlineInfo"></small></div>
     <div class="price"><b id="physicalName"></b><strong>Rs. 5,000 – 6,500</strong><small id="physicalInfo"></small></div>
-    <div class="quick"><button class="btn primary" id="qTrial" type="button"></button><button class="btn" id="qSample" type="button"></button><button class="btn" id="qTimes" type="button"></button><button class="btn" id="qReg" type="button"></button></div>
+    <div class="quick"><button class="btn primary" id="qTrial" type="button"></button><button class="btn" id="qSample" type="button"></button><button class="btn" id="qTimes" type="button"></button><button class="btn" id="qReg" type="button"></button><button class="btn" id="qProof" type="button"></button></div>
     <p class="note" id="note"></p>
   </aside>
 </main>
 <footer>© EICT · Student Admission Advisor</footer></div>
+<div class="lb" id="lb"><img id="lbImg" alt=""></div>
 
 <script src="firebase-config.js" onerror="void 0"></script>
+<script src="schedule.js" onerror="void 0"></script>
+<script src="track.js" defer></script>
 <script>
 'use strict';
 /* =====================================================================
@@ -121,7 +141,10 @@ const SCHEDULE={
           en:{day:'Wednesday',time:'6.00 PM',kind:'rev',group:'https://chat.whatsapp.com/Lljb9zWfVXF7UeeeDm0qDk'}},
   '2028':{si:{day:'Monday',time:'6.00 PM',kind:'theory',group:'https://chat.whatsapp.com/F3PLW9oOC7e7dbG7tM9er8'},
           en:{day:'Saturday',time:'6.00 PM',kind:'theory',group:'https://chat.whatsapp.com/HAS4EcFZVS29C9238TsCO9'}}};
-const OL_YEAR='2026';                     // O/L: individual classes only
+if(window.EICT_SCHEDULE){ const W=window.EICT_SCHEDULE;    // schedule.js wins over the copy above
+  Object.keys(W).forEach(y=>{ SCHEDULE[y]=SCHEDULE[y]||{}; ['si','en'].forEach(m=>{ if(W[y][m]) SCHEDULE[y][m]={...W[y][m],
+    kind:/theory/i.test(W[y][m].kind||'')?'theory':'rev'}; }); }); }
+const OL_YEAR=window.EICT_OL_YEAR||'2026';  // O/L: individual classes only
 const batchOf=(year,m)=>year==='2027'?(m==='si'?'AL-27-SI':'AL-27'):year==='2028'?'AL-28':'';
 const FALLBACK_TRIAL=[['Monday',['7.00 AM','1.00 PM','7.00 PM']],['Tuesday',['7.00 AM','1.00 PM','7.00 PM']],
   ['Thursday',['7.00 AM','1.00 PM','7.00 PM']],['Friday',['7.00 AM','1.00 PM','7.00 PM']],
@@ -187,6 +210,12 @@ si:{tag:'ඔයාගේ ICT පන්ති මඟපෙන්වන්නා',
  sampleNo:'මේ පන්තියේ sample recording එකක් තවම දාලා නැහැ 😕 සර්ට message එකක් දාලා sample එකක් ඉල්ලන්න පුළුවන්.',
  groupT:'අන්තිම පියවර 👇 පන්තියේ WhatsApp group එකට join වෙන්න. Zoom link, notices ඔක්කොම එන්නේ එතනට.',
  groupBtn:'👥 WhatsApp group එකට join වෙන්න',
+ mProof:'⭐ Results සහ comments',qProof:'⭐ Results සහ comments',
+ proofIntro:'අපේ පරණ ළමයි කරපු දේ බලන්නකෝ 💪',
+ resT:(l)=>`${l} results`,resA:'A',resB:'B',resC:'C',resTotal:'ළමයි',
+ resMore:n=>`… තව ${n}ක්`,
+ notesT:'ළමයින්ගේ අතින්ම ලියපු comments ✍️ (ලොකුවට බලන්න tap කරන්න)',
+ proofAfter:'ඊළඟ නම ඔයාගේ වෙන්න පුළුවන් 😉',
  mWhat:'📚 අපේ පන්තියේ තියෙන දේවල්',mReg:'📝 දැන්ම Register වෙන්න',qReg:'📝 Register වෙන්න',
  whatIntro:n=>`${n?n+', ':''}අපේ පන්තියට ආවොත් ඔයාට ලැබෙන දේවල් මෙන්න ✨`,
  feats:[
@@ -272,6 +301,12 @@ en:{tag:'Your ICT class guide',headline:'Let’s find the right A/L ICT class fo
  sampleNo:'No sample recording has been added for this class yet 😕 Message sir and ask for one.',
  groupT:'Last step 👇 Join the class WhatsApp group. Zoom links and notices all come there.',
  groupBtn:'👥 Join the WhatsApp group',
+ mProof:'⭐ Results & comments',qProof:'⭐ Results & comments',
+ proofIntro:'See what our past students achieved 💪',
+ resT:(l)=>`${l} results`,resA:'A',resB:'B',resC:'C',resTotal:'students',
+ resMore:n=>`… and ${n} more`,
+ notesT:'Comments in our students’ own handwriting ✍️ (tap to read)',
+ proofAfter:'The next name could be yours 😉',
  mWhat:'📚 What you get',mReg:'📝 Register now',qReg:'📝 Register',
  whatIntro:n=>`${n?n+', h':'H'}ere’s what you get in our class ✨`,
  feats:[
@@ -376,13 +411,17 @@ function ask(ph,onOk,{skip,validate,lessons,type,secret}={}){ const my=runId; cl
 /* ---------------- flow ---------------- */
 function start(){
   runId++; queue=Promise.resolve(); $('chat').replaceChildren(); clearActions(); st={};
+  const pre=(new URLSearchParams(location.search).get('m')||'').toLowerCase();
+  if(!start.used&&(pre==='si'||pre==='en')){ start.used=true; medium=pre; lang=pre; $('language').value=pre; paintStatic();
+    say(pre==='si'?'ආයුබෝවන්! 👋 මම EICT advisor. ඔයාට ගැළපෙන ICT පන්තිය හොයාගන්න මම උදව් කරන්නම්.':'Hi! 👋 I’m the EICT advisor. I’ll help you find the right ICT class.');
+    say(t('askName')); return ask(t('namePh'),n=>{ st.name=n; if(n) say(t('hello')(n)); menu(); },{skip:true}); }
   medium=''; say('ආයුබෝවන්! 👋 Hi! මම EICT advisor.\nමුලින්ම, ඔයා A/L ICT කරන්නේ කුමන මාධ්‍යයෙන්ද? / Which medium do you study in?');
   buttons([['සිංහල මාධ්‍යය',()=>pickMedium('si')],['English medium',()=>pickMedium('en')]]);
 }
 function pickMedium(m){ medium=m; lang=m; $('language').value=m; paintStatic(); say(t('askName')); ask(t('namePh'),n=>{ st.name=n; if(n) say(t('hello')(n)); menu(); },{skip:true}); }
 function menu(again){
   say(again?t('menuAgain'):t('menuQ')(st.name||''));
-  buttons([[t('mTrial'),trial,true],[t('mWhat'),what],[t('mTimes'),times],[t('mNow'),nowLesson],[t('mSample'),sample],[t('mFees'),fees],[t('mReg'),register],[t('mFind'),findYear],[t('mFaq'),faq],[t('mContact'),contact]]);
+  buttons([[t('mTrial'),trial,true],[t('mProof'),proof],[t('mWhat'),what],[t('mTimes'),times],[t('mNow'),nowLesson],[t('mSample'),sample],[t('mFees'),fees],[t('mReg'),register],[t('mFind'),findYear],[t('mFaq'),faq],[t('mContact'),contact]]);
 }
 const backBtn=()=>[t('back'),()=>menu(true)];
 
@@ -517,7 +556,7 @@ function what(){
   say(card(t('feats')),'bot',true);
   say(`<b>${esc(t('soonT'))}</b>`+card(t('soon'),t('soonBadge')),'bot',true);
   say(t('whatAfter'));
-  buttons([[t('mReg'),register,true],[t('mTrial'),trial],[t('mTimes'),times],backBtn()]);
+  buttons([[t('mReg'),register,true],[t('mTrial'),trial],[t('mProof'),proof],backBtn()]);
 }
 
 /* register — the same account and record Class.html makes, so the student
@@ -607,6 +646,35 @@ async function regCreate(){
       a.textContent=t('groupBtn'); $('actions').prepend(a); }); }
 }
 
+
+/* past results and students' handwritten comments, from the website content */
+function photoUrl(v){ v=String(v||'').trim();
+  const d=v.match(/drive\.google\.com\/(?:file\/d\/|open\?id=|uc\?[^]*?id=)([A-Za-z0-9_-]{10,})/);
+  return d?'https://lh3.googleusercontent.com/d/'+d[1]+'=w1000':v; }
+function thumbUrl(v){ const d=String(v||'').match(/drive\.google\.com\/(?:file\/d\/|open\?id=|uc\?[^]*?id=)([A-Za-z0-9_-]{10,})/);
+  return d?'https://drive.google.com/thumbnail?id='+d[1]+'&sz=w1000':''; }
+async function proof(){
+  await ready;
+  const C=LIVE.config||{}, R=C.results||{};
+  say(t('proofIntro'));
+  const block=(key)=>{ const g=R[key]; const L=(g&&g.students)||[]; if(!L.length) return '';
+    const n=k=>L.filter(x=>String(x.grade).toUpperCase()===k).length;
+    const sorted=L.slice().sort((a,b)=>String(a.grade).localeCompare(String(b.grade))||(+b.year)-(+a.year));
+    return `<b>${esc(t('resT')(g.label||key.toUpperCase()))}</b>
+      <div class="big3"><div><b>${n('A')}</b><span>A</span></div><div><b>${n('B')}</b><span>B</span></div><div><b>${L.length}</b><span>${esc(t('resTotal'))}</span></div></div>
+      ${sorted.slice(0,6).map(x=>`<div class="res"><b>${esc(x.name)}</b><em class="${String(x.grade).toLowerCase()}">${esc(x.grade)}</em><span>${esc(x.year)} · ${esc(x.school||'')}</span></div>`).join('')}
+      ${L.length>6?`<div class="vm" style="margin-top:6px">${esc(t('resMore')(L.length-6))}</div>`:''}`; };
+  const order=st.level==='OL'?['ol','al']:['al','ol'];
+  order.forEach(k=>{ const h=block(k); if(h) say(h,'bot',true); });
+  const notes=(C.notes||[]).filter(x=>x.src);
+  if(notes.length) say(`${esc(t('notesT'))}<div class="gal">${notes.map(x=>`<button type="button" data-lb="${esc(photoUrl(x.src))}"><img src="${esc(photoUrl(x.src))}" alt="" loading="lazy" data-alt="${esc(thumbUrl(x.src))}" onerror="if(this.dataset.alt&&this.src!==this.dataset.alt){this.src=this.dataset.alt;this.parentNode.dataset.lb=this.dataset.alt;}else this.parentNode.remove()"></button>`).join('')}</div>`,'bot',true);
+  say(t('proofAfter'));
+  buttons([[t('mReg'),register,true],[t('mTrial'),trial],[t('mTimes'),times],backBtn()]);
+}
+document.addEventListener('click',e=>{ const b=e.target.closest('[data-lb]');
+  if(b){ $('lbImg').src=b.dataset.lb; $('lb').classList.add('on'); return; }
+  if(e.target.closest('#lb')) $('lb').classList.remove('on'); });
+
 /* fees, recommendation, questions, contact */
 function fees(){ say(t('fees')); buttons([[t('mFind'),findYear,true],[t('mTrial'),trial],backBtn()]); }
 function findYear(){ say(t('findY')); buttons([[t('y27'),()=>{st.year='2027';findNeed();}],[t('y28'),()=>{st.year='2028';findNeed();}],[t('yOther'),()=>{st.year='Other';findNeed();}]]); }
@@ -627,11 +695,11 @@ function paintStatic(){
   ['tag','headline','intro','status'].forEach(k=>$(k).textContent=t(k));
   $('restart').textContent=t('restart'); $('pricesTitle').textContent=t('prices');
   ['group','online','physical'].forEach(k=>{ $(k+'Name').textContent=t(k); $(k+'Info').textContent=t(k+'Info'); });
-  $('note').textContent=t('note'); $('qTrial').textContent=t('qTrial'); $('qSample').textContent=t('qSample'); $('qTimes').textContent=t('qTimes'); $('qReg').textContent=t('qReg');
+  $('note').textContent=t('note'); $('qTrial').textContent=t('qTrial'); $('qSample').textContent=t('qSample'); $('qTimes').textContent=t('qTimes'); $('qReg').textContent=t('qReg'); $('qProof').textContent=t('qProof');
 }
 $('language').addEventListener('change',e=>{ lang=e.target.value; paintStatic(); if(!medium) start(); else menu(true); });
 $('restart').addEventListener('click',()=>{ paintStatic(); start(); });
 const quick=fn=>()=>{ if(!medium){ medium=lang; } say(document.activeElement.textContent,'user'); fn(); };
-$('qTrial').addEventListener('click',quick(trial)); $('qSample').addEventListener('click',quick(sample)); $('qTimes').addEventListener('click',quick(times)); $('qReg').addEventListener('click',quick(register));
+$('qTrial').addEventListener('click',quick(trial)); $('qSample').addEventListener('click',quick(sample)); $('qTimes').addEventListener('click',quick(times)); $('qReg').addEventListener('click',quick(register)); $('qProof').addEventListener('click',quick(proof));
 paintStatic(); start();
 </script></body></html>
