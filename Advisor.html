@@ -115,6 +115,14 @@ html.embed header{margin-bottom:12px;padding-right:46px}html.embed .chat{height:
    ===================================================================== */
 const CONFIG={whatsappNumber:'94719780807',groupMonthly:4000,onlineSession:2000,colomboSession:5000,gampahaSession:6500,
   introVideo:'VBH-VRKpBI0'};
+/* ---- Group classes and WhatsApp groups — edit here when they change ---- */
+const SCHEDULE={
+  '2027':{si:{day:'Friday',time:'6.00 PM',kind:'rev',group:'https://chat.whatsapp.com/GMktphPp8TvB097qyWhTnq'},
+          en:{day:'Wednesday',time:'6.00 PM',kind:'rev',group:'https://chat.whatsapp.com/Lljb9zWfVXF7UeeeDm0qDk'}},
+  '2028':{si:{day:'Monday',time:'6.00 PM',kind:'theory',group:'https://chat.whatsapp.com/F3PLW9oOC7e7dbG7tM9er8'},
+          en:{day:'Saturday',time:'6.00 PM',kind:'theory',group:'https://chat.whatsapp.com/HAS4EcFZVS29C9238TsCO9'}}};
+const OL_YEAR='2026';                     // O/L: individual classes only
+const batchOf=(year,m)=>year==='2027'?(m==='si'?'AL-27-SI':'AL-27'):year==='2028'?'AL-28':'';
 const FALLBACK_TRIAL=[['Monday',['7.00 AM','1.00 PM','7.00 PM']],['Tuesday',['7.00 AM','1.00 PM','7.00 PM']],
   ['Thursday',['7.00 AM','1.00 PM','7.00 PM']],['Friday',['7.00 AM','1.00 PM','7.00 PM']],
   ['Saturday',['7.00 AM','1.00 PM','7.00 PM']],['Sunday',['7.00 AM','1.00 PM','7.00 PM']]]
@@ -164,6 +172,21 @@ si:{tag:'ඔයාගේ ICT පන්ති මඟපෙන්වන්නා',
  aPay:'Online Group Rs. 4,000/මාසය. Individual පන්ති session එකට ගෙවනවා (online Rs. 2,000 · කොළඹ Rs. 5,000 · ගම්පහ Rs. 6,500). Bank transfer කරලා slip එක portal එකෙන් යවන්න පුළුවන්.',
  aMedium:'සිංහල සහ English මාධ්‍ය දෙකටම පන්ති තියෙනවා. ඔයාට ගැළපෙන එකට සර් යොමු කරයි.',
  contactQ:'සර්ට යවන්න message එකක් හදමු. කෙටියෙන් ලියන්න ✍️',contactPh:'ඔයාගේ ප්‍රශ්නය',sendWa:'WhatsApp එකෙන් යවන්න',
+ lvlQ:'ඔයා කරන්නේ A/L ද O/L ද?',lvlAL:'🎓 A/L',lvlOL:'📘 O/L',alYearQ:'A/L ලියන්නේ කුමන අවුරුද්දේද?',
+ dSi:'සිංහල',dEn:'English',kindrev:'Revision පන්තිය',kindtheory:'Theory පන්තිය',
+ days:{Monday:'සඳුදා',Tuesday:'අඟහරුවාදා',Wednesday:'බදාදා',Thursday:'බ්‍රහස්පතින්දා',Friday:'සිකුරාදා',Saturday:'සෙනසුරාදා',Sunday:'ඉරිදා'},
+ timeCard:(y,md,d,tm,k)=>`${y} A/L · ${md} මාධ්‍යය`,
+ timeLine:(d,tm)=>`📅 හැම ${d}ම · ⏰ ${tm}`,
+ timeAfter:'Zoom එකෙන් live. Recordings, tutes, papers ඔක්කොම තියෙනවා. 🎁 ඉරිදා Q&A පන්තියත් නොමිලේ!',
+ otherMedium:(md,d,tm)=>`(${md} මාධ්‍ය පන්තිය: ${d} ${tm})`,
+ olTimes:`${'2026'} O/L සඳහා දැනට තියෙන්නේ Individual (one-to-one) පන්ති විතරයි 👤\nඔයාට පහසු වෙලාවට සර් එක්ක තනියම — online නැත්නම් ගෙදරට.`,
+ olAfter:'නොමිලේ trial class එකකින් පටන්ගන්න පුළුවන්.',
+ joinNow:'✅ මේ පන්තියට join වෙන්න',mNow:'📖 දැන් යන පාඩම',
+ nowT:(d,tt)=>`අන්තිම පන්තියේ (${d}) කළේ:\n📖 ${tt}`,nowNone:'අන්තිම පාඩම තවම site එකට දාලා නැහැ. සර්ගෙන් අහමු 👇',
+ nowOL:'O/L එකේ group පන්ති නැති නිසා ඔයාට ඕන පාඩමෙන්ම individual පන්තිය පටන්ගන්න පුළුවන් 👍',
+ sampleNo:'මේ පන්තියේ sample recording එකක් තවම දාලා නැහැ 😕 සර්ට message එකක් දාලා sample එකක් ඉල්ලන්න පුළුවන්.',
+ groupT:'අන්තිම පියවර 👇 පන්තියේ WhatsApp group එකට join වෙන්න. Zoom link, notices ඔක්කොම එන්නේ එතනට.',
+ groupBtn:'👥 WhatsApp group එකට join වෙන්න',
  mWhat:'📚 අපේ පන්තියේ තියෙන දේවල්',mReg:'📝 දැන්ම Register වෙන්න',qReg:'📝 Register වෙන්න',
  whatIntro:n=>`${n?n+', ':''}අපේ පන්තියට ආවොත් ඔයාට ලැබෙන දේවල් මෙන්න ✨`,
  feats:[
@@ -234,6 +257,21 @@ en:{tag:'Your ICT class guide',headline:'Let’s find the right A/L ICT class fo
  aPay:'Online Group is Rs. 4,000/month. Individual classes are paid per session (online Rs. 2,000 · Colombo Rs. 5,000 · Gampaha Rs. 6,500). Pay by bank transfer and send the slip in your portal.',
  aMedium:'Classes are available in both Sinhala and English medium. Sir will guide you to the right one.',
  contactQ:'Let’s write a message to sir. Keep it short ✍️',contactPh:'Your question',sendWa:'Send on WhatsApp',
+ lvlQ:'Are you doing A/L or O/L?',lvlAL:'🎓 A/L',lvlOL:'📘 O/L',alYearQ:'Which year is your A/L?',
+ dSi:'Sinhala',dEn:'English',kindrev:'Revision class',kindtheory:'Theory class',
+ days:{Monday:'Monday',Tuesday:'Tuesday',Wednesday:'Wednesday',Thursday:'Thursday',Friday:'Friday',Saturday:'Saturday',Sunday:'Sunday'},
+ timeCard:(y,md)=>`${y} A/L · ${md} medium`,
+ timeLine:(d,tm)=>`📅 Every ${d} · ⏰ ${tm}`,
+ timeAfter:'Live on Zoom. Recordings, tutes and papers included. 🎁 The Sunday Q&A class is free too!',
+ otherMedium:(md,d,tm)=>`(${md} medium class: ${d} ${tm})`,
+ olTimes:'For 2026 O/L there are individual (one-to-one) classes only right now 👤\nJust you and sir, at a time that suits you — online or at home.',
+ olAfter:'You can start with a free trial class.',
+ joinNow:'✅ Join this class',mNow:'📖 Current lesson',
+ nowT:(d,tt)=>`In the last class (${d}) we did:\n📖 ${tt}`,nowNone:'The latest lesson has not been added to the site yet. Let’s ask sir 👇',
+ nowOL:'There is no O/L group class, so your individual class can start from the lesson you need 👍',
+ sampleNo:'No sample recording has been added for this class yet 😕 Message sir and ask for one.',
+ groupT:'Last step 👇 Join the class WhatsApp group. Zoom links and notices all come there.',
+ groupBtn:'👥 Join the WhatsApp group',
  mWhat:'📚 What you get',mReg:'📝 Register now',qReg:'📝 Register',
  whatIntro:n=>`${n?n+', h':'H'}ere’s what you get in our class ✨`,
  feats:[
@@ -268,7 +306,7 @@ en:{tag:'Your ICT class guide',headline:'Let’s find the right A/L ICT class fo
  away:'(sir is away)',today:'Today',tomorrow:'Tomorrow'}};
 
 /* ---------------- state ---------------- */
-let lang='si', medium='', st={}, LIVE={config:null,held:new Set(),samples:[]};
+let lang='si', medium='', st={}, LIVE={config:null,held:new Set(),samples:[],latest:{}};
 const t=k=>copy[lang][k];
 const esc=s=>String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 
@@ -291,7 +329,7 @@ const ready=(async()=>{
     fsGet('site/config').then(d=>{ LIVE.config=JSON.parse(d.fields.json.stringValue); }).catch(()=>{}),
     fsGet('trials?pageSize=300').then(d=>{ (d.documents||[]).forEach(x=>{ const v=Object.fromEntries(Object.entries(x.fields||{}).map(([a,b])=>[a,fsVal(b)]));
       if(v.slot&&v.status!=='declined') LIVE.held.add(v.slot); }); }).catch(()=>{}),
-    fsGet('site/samples').then(d=>{ LIVE.samples=(d.fields&&d.fields.list?fsVal(d.fields.list):[])||[]; }).catch(()=>{})
+    fsGet('site/samples').then(d=>{ LIVE.samples=(d.fields&&d.fields.list?fsVal(d.fields.list):[])||[]; LIVE.latest=(d.fields&&d.fields.latest?fsVal(d.fields.latest):{})||{}; }).catch(()=>{})
   ]);
   const w=LIVE.config&&LIVE.config.contact&&LIVE.config.contact.whatsapp;
   if(w&&/^[1-9][0-9]{7,14}$/.test(String(w))) CONFIG.whatsappNumber=String(w);
@@ -344,23 +382,42 @@ function start(){
 function pickMedium(m){ medium=m; lang=m; $('language').value=m; paintStatic(); say(t('askName')); ask(t('namePh'),n=>{ st.name=n; if(n) say(t('hello')(n)); menu(); },{skip:true}); }
 function menu(again){
   say(again?t('menuAgain'):t('menuQ')(st.name||''));
-  buttons([[t('mTrial'),trial,true],[t('mWhat'),what],[t('mTimes'),times],[t('mSample'),sample],[t('mFees'),fees],[t('mReg'),register],[t('mFind'),findYear],[t('mFaq'),faq],[t('mContact'),contact]]);
+  buttons([[t('mTrial'),trial,true],[t('mWhat'),what],[t('mTimes'),times],[t('mNow'),nowLesson],[t('mSample'),sample],[t('mFees'),fees],[t('mReg'),register],[t('mFind'),findYear],[t('mFaq'),faq],[t('mContact'),contact]]);
 }
 const backBtn=()=>[t('back'),()=>menu(true)];
 
-/* class times */
-async function times(){
-  await ready;
-  const B=((LIVE.config&&LIVE.config.batches)||[]).filter(b=>b.open!==false);
-  if(!B.length){ say(t('timesNone')); return buttons([[t('mContact'),contact,true],backBtn()]); }
-  say(t('timesIntro'));
-  const m=(b,k)=>((b.meta||[]).find(x=>x[0]===k)||[])[1]||'';
-  say(B.map(b=>`<div class="bt"><div class="code">${esc(b.code)}</div><b>${esc(b.top)} ${esc(b.year)}</b>
-    <div class="meta">🗓 ${esc(m(b,'Day'))} · ⏰ ${esc(m(b,'Time'))}<br>🌐 ${esc(m(b,'Medium'))} · ${esc(m(b,'Starts'))}${m(b,'Seats')?' · '+esc(m(b,'Seats')):''}</div>
-    <a class="btn primary" style="margin-top:9px;font-size:13px;padding:8px 12px" target="_top" href="${esc(b.portal||'EICT.html#batches')}">${esc(t('join'))}</a></div>`).join(''),'bot',true);
-  say(t('timesAfter'));
-  buttons([[t('mReg'),register,true],[t('mTrial'),trial],[t('mWhat'),what],backBtn()]);
+/* level and A/L year are asked once and reused by every answer */
+function needLevel(next){
+  if(st.level==='OL'||(st.level==='AL'&&st.year)) return next();
+  say(t('lvlQ'));
+  buttons([[t('lvlAL'),()=>{ st.level='AL'; say(t('alYearQ'));
+      buttons([[t('y27'),()=>{st.year='2027';next();}],[t('y28'),()=>{st.year='2028';next();}]]); }],
+    [t('lvlOL'),()=>{ st.level='OL'; st.year='OL'; next(); }]]);
 }
+const myBatch=()=>st.level==='AL'?batchOf(st.year,medium):'';
+const mdName=m=>m==='si'?t('dSi'):t('dEn');
+const dayName=d=>t('days')[d]||d;
+
+/* class times — for this student's level, year and medium */
+async function times(){ needLevel(()=>{
+  if(st.level==='OL'){ say(t('olTimes')); say(t('olAfter'));
+    return buttons([[t('mTrial'),trial,true],[t('mReg'),register],[t('mContact'),contact],backBtn()]); }
+  const S=SCHEDULE[st.year]||{}, mine=S[medium], oth=S[medium==='si'?'en':'si'];
+  say(`<div class="bt"><div class="code">${esc(t('kind'+mine.kind))}</div><b>${esc(t('timeCard')(st.year,mdName(medium)))}</b>
+    <div class="meta" style="font-size:15px;color:#eaf2ff;margin-top:6px">${esc(t('timeLine')(dayName(mine.day),mine.time))}</div>
+    ${oth?`<div class="meta" style="margin-top:6px">${esc(t('otherMedium')(mdName(medium==='si'?'en':'si'),dayName(oth.day),oth.time))}</div>`:''}</div>`,'bot',true);
+  say(t('timeAfter'));
+  nowLesson(true);
+}); }
+
+/* what is being taught now — the last recorded live class of the batch */
+async function nowLesson(fromTimes){ await ready; needLevel(()=>{
+  if(st.level==='OL'){ say(t('nowOL')); return buttons([[t('mTrial'),trial,true],[t('mReg'),register],backBtn()]); }
+  const L=(LIVE.latest||{})[myBatch()];
+  if(L&&L.title) say(t('nowT')(L.date||'—',L.title));
+  else if(!fromTimes) say(t('nowNone'));
+  buttons([[t('joinNow'),register,true],[t('mSample'),sample],[t('mTrial'),trial],backBtn()].concat(L||fromTimes?[]:[[t('mContact'),contact]]));
+}); }
 
 /* free trial */
 function nextDate(day){ const D={mon:1,tue:2,wed:3,thu:4,fri:5,sat:6,sun:0}; const w=D[String(day).slice(0,3).toLowerCase()];
@@ -398,7 +455,7 @@ async function trial(){
     say(t('picked')(st.slot)); trialYear(); });
   buttons([backBtn()]);
 }
-function trialYear(){ say(t('yearQ')); buttons([[t('y27'),()=>{st.year='2027';trialLesson();}],[t('y28'),()=>{st.year='2028';trialLesson();}],[t('yOther'),()=>{st.year='Other';trialLesson();}]]); }
+function trialYear(){ if(st.year){ return trialLesson(); } say(t('yearQ')); buttons([[t('y27'),()=>{st.year='2027';trialLesson();}],[t('y28'),()=>{st.year='2028';trialLesson();}],[t('yOther'),()=>{st.year='Other';trialLesson();}]]); }
 function trialLesson(){ say(t('lessonQ')); ask(t('lessonPh'),v=>{ st.lesson=v; st.name?trialPhone():(say(t('nameQ')),ask(t('namePh'),n=>{st.name=n;trialPhone();})); },{lessons:t('lessons')}); }
 function trialPhone(){ say(t('phoneQ')); ask(t('phonePh'),v=>{ st.phone=v; trialSummary(); },
   {validate:v=>/^(\+?94|0)?7\d{8}$/.test(v.replace(/[\s-]/g,''))?'':t('phoneBad')}); }
@@ -442,17 +499,15 @@ function embedUrl(v){ v=String(v||'').trim();
   return y?'https://www.youtube-nocookie.com/embed/'+y[1]+'?rel=0':''; }
 const vidCard=(s)=>{ const u=embedUrl(s.yt); return u?`<div class="vid"><iframe src="${esc(u)}" loading="lazy" allow="encrypted-media; picture-in-picture; fullscreen" allowfullscreen title="${esc(s.title||'Sample lesson')}"></iframe></div>
   <div class="vt">${esc(s.title||'')}</div><div class="vm">${esc([s.date,s.mins?s.mins+' min':''].filter(Boolean).join(' · '))}</div>`:''; };
-async function sample(){
-  await ready;
-  const mine=s=>medium==='si'?s.batch==='AL-27-SI':s.batch!=='AL-27-SI';
-  const list=(LIVE.samples||[]).filter(s=>embedUrl(s.yt));
-  let show=list.filter(mine), other=false;
-  if(!show.length&&list.length){ show=list; other=true; }
-  if(!show.length){ say(t('sampleNone')); say(vidCard({yt:CONFIG.introVideo,title:'EICT · Intro'}),'bot',true); }
-  else{ say(t('sampleIntro')); show.slice(0,3).forEach(s=>say(vidCard(s),'bot',true)); if(other) say(t('sampleOther')); }
+async function sample(){ await ready; needLevel(()=>{
+  const b=myBatch();
+  const show=(LIVE.samples||[]).filter(x=>embedUrl(x.yt)&&(b?x.batch===b:false));
+  if(!show.length){ say(t('sampleNo'));
+    return buttons([[t('mContact'),contact,true],[t('mTrial'),trial],backBtn()]); }
+  say(t('sampleIntro')); show.slice(0,3).forEach(x=>say(vidCard(x),'bot',true));
   say(t('sampleAfter'));
-  buttons([[t('mTrial'),trial,true],[t('mReg'),register],[t('mWhat'),what],backBtn()]);
-}
+  buttons([[t('joinNow'),register,true],[t('mTrial'),trial],[t('mWhat'),what],backBtn()]);
+}); }
 
 
 /* what the class gives you */
@@ -480,9 +535,11 @@ async function fbx(){
 }
 function register(){
   const r=st.reg={};
-  say(t('regIntro')); say(t('regYear'));
-  buttons([[t('y27'),()=>{ r.batch=medium==='si'?'AL-27-SI':'AL-27'; regTrack(); }],[t('y28'),()=>{ r.batch='AL-28'; regTrack(); }],
-    [t('regOL'),()=>{ say(t('regOther')); contact(); }]]);
+  say(t('regIntro'));
+  needLevel(()=>{
+    if(st.level==='OL'){ say(t('regOther')); return contact(); }
+    r.batch=myBatch(); r.year=st.year; regTrack();
+  });
 }
 function regTrack(){ const r=st.reg; say(t('regTrack'));
   buttons([[t('tLive'),()=>{r.track='live';r.mode='online';regName();},true],[t('tRec'),()=>{r.track='rec';r.mode='online';regName();}],
@@ -544,6 +601,10 @@ async function regCreate(){
     const w=document.createElement('a'); w.className='btn'; w.target='_blank'; w.rel='noopener noreferrer';
     w.href='https://wa.me/'+CONFIG.whatsappNumber+'?text='+encodeURIComponent(`Hello Sir! I just registered on the EICT website.\nName: ${r.name}\nStudent number: ${code}\n${PORTAL[r.batch][1]}`);
     w.textContent=t('waBtn'); $('actions').append(w); });
+  const g=(SCHEDULE[r.year]||{})[medium];
+  if(g&&g.group){ say(t('groupT'));
+    queue.then(()=>{ const a=document.createElement('a'); a.className='btn primary big'; a.href=g.group; a.target='_blank'; a.rel='noopener noreferrer';
+      a.textContent=t('groupBtn'); $('actions').prepend(a); }); }
 }
 
 /* fees, recommendation, questions, contact */
