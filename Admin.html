@@ -721,8 +721,13 @@ const planSel=()=>{
       `<option value="${esc(b.id)}" ${b.id===PLAN_BATCH?'selected':''}>${esc(b.label)}</option>`).join('')}</select>
     <span class="hint">The study plan runs for the 2027 batches only.</span></div>`;
 };
+/* the class portal settings list AL-27 and AL-28; the Sinhala medium 2027
+   class (2027Sinhala.html, AL-27-SI) has its own records too */
+const allBatches=()=>{ const l=(CO.batches||[{id:CO.batch,label:CO.label}]).slice();
+  if(!l.some(b=>b.id==='AL-27-SI')) l.splice(1,0,{id:'AL-27-SI',label:'2027 A/L · Sinhala medium'});
+  return l; };
 const bSel=()=>`<div class="fld"><label>Which batch are you editing?</label>
-  <select id="batchPick">${(CO.batches||[{id:CO.batch,label:CO.label}]).map(b=>
+  <select id="batchPick">${allBatches().map(b=>
     `<option value="${esc(b.id)}" ${b.id===EDIT_BATCH?'selected':''}>${esc(b.label)}</option>`).join('')}</select></div>`;
 const cget=p=>p.split('.').reduce((o,k)=>o==null?o:o[k],CO);
 function cset(p,v){const k=p.split('.'),last=k.pop();let o=CO;
@@ -2945,6 +2950,7 @@ async function loadRecordings(){
          REC=(d.exists()?d.data().list:[])||[]; }catch(e){ REC=[]; }
   }
   drawRecordings();
+  syncSamples(false);                         // keeps the advisor's last-topic list fresh
 }
 function drawRecordings(){
   const box=$('#recTbl'); if(!box) return;
@@ -2960,24 +2966,34 @@ function drawRecordings(){
       <td><button class="rm" data-rdel="${i}">×</button></td></tr>`).join('')}
   </tbody></table>${(REC||[]).length?'':'<div style="font-family:var(--m);font-size:13px;color:var(--dimmer);padding:10px 0">Nothing added yet.</div>'}`;
 }
+/* site/samples is what the website advisor reads (anyone may read it):
+   the recordings ticked as Sample, and the last topic taught in each batch.
+   The full recordings list stays for paid students only. */
+let samplesSynced=false;
+async function syncSamples(force){
+  if(samplesSynced&&!force) return 0;
+  const fb=await window.FB_READY; if(!fb||!fb.auth.currentUser) return 0;
+  const list=[], latest={};
+  for(const b of allBatches().map(x=>x.id)){
+    let recs=[];
+    if(b===EDIT_BATCH&&REC) recs=REC;
+    else try{ const d=await fb.getDoc(fb.doc(fb.db,'liveRecordings',b)); recs=(d.exists()&&d.data().list)||[]; }catch(e){}
+    recs.filter(r=>r.sample&&r.yt).forEach(r=>list.push({batch:b,title:r.title||'',yt:r.yt,date:r.date||'',mins:r.mins||''}));
+    const last=recs.filter(r=>r.title).sort((x,y)=>String(y.date||'').localeCompare(String(x.date||'')))[0];
+    if(last) latest[b]={title:last.title,date:last.date||''};
+  }
+  try{ await fb.setDoc(fb.doc(fb.db,'site','samples'),{list,latest,updated:fb.serverTimestamp()}); samplesSynced=true; }
+  catch(e){ if(force&&/permission/i.test(e.code||e.message||'')) guard('sample lessons (site/samples)',e); return 0; }
+  return list.filter(x=>x.batch===EDIT_BATCH).length;
+}
 async function saveRecordings(){
   const fb=await window.FB_READY;
   if(!fb||!fb.auth.currentUser) return alert('Sign in with Firebase first.');
   try{
     await fb.setDoc(fb.doc(fb.db,'liveRecordings',EDIT_BATCH),
       { list:(REC||[]).filter(r=>r.yt||r.title), updated:fb.serverTimestamp() });
-    /* the ticked ones are copied to site/samples, which anyone may read —
-       the full recordings list stays for paid students only */
-    try{
-      const d=await fb.getDoc(fb.doc(fb.db,'site','samples'));
-      const keep=((d.exists()&&d.data().list)||[]).filter(x=>x.batch!==EDIT_BATCH);
-      const mine=(REC||[]).filter(r=>r.sample&&r.yt).map(r=>({batch:EDIT_BATCH, title:r.title||'', yt:r.yt, date:r.date||'', mins:r.mins||''}));
-      await fb.setDoc(fb.doc(fb.db,'site','samples'),{ list:keep.concat(mine), updated:fb.serverTimestamp() });
-      toast('Recordings saved'+(mine.length?' \u00b7 '+mine.length+' shown as samples':''));
-    }catch(e2){
-      toast('Recordings saved');
-      if(/permission/i.test(e2.code||e2.message||'')) guard('sample lessons (site/samples)',e2);
-    }
+    const n=await syncSamples(true);
+    toast('Recordings saved'+(n?' \u00b7 '+n+' shown as samples':''));
   }catch(e){ if(!guard('class recordings',e)) alert('Could not save: '+(e.code||e.message)); }
 }
 
