@@ -1464,7 +1464,7 @@ paint();
   try{
     fb.onSnapshot(fb.collection(fb.db,'trials'),snap=>{
       HELD.clear(); snap.forEach(d=>{ const v=d.data();
-        if(v&&v.slot&&v.status!=='declined') HELD.add(v.slot); });
+        if(v&&v.slot&&v.status!=='declined'&&v.status!=='cancelled') HELD.add(v.slot); });
       try{ paint(); }catch(e){}
     },err=>console.warn('slot holds off:',err.message));
 

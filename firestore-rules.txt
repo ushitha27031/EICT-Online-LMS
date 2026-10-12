@@ -132,7 +132,16 @@ service cloud.firestore {
     match /trials/{id} {
       allow read: if true;
       allow create: if true;
-      allow update, delete, list: if owner();
+      allow delete, list: if owner();
+      // You may change anything. The student who booked it in the advisor chat
+      // may move it to another hour or cancel it — recognised by the guest
+      // (anonymous) sign-in the chat made when they booked, so nobody else can.
+      allow update: if owner() || (request.auth != null
+                    && resource.data.uid == request.auth.uid
+                    && request.resource.data.uid == request.auth.uid
+                    && request.resource.data.diff(resource.data).affectedKeys()
+                         .hasOnly(['slot','date','status','changedAt'])
+                    && request.resource.data.status in ['pending','cancelled']);
     }
 
     // Study plan progress, kept against the student number. Tick boxes only —

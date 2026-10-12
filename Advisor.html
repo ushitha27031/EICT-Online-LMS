@@ -216,6 +216,15 @@ si:{tag:'ඔයාගේ ICT පන්ති මඟපෙන්වන්නා',
  resMore:n=>`… තව ${n}ක්`,
  notesT:'ළමයින්ගේ අතින්ම ලියපු comments ✍️ (ලොකුවට බලන්න tap කරන්න)',
  proofAfter:'ඊළඟ නම ඔයාගේ වෙන්න පුළුවන් 😉',
+ myTrial:s=>`🗓 මගේ trial එක (${s})`,
+ myT:'ඔයාගේ trial class එක 👇',myStatus:{pending:'සර් තහවුරු කරනකන් ඉන්නවා ⏳',confirmed:'සර් තහවුරු කළා ✅',approved:'සර් තහවුරු කළා ✅',declined:'සර්ට ඒ වෙලාවට බෑ — වෙන වෙලාවක් තෝරන්න',cancelled:'Cancel කරලා'},
+ chgBtn:'🔁 වෙලාව වෙනස් කරන්න',cnlBtn:'✖️ Cancel කරන්න',keepBtn:'👍 එහෙමම තියන්න',
+ chgPick:'අලුත් වෙලාවක් තෝරන්න 👇',cnlSure:'ඇත්තටම trial එක cancel කරන්නද?',cnlYes:'ඔව්, cancel කරන්න',
+ chgDone:s=>`හරි! 🔁 ඔයාගේ trial එක ${s} ට මාරු කළා. සර්ට දැනුම් දුන්නා — සර් ආයෙ confirm කරයි.`,
+ cnlDone:'Trial එක cancel කළා. සර්ට දැනුම් දුන්නා. ඕන වෙලාවක ආයෙ book කරන්න පුළුවන් 😊',
+ manageFail:'වෙනස් කරන්න බැරි වුණා 😕 සර්ට WhatsApp කරලා කියන්න.',
+ manageNote:'💡 මේ trial එක වෙනස් කරන්න හරි cancel කරන්න හරි, මේ phone එකෙන්ම chat එකට ඇවිත් "මගේ trial එක" ඔබන්න.',
+ sameSlot:'ඒ තියෙන්නෙ දැනට ඔයාගේ වෙලාවමයි 🙂',
  mWhat:'📚 අපේ පන්තියේ තියෙන දේවල්',mReg:'📝 දැන්ම Register වෙන්න',qReg:'📝 Register වෙන්න',
  whatIntro:n=>`${n?n+', ':''}අපේ පන්තියට ආවොත් ඔයාට ලැබෙන දේවල් මෙන්න ✨`,
  feats:[
@@ -307,6 +316,15 @@ en:{tag:'Your ICT class guide',headline:'Let’s find the right A/L ICT class fo
  resMore:n=>`… and ${n} more`,
  notesT:'Comments in our students’ own handwriting ✍️ (tap to read)',
  proofAfter:'The next name could be yours 😉',
+ myTrial:s=>`🗓 My trial (${s})`,
+ myT:'Your trial class 👇',myStatus:{pending:'Waiting for sir to confirm ⏳',confirmed:'Confirmed by sir ✅',approved:'Confirmed by sir ✅',declined:'Sir can’t do that time — please pick another',cancelled:'Cancelled'},
+ chgBtn:'🔁 Change the time',cnlBtn:'✖️ Cancel it',keepBtn:'👍 Keep it',
+ chgPick:'Pick a new time 👇',cnlSure:'Do you really want to cancel your trial?',cnlYes:'Yes, cancel it',
+ chgDone:s=>`Done! 🔁 Your trial is moved to ${s}. Sir has been told and will confirm again.`,
+ cnlDone:'Your trial is cancelled and sir has been told. You can book again any time 😊',
+ manageFail:'Could not change it 😕 Please tell sir on WhatsApp.',
+ manageNote:'💡 To change or cancel this trial later, open this chat on this same phone and tap “My trial”.',
+ sameSlot:'That’s already your time 🙂',
  mWhat:'📚 What you get',mReg:'📝 Register now',qReg:'📝 Register',
  whatIntro:n=>`${n?n+', h':'H'}ere’s what you get in our class ✨`,
  feats:[
@@ -341,7 +359,7 @@ en:{tag:'Your ICT class guide',headline:'Let’s find the right A/L ICT class fo
  away:'(sir is away)',today:'Today',tomorrow:'Tomorrow'}};
 
 /* ---------------- state ---------------- */
-let lang='si', medium='', st={}, LIVE={config:null,held:new Set(),samples:[],latest:{}};
+let lang='si', medium='', st={}, LIVE={config:null,held:new Set(),samples:[],latest:{},trials:{}};
 const t=k=>copy[lang][k];
 const esc=s=>String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 
@@ -363,7 +381,7 @@ const ready=(async()=>{
   await Promise.all([
     fsGet('site/config').then(d=>{ LIVE.config=JSON.parse(d.fields.json.stringValue); }).catch(()=>{}),
     fsGet('trials?pageSize=300').then(d=>{ (d.documents||[]).forEach(x=>{ const v=Object.fromEntries(Object.entries(x.fields||{}).map(([a,b])=>[a,fsVal(b)]));
-      if(v.slot&&v.status!=='declined') LIVE.held.add(v.slot); }); }).catch(()=>{}),
+      LIVE.trials[x.name.split('/').pop()]=v; if(v.slot&&v.status!=='declined'&&v.status!=='cancelled') LIVE.held.add(v.slot); }); }).catch(()=>{}),
     fsGet('site/samples').then(d=>{ LIVE.samples=(d.fields&&d.fields.list?fsVal(d.fields.list):[])||[]; LIVE.latest=(d.fields&&d.fields.latest?fsVal(d.fields.latest):{})||{}; }).catch(()=>{})
   ]);
   const w=LIVE.config&&LIVE.config.contact&&LIVE.config.contact.whatsapp;
@@ -421,7 +439,8 @@ function start(){
 function pickMedium(m){ medium=m; lang=m; $('language').value=m; paintStatic(); say(t('askName')); ask(t('namePh'),n=>{ st.name=n; if(n) say(t('hello')(n)); menu(); },{skip:true}); }
 function menu(again){
   say(again?t('menuAgain'):t('menuQ')(st.name||''));
-  buttons([[t('mTrial'),trial,true],[t('mProof'),proof],[t('mWhat'),what],[t('mTimes'),times],[t('mNow'),nowLesson],[t('mSample'),sample],[t('mFees'),fees],[t('mReg'),register],[t('mFind'),findYear],[t('mFaq'),faq],[t('mContact'),contact]]);
+  const mt=myTrial();
+  buttons((mt?[[t('myTrial')(mt.slot),manage,true]]:[]).concat([[t('mTrial'),trial,true],[t('mProof'),proof],[t('mWhat'),what],[t('mTimes'),times],[t('mNow'),nowLesson],[t('mSample'),sample],[t('mFees'),fees],[t('mReg'),register],[t('mFind'),findYear],[t('mFaq'),faq],[t('mContact'),contact]]));
 }
 const backBtn=()=>[t('back'),()=>menu(true)];
 
@@ -471,15 +490,16 @@ const iso=d=>d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+Stri
 const slotKey=(d,tm)=>`${String(d).trim()} · ${String(tm).trim()}`;
 function dayLabel(d){ const n=new Date(); n.setHours(0,0,0,0); const diff=Math.round((d-n)/864e5);
   return diff===0?t('today'):diff===1?t('tomorrow'):d.toLocaleDateString(lang==='si'?'si-LK':'en-GB',{day:'numeric',month:'short'}); }
-async function trial(){
+async function trial(changing){
   await ready;
+  if(changing!==true&&myTrial()) return manage();        // one trial at a time — change it instead
   const T=(LIVE.config&&(LIVE.config.trial||LIVE.config.solo))||{};
   const slots=(T.slots&&T.slots.length?T.slots:FALLBACK_TRIAL);
   const away=T.blockedDates||[];
   const free=slots.filter(s=>{ const s0=s.status||(s.closed?'taken':'open'); const d=slotDate(s.day,s.time);
     return s0==='open'&&!LIVE.held.has(slotKey(s.day,s.time))&&!(d&&away.includes(iso(d))); });
   if(!free.length){ say(t('trialNone')); return buttons([[t('mContact'),contact,true],backBtn()]); }
-  say(t('trialIntro'));
+  if(changing!==true) say(t('trialIntro'));
   free.forEach(s=>s._d=slotDate(s.day,s.time));
   free.sort((a,b)=>(a._d||0)-(b._d||0));
   const days=[...new Set(free.map(s=>s.day+'|'+(s._d?iso(s._d):'')))];
@@ -491,7 +511,7 @@ async function trial(){
     st.slot=b.dataset.slot; st.slotDate=b.dataset.date;
     box.querySelectorAll('.chip').forEach(c=>{ c.disabled=true; c.style.opacity=c===b?'1':'.35'; });
     say(b.closest('.sday').querySelector('b').textContent.split('·')[0].trim()+' '+b.textContent,'user');
-    say(t('picked')(st.slot)); trialYear(); });
+    say(t('picked')(st.slot)); st.changing?applyChange():trialYear(); });
   buttons([backBtn()]);
 }
 function trialYear(){ if(st.year){ return trialLesson(); } say(t('yearQ')); buttons([[t('y27'),()=>{st.year='2027';trialLesson();}],[t('y28'),()=>{st.year='2028';trialLesson();}],[t('yOther'),()=>{st.year='Other';trialLesson();}]]); }
@@ -507,13 +527,21 @@ function trialSummary(){
 async function bookTrial(){
   clearActions(); const at=new Date().toISOString();
   const med=medium==='si'?'Sinhala medium':'English medium';
-  let ok=true;
+  let ok=true, managed=false;
+  const rec={name:st.name,whatsapp:st.phone,school:'',type:'one-to-one',slot:st.slot,date:st.slotDate||'',
+      alYear:st.year,lesson:st.lesson,medium:med,kind:'trial',source:'advisor',status:'pending',at};
   try{
     if(!FS()) throw new Error('no firebase');
     await fsAdd('requests',{name:st.name,whatsapp:st.phone,school:'',type:'one-to-one',batch:null,slot:st.slot,fee:'',at,
       note:`Free trial via advisor · ${med} · A/L ${st.year} · ${st.lesson}`});
-    await fsAdd('trials',{name:st.name,whatsapp:st.phone,school:'',type:'one-to-one',slot:st.slot,date:st.slotDate||'',
-      alYear:st.year,lesson:st.lesson,medium:med,kind:'trial',source:'advisor',status:'pending',at});
+    /* signed in anonymously, the trial carries this browser's id, so only
+       this browser can move or cancel it later */
+    try{
+      const A=await anon();
+      const ref=await A.addDoc(A.collection(A.db,'trials'),{...rec,uid:A.uid});
+      saveMyTrial({id:ref.id,slot:st.slot,date:st.slotDate||'',name:st.name,phone:st.phone,lesson:st.lesson,year:st.year,medium:med});
+      LIVE.trials[ref.id]={...rec}; managed=true;
+    }catch(e){ await fsAdd('trials',rec); }
     fsAdd('holds',{slot:st.slot,at}).catch(()=>{});
     LIVE.held.add(st.slot);
   }catch(e){ ok=false; }
@@ -522,6 +550,7 @@ async function bookTrial(){
       message:`${st.name} · ${st.phone}\n${st.slot}${st.slotDate?' ('+st.slotDate+')':''}\nA/L ${st.year} · ${med} · wants: ${st.lesson}`});
     fetch(`https://ntfy.sh/${encodeURIComponent(topic)}/publish?${q}`,{mode:'no-cors'}); }catch(e){}
   say(ok?t('booked')(st.name):t('bookFail'));
+  if(ok&&managed) say(t('manageNote'));
   const msg=`Hello Sir! I booked a free trial class on the EICT website.\nName: ${st.name}\nTime: ${st.slot}${st.slotDate?' ('+st.slotDate+')':''}\nA/L: ${st.year} · ${med}\nLesson: ${st.lesson}`;
   waButtons(msg,[[t('mSample'),sample],backBtn()]);
 }
@@ -674,6 +703,85 @@ async function proof(){
 document.addEventListener('click',e=>{ const b=e.target.closest('[data-lb]');
   if(b){ $('lbImg').src=b.dataset.lb; $('lb').classList.add('on'); return; }
   if(e.target.closest('#lb')) $('lb').classList.remove('on'); });
+
+
+/* ---------- the student's own trial: change the time or cancel ---------- */
+let ANON=null;
+async function anon(){
+  if(ANON) return ANON;
+  const cfg=window.FIREBASE_CONFIG; if(!cfg||!cfg.projectId) throw new Error('no firebase');
+  const {initializeApp,getApps}=await import('https://www.gstatic.com/firebasejs/11.0.2/firebase-app.js');
+  const fs=await import('https://www.gstatic.com/firebasejs/11.0.2/firebase-firestore.js');
+  const au=await import('https://www.gstatic.com/firebasejs/11.0.2/firebase-auth.js');
+  /* its own app name, so this guest sign-in never touches a student's class-page sign-in */
+  const app=(getApps().find(a=>a.name==='trial'))||initializeApp(cfg,'trial');
+  const auth=au.getAuth(app);
+  await new Promise(r=>{ const u=au.onAuthStateChanged(auth,()=>{ u(); r(); }); });
+  if(!auth.currentUser) await au.signInAnonymously(auth);
+  return ANON={db:fs.getFirestore(app),uid:auth.currentUser.uid,...fs};
+}
+const MYKEY='eict-my-trial';
+function saveMyTrial(o){ try{ localStorage.setItem(MYKEY,JSON.stringify(o)); }catch(e){} }
+function myTrial(){
+  try{ const o=JSON.parse(localStorage.getItem(MYKEY)||'null'); if(!o||!o.id) return null;
+    if(o.date&&o.date<iso(new Date())){ localStorage.removeItem(MYKEY); return null; }   // already happened
+    const live=LIVE.trials[o.id]; if(live&&live.status==='cancelled'){ localStorage.removeItem(MYKEY); return null; }
+    return o; }catch(e){ return null; }
+}
+async function trialNote(subject,body){
+  const f=window.EICT_ALERTS||{}, topic=(f.ntfyTopic||'').trim();
+  if(topic) try{ fetch(`https://ntfy.sh/${encodeURIComponent(topic)}/publish?`+new URLSearchParams({title:'EICT - '+subject,priority:'high',tags:'bell',message:body}),{mode:'no-cors'}); }catch(e){}
+}
+async function manage(){
+  await ready;
+  const o=myTrial(); if(!o) return menu(true);
+  const live=LIVE.trials[o.id]||{}, stt=live.status||'pending';
+  say(t('myT'));
+  say(`<div class="sum"><span>${esc(t('sumSlot'))}</span><b>${esc(live.slot||o.slot)}${(live.date||o.date)?' ('+esc(live.date||o.date)+')':''}</b>
+    <span>${esc(t('sumLesson'))}</span><b>${esc(o.lesson)}</b><span>${esc(t('sumName'))}</span><b>${esc(o.name)}</b>
+    <span>Status</span><b>${esc(t('myStatus')[stt]||stt)}</b></div>`,'bot',true);
+  buttons([[t('chgBtn'),changeTrial,true],[t('cnlBtn'),cancelTrial],[t('keepBtn'),()=>menu(true)]]);
+}
+async function updateMyTrial(o,patch){
+  const A=await anon();
+  await A.updateDoc(A.doc(A.db,'trials',o.id),{...patch,changedAt:new Date().toISOString()});
+}
+async function changeTrial(){
+  const o=myTrial(); if(!o) return menu(true);
+  st.changing=o; st.slot=null;
+  say(t('chgPick'));
+  await trial(true);
+}
+async function applyChange(){
+  const o=st.changing; st.changing=null;
+  if(st.slot===o.slot&&st.slotDate===o.date){ say(t('sameSlot')); return manage(); }
+  try{
+    await updateMyTrial(o,{slot:st.slot,date:st.slotDate||'',status:'pending'});
+    LIVE.held.delete(o.slot); LIVE.held.add(st.slot);
+    LIVE.trials[o.id]={...(LIVE.trials[o.id]||{}),slot:st.slot,date:st.slotDate||'',status:'pending'};
+    fsAdd('requests',{name:o.name,whatsapp:o.phone,school:'',type:'one-to-one',batch:null,slot:st.slot,fee:'',at:new Date().toISOString(),
+      note:`Trial MOVED by the student · was ${o.slot}${o.date?' ('+o.date+')':''} → now ${st.slot}${st.slotDate?' ('+st.slotDate+')':''}`}).catch(()=>{});
+    trialNote('Trial moved',`${o.name} · ${o.phone}\nwas ${o.slot}${o.date?' ('+o.date+')':''}\nnow ${st.slot}${st.slotDate?' ('+st.slotDate+')':''}`);
+    saveMyTrial({...o,slot:st.slot,date:st.slotDate||''});
+    say(t('chgDone')(st.slot+(st.slotDate?' ('+st.slotDate+')':'')));
+    waButtons(`Hello Sir! I moved my free trial class.\nName: ${o.name}\nWas: ${o.slot}${o.date?' ('+o.date+')':''}\nNow: ${st.slot}${st.slotDate?' ('+st.slotDate+')':''}`,[backBtn()]);
+  }catch(e){ say(t('manageFail')); waButtons(`Hello Sir! Please move my free trial class.\nName: ${o.name}\nFrom: ${o.slot}\nTo: ${st.slot}`,[backBtn()]); }
+}
+function cancelTrial(){
+  const o=myTrial(); if(!o) return menu(true);
+  say(t('cnlSure'));
+  buttons([[t('cnlYes'),async()=>{
+    try{
+      await updateMyTrial(o,{status:'cancelled'});
+      LIVE.held.delete(o.slot); LIVE.trials[o.id]={...(LIVE.trials[o.id]||{}),status:'cancelled'};
+      fsAdd('requests',{name:o.name,whatsapp:o.phone,school:'',type:'one-to-one',batch:null,slot:o.slot,fee:'',at:new Date().toISOString(),
+        note:`Trial CANCELLED by the student · ${o.slot}${o.date?' ('+o.date+')':''}`}).catch(()=>{});
+      trialNote('Trial cancelled',`${o.name} · ${o.phone}\n${o.slot}${o.date?' ('+o.date+')':''}`);
+      try{ localStorage.removeItem(MYKEY); }catch(e){}
+      say(t('cnlDone')); buttons([[t('mTrial'),trial,true],backBtn()]);
+    }catch(e){ say(t('manageFail')); waButtons(`Hello Sir! Please cancel my free trial class.\nName: ${o.name}\nTime: ${o.slot}${o.date?' ('+o.date+')':''}`,[backBtn()]); }
+  },true],[t('keepBtn'),()=>menu(true)]]);
+}
 
 /* fees, recommendation, questions, contact */
 function fees(){ say(t('fees')); buttons([[t('mFind'),findYear,true],[t('mTrial'),trial],backBtn()]); }
