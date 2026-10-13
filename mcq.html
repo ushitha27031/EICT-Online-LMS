@@ -341,12 +341,16 @@ $('#who').addEventListener('input',e=>{ try{ localStorage.setItem('eict-mcq-name
 
 /* ---------- one attempt ---------- */
 let R=null, timer=null;
+/* this attempt's questions, in the shuffled order (older saved papers have no order) */
+const paperQs=()=>{ const all=LEVELS[R.level].questions; return R.qs?R.qs.map(i=>all[i]):all; };
 function shuffled(n){ const a=[...Array(n).keys()]; for(let i=n-1;i>0;i--){ const j=Math.floor(Math.random()*(i+1)); [a[i],a[j]]=[a[j],a[i]]; } return a; }
 function start(level){
   const L=LEVELS[level];
   R={ level, startedAt:Date.now(), endsAt:Date.now()+L.minutes*60000, cur:0,
-      order:L.questions.map(q=>q.fixed?[0,1,2,3,4]:shuffled(5)),   // shown position -> original answer index
+      qs:shuffled(L.questions.length),                              // question order for this attempt
+      order:null,                                                   // shown position -> original answer index
       ans:Array(L.questions.length).fill(null), flags:Array(L.questions.length).fill(false), done:false };
+  R.order=paperQs().map(q=>q.fixed?[0,1,2,3,4]:shuffled(5));
   store.set(KEY,R); openExam();
 }
 function openExam(){
@@ -369,7 +373,7 @@ function tick(){
   if(left<=0){ clearInterval(timer); toast('Time is up — your paper has been handed in.'); finish(); }
 }
 function paintQ(){
-  const L=LEVELS[R.level], Q=L.questions[R.cur], ord=R.order[R.cur];
+  const L=LEVELS[R.level], Q=paperQs()[R.cur], ord=R.order[R.cur];
   $('#qNum').textContent=R.cur+1;
   $('#qOf').textContent=`Question ${R.cur+1} of ${L.questions.length}`;
   $('#qText').textContent=Q.text;
@@ -419,7 +423,7 @@ function askHandIn(){
 function finish(){
   if(!R||R.done) return;
   clearInterval(timer); R.done=true; R.finishedAt=Math.min(Date.now(),R.endsAt);
-  const L=LEVELS[R.level], Q=L.questions;
+  const L=LEVELS[R.level], Q=paperQs();
   const right=Q.filter((q,i)=>R.ans[i]===q.ans-1).length;
   R.score=Math.round(right/Q.length*100);
   const H=store.get(HIST)||{}; (H[R.level]=H[R.level]||[]).push({score:R.score,at:new Date().toISOString()});
@@ -427,7 +431,7 @@ function finish(){
   results();
 }
 function results(){
-  const L=LEVELS[R.level], Q=L.questions, n=Q.length;
+  const L=LEVELS[R.level], Q=paperQs(), n=Q.length;
   const right=Q.filter((q,i)=>R.ans[i]===q.ans-1).length, blank=R.ans.filter(x=>x===null).length;
   const [g,gName,gCol]=gradeOf(R.score);
   const name=(localStorage.getItem('eict-mcq-name')||'').trim();
@@ -462,7 +466,7 @@ function results(){
   paintReview('all');
 }
 function paintReview(f){
-  const L=LEVELS[R.level], Q=L.questions;
+  const L=LEVELS[R.level], Q=paperQs();
   $('#review').innerHTML=Q.map((q,i)=>{
     const a=R.ans[i], ok=a===q.ans-1, st=a===null?'blank':ok?'right':'wrong';
     if(f!=='all'&&f!==st) return '';
