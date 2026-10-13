@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="si">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex">
+<title>Past Paper Bank</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Sinhala:wght@400;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root{--ink:#070B1C;--panel:#0e1534;--wire:rgba(142,164,255,.18);--paper:#E9EDFF;--dim:#9AA3D6;--gold:#FFC24B;--ok:#35E08F;--bad:#FF2E43;--blue:#5B8CFF}
+*{box-sizing:border-box}
+body{margin:0;background:var(--ink);color:var(--paper);font:15px/1.7 'Noto Sans Sinhala',system-ui,sans-serif}
+.wrap{max-width:980px;margin:0 auto;padding:18px 16px 60px}
+h1{font-size:24px;margin:0 0 4px}
+.sub{color:var(--dim);margin:0 0 14px;font-size:14px}
+.bar{position:sticky;top:0;z-index:5;background:rgba(7,11,28,.94);backdrop-filter:blur(6px);padding:10px 0;border-bottom:1px solid var(--wire);display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+select,button,label.t{background:var(--panel);color:var(--paper);border:1px solid var(--wire);border-radius:10px;padding:8px 10px;font:inherit;font-size:14px}
+label.t{display:inline-flex;gap:6px;align-items:center;cursor:pointer}
+.stats{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:8px;margin:14px 0}
+.stats button{text-align:left;cursor:pointer}
+.stats button b{display:block;font-size:20px;color:var(--gold)}
+.stats button.on{border-color:var(--gold)}
+.q{background:var(--panel);border:1px solid var(--wire);border-radius:14px;padding:14px 16px;margin:12px 0}
+.q.chk{border-color:rgba(255,194,75,.6)}
+.meta{display:flex;flex-wrap:wrap;gap:6px;font-size:12px;margin-bottom:6px}
+.meta span{padding:2px 8px;border-radius:99px;background:rgba(91,140,255,.15);color:#c9d4ff}
+.meta .w{background:rgba(255,194,75,.18);color:var(--gold)}
+.text{white-space:pre-line}
+.ctx{white-space:pre-line;background:rgba(255,255,255,.04);border-left:3px solid var(--blue);padding:8px 10px;border-radius:8px;margin-bottom:8px;font-size:14px}
+img{max-width:100%;background:#fff;border-radius:8px;margin:8px 0;display:block}
+pre{background:#050816;border:1px solid var(--wire);border-radius:10px;padding:10px;overflow:auto;font:13px/1.5 'IBM Plex Mono',monospace;white-space:pre}
+ol{margin:8px 0 0;padding-left:0;list-style:none}
+ol li{white-space:pre-line;padding:6px 10px;border-radius:9px;margin:4px 0;border:1px solid transparent}
+ol li.ans{border-color:var(--ok);background:rgba(53,224,143,.1)}
+ol li.alt{border-color:var(--gold);background:rgba(255,194,75,.08)}
+ol li i{font-style:normal;color:var(--dim);margin-right:6px}
+.why{margin-top:8px;font-size:14px;color:#d6dcff;background:rgba(53,224,143,.06);border-radius:9px;padding:8px 10px}
+.why b{color:var(--ok)}
+.empty{color:var(--dim);text-align:center;padding:40px}
+@media(max-width:560px){.bar{position:static}}
+@media print{.bar,.stats{display:none}body{background:#fff;color:#000}.q{border-color:#999;background:#fff;break-inside:avoid}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>A/L ICT Past Paper Bank — සිංහල මාධ්‍යය</h1>
+  <p class="sub" id="sub"></p>
+  <div class="bar">
+    <select id="fu"><option value="">සියලු පාඩම්</option></select>
+    <select id="fy"><option value="">සියලු වසර</option></select>
+    <label class="t"><input type="checkbox" id="fc"> ⚠ පරීක්ෂා කළ යුතු ඒවා පමණක්</label>
+    <label class="t"><input type="checkbox" id="fa" checked> පිළිතුරු පෙන්වන්න</label>
+  </div>
+  <div class="stats" id="stats"></div>
+  <div id="list"></div>
+</div>
+<script src="../mcq-bank-si.js"></script>
+<script src="pp-si-2022.js"></script>
+<script src="pp-si-2023.js"></script>
+<script src="pp-si-2024.js"></script>
+<script src="pp-si-2025.js"></script>
+<script>
+const UNITS=(window.EICT_MCQ_SI&&window.EICT_MCQ_SI.units)||{};
+const Q=(window.EICT_PP&&window.EICT_PP.si)||[];
+const ROOT=document.currentScript.dataset.root||'../';
+const esc=s=>String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const $=s=>document.querySelector(s);
+const years=[...new Set(Q.map(q=>q.y))].sort();
+$('#sub').textContent=`ප්‍රශ්න ${Q.length} · වසර ${years.join(', ')} · පිළිතුරු සහ පැහැදිලි කිරීම් සහිතයි. ⚠ ලකුණ ඇති ඒවා marking scheme එක සමග එක පාරක් බලන්න.`;
+Object.keys(UNITS).forEach(u=>$('#fu').insertAdjacentHTML('beforeend',`<option value="${u}">${u}. ${esc(UNITS[u])}</option>`));
+years.forEach(y=>$('#fy').insertAdjacentHTML('beforeend',`<option>${y}</option>`));
+function stats(){
+  $('#stats').innerHTML=Object.keys(UNITS).map(u=>{const n=Q.filter(q=>q.u==u).length;
+    return `<button data-u="${u}" class="${$('#fu').value==u?'on':''}"><b>${n}</b>${u}. ${esc(UNITS[u])}</button>`;}).join('');
+}
+function src(p){ return /^data:/.test(p)?p:ROOT+p; }
+function paint(){
+  const fu=$('#fu').value, fy=$('#fy').value, fc=$('#fc').checked, fa=$('#fa').checked;
+  const L=Q.filter(q=>(!fu||q.u==fu)&&(!fy||q.y==fy)&&(!fc||q.chk)).sort((a,b)=>a.u-b.u||a.y-b.y||a.n-b.n);
+  $('#list').innerHTML=L.map(q=>`<div class="q ${q.chk?'chk':''}">
+    <div class="meta"><span>${q.y} · Q${q.n}</span><span>${q.u}. ${esc(UNITS[q.u])}</span><span>${esc(q.t)}</span>${q.chk?'<span class="w">⚠ පිළිතුර පරීක්ෂා කරන්න</span>':''}${q.edited?'<span class="w">✎ සංස්කරණය කළා</span>':''}${q.fixed?'<span>වරණ පිළිවෙළ වෙනස් නොකෙරේ</span>':''}</div>
+    ${q.ctx?`<div class="ctx">${esc(q.ctx.text)}${q.ctx.code?`<pre>${esc(q.ctx.code)}</pre>`:''}${q.ctx.img?`<img src="${src(q.ctx.img)}" alt="">`:''}</div>`:''}
+    <div class="text">${esc(q.text)}</div>
+    ${q.img?`<img src="${src(q.img)}" alt="">`:''}${q.code?`<pre>${esc(q.code)}</pre>`:''}
+    <ol>${q.opts.map((o,i)=>`<li class="${fa&&i===q.ans-1?'ans':fa&&q.alt&&q.alt.includes(i+1)?'alt':''}"><i>(${i+1})</i>${esc(o)}</li>`).join('')}</ol>
+    ${fa?`<div class="why"><b>පිළිතුර (${q.ans})${q.alt?' / ('+q.alt.join(', ')+')':''}:</b> ${esc(q.why)}</div>`:''}
+  </div>`).join('')||'<p class="empty">මෙහි ප්‍රශ්න නැත.</p>';
+  stats();
+}
+['#fu','#fy','#fc','#fa'].forEach(s=>$(s).addEventListener('change',paint));
+$('#stats').addEventListener('click',e=>{const b=e.target.closest('[data-u]'); if(!b) return; $('#fu').value=$('#fu').value==b.dataset.u?'':b.dataset.u; paint(); window.scrollTo({top:0,behavior:'smooth'});});
+paint();
+</script>
+</body>
+</html>
