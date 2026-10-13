@@ -12,6 +12,9 @@
 body{margin:0;background:var(--ink);color:var(--paper);font:15px/1.7 'Noto Sans Sinhala',system-ui,sans-serif}
 .wrap{max-width:980px;margin:0 auto;padding:18px 16px 60px}
 h1{font-size:24px;margin:0 0 4px}
+.med{display:inline-flex;gap:4px;padding:4px;border-radius:12px;background:var(--panel);border:1px solid var(--wire);margin:4px 0 10px}
+.med button{border:0;background:none;color:var(--dim);padding:7px 14px;border-radius:9px;font:inherit;font-size:14px;cursor:pointer}
+.med button.on{background:var(--gold);color:#1a1300;font-weight:600}
 .sub{color:var(--dim);margin:0 0 14px;font-size:14px}
 .bar{position:sticky;top:0;z-index:5;background:rgba(7,11,28,.94);backdrop-filter:blur(6px);padding:10px 0;border-bottom:1px solid var(--wire);display:flex;flex-wrap:wrap;gap:8px;align-items:center}
 select,button,label.t{background:var(--panel);color:var(--paper);border:1px solid var(--wire);border-radius:10px;padding:8px 10px;font:inherit;font-size:14px}
@@ -43,7 +46,8 @@ ol li i{font-style:normal;color:var(--dim);margin-right:6px}
 </head>
 <body>
 <div class="wrap">
-  <h1>A/L ICT Past Paper Bank — සිංහල මාධ්‍යය</h1>
+  <h1 id="h1">A/L ICT Past Paper Bank</h1>
+  <div class="med" id="med"><button data-m="si">සිංහල මාධ්‍යය</button><button data-m="en">English medium</button></div>
   <p class="sub" id="sub"></p>
   <div class="bar">
     <select id="fu"><option value="">සියලු පාඩම්</option></select>
@@ -54,6 +58,7 @@ ol li i{font-style:normal;color:var(--dim);margin-right:6px}
   <div class="stats" id="stats"></div>
   <div id="list"></div>
 </div>
+<script src="../mcq-bank.js"></script>
 <script src="../mcq-bank-si.js"></script>
 <script src="pp-si-2020.js"></script>
 <script src="pp-si-2021.js"></script>
@@ -62,37 +67,58 @@ ol li i{font-style:normal;color:var(--dim);margin-right:6px}
 <script src="pp-si-2024.js"></script>
 <script src="pp-si-2025.js"></script>
 <script src="pp-si-2026.js"></script>
+<script src="pp-en-2020.js"></script>
+<script src="pp-en-2021.js"></script>
+<script src="pp-en-2022.js"></script>
+<script src="pp-en-2023.js"></script>
+<script src="pp-en-2024.js"></script>
+<script src="pp-en-2025.js"></script>
 <script>
-const UNITS=(window.EICT_MCQ_SI&&window.EICT_MCQ_SI.units)||{};
-const Q=(window.EICT_PP&&window.EICT_PP.si)||[];
+let MED=new URLSearchParams(location.search).get('m')==='en'?'en':'si';
+try{ if(!new URLSearchParams(location.search).get('m')&&localStorage.getItem('pp-review-m')==='en') MED='en'; }catch(e){}
+let UNITS={}, Q=[];
 const ROOT=document.currentScript.dataset.root||'../';
 const esc=s=>String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 const $=s=>document.querySelector(s);
-const years=[...new Set(Q.map(q=>q.y))].sort();
-$('#sub').textContent=`ප්‍රශ්න ${Q.length} · වසර ${years.join(', ')} · පිළිතුරු සහ පැහැදිලි කිරීම් සහිතයි. ⚠ ලකුණ ඇති ඒවා marking scheme එක සමග එක පාරක් බලන්න.`;
-Object.keys(UNITS).forEach(u=>$('#fu').insertAdjacentHTML('beforeend',`<option value="${u}">${u}. ${esc(UNITS[u])}</option>`));
-years.forEach(y=>$('#fy').insertAdjacentHTML('beforeend',`<option>${y}</option>`));
+const TX={si:{all:'සියලු පාඩම්',ally:'සියලු වසර',chk:'⚠ පරීක්ෂා කළ යුතු ඒවා පමණක්',ans:'පිළිතුරු පෙන්වන්න',warn:'⚠ පිළිතුර පරීක්ෂා කරන්න',ed:'✎ සංස්කරණය කළා',fx:'වරණ පිළිවෙළ වෙනස් නොකෙරේ',a:'පිළිතුර',none:'මෙහි ප්‍රශ්න නැත.',
+  sub:(n,y)=>`ප්‍රශ්න ${n} · වසර ${y} · පිළිතුරු සහ පැහැදිලි කිරීම් සහිතයි. ⚠ ලකුණ ඇති ඒවා marking scheme එක සමග එක පාරක් බලන්න.`},
+ en:{all:'All lessons',ally:'All years',chk:'⚠ To check only',ans:'Show answers',warn:'⚠ Check the answer',ed:'✎ Edited',fx:'Option order kept',a:'Answer',none:'No questions here.',
+  sub:(n,y)=>`${n} questions · years ${y} · with answers and explanations. Check the ⚠ ones against the marking scheme.`}};
+function setMed(m){
+  MED=m; try{ localStorage.setItem('pp-review-m',m); }catch(e){}
+  UNITS=((m==='en'?window.EICT_MCQ:window.EICT_MCQ_SI)||{}).units||{};
+  Q=(window.EICT_PP&&window.EICT_PP[m])||[];
+  const T=TX[m], years=[...new Set(Q.map(q=>q.y))].sort();
+  document.documentElement.lang=m;
+  $('#sub').textContent=T.sub(Q.length,years.join(', '));
+  $('#fu').innerHTML=`<option value="">${T.all}</option>`+Object.keys(UNITS).map(u=>`<option value="${u}">${u}. ${esc(UNITS[u])}</option>`).join('');
+  $('#fy').innerHTML=`<option value="">${T.ally}</option>`+years.map(y=>`<option>${y}</option>`).join('');
+  $('#fc').nextSibling.textContent=' '+T.chk; $('#fa').nextSibling.textContent=' '+T.ans;
+  document.querySelectorAll('#med button').forEach(b=>b.classList.toggle('on',b.dataset.m===m));
+  paint();
+}
+$('#med').addEventListener('click',e=>{const b=e.target.closest('[data-m]'); if(b) setMed(b.dataset.m);});
 function stats(){
   $('#stats').innerHTML=Object.keys(UNITS).map(u=>{const n=Q.filter(q=>q.u==u).length;
     return `<button data-u="${u}" class="${$('#fu').value==u?'on':''}"><b>${n}</b>${u}. ${esc(UNITS[u])}</button>`;}).join('');
 }
-function src(p){ return /^data:/.test(p)?p:ROOT+p; }
+function src(p){ return (window.__IMG&&window.__IMG[p])||(/^data:/.test(p)?p:ROOT+p); }
 function paint(){
   const fu=$('#fu').value, fy=$('#fy').value, fc=$('#fc').checked, fa=$('#fa').checked;
   const L=Q.filter(q=>(!fu||q.u==fu)&&(!fy||q.y==fy)&&(!fc||q.chk)).sort((a,b)=>a.u-b.u||a.y-b.y||a.n-b.n);
   $('#list').innerHTML=L.map(q=>`<div class="q ${q.chk?'chk':''}">
-    <div class="meta"><span>${q.y} · Q${q.n}</span><span>${q.u}. ${esc(UNITS[q.u])}</span><span>${esc(q.t)}</span>${q.chk?'<span class="w">⚠ පිළිතුර පරීක්ෂා කරන්න</span>':''}${q.edited?'<span class="w">✎ සංස්කරණය කළා</span>':''}${q.fixed?'<span>වරණ පිළිවෙළ වෙනස් නොකෙරේ</span>':''}</div>
+    <div class="meta"><span>${q.y} · Q${q.n}</span><span>${q.u}. ${esc(UNITS[q.u])}</span><span>${esc(q.t)}</span>${q.chk?`<span class="w">${TX[MED].warn}</span>`:''}${q.edited?`<span class="w">${TX[MED].ed}</span>`:''}${q.fixed?`<span>${TX[MED].fx}</span>`:''}</div>
     ${q.ctx?`<div class="ctx">${esc(q.ctx.text)}${q.ctx.code?`<pre>${esc(q.ctx.code)}</pre>`:''}${q.ctx.img?`<img src="${src(q.ctx.img)}" alt="">`:''}</div>`:''}
     <div class="text">${esc(q.text)}</div>
     ${q.img?`<img src="${src(q.img)}" alt="">`:''}${q.code?`<pre>${esc(q.code)}</pre>`:''}
     <ol>${q.opts.map((o,i)=>`<li class="${fa&&i===q.ans-1?'ans':fa&&q.alt&&q.alt.includes(i+1)?'alt':''}"><i>(${i+1})</i>${esc(o)}</li>`).join('')}</ol>
-    ${fa?`<div class="why"><b>පිළිතුර (${q.ans})${q.alt?' / ('+q.alt.join(', ')+')':''}:</b> ${esc(q.why)}</div>`:''}
-  </div>`).join('')||'<p class="empty">මෙහි ප්‍රශ්න නැත.</p>';
+    ${fa?`<div class="why"><b>${TX[MED].a} (${q.ans})${q.alt?' / ('+q.alt.join(', ')+')':''}:</b> ${esc(q.why)}</div>`:''}
+  </div>`).join('')||`<p class="empty">${TX[MED].none}</p>`;
   stats();
 }
 ['#fu','#fy','#fc','#fa'].forEach(s=>$(s).addEventListener('change',paint));
 $('#stats').addEventListener('click',e=>{const b=e.target.closest('[data-u]'); if(!b) return; $('#fu').value=$('#fu').value==b.dataset.u?'':b.dataset.u; paint(); window.scrollTo({top:0,behavior:'smooth'});});
-paint();
+setMed(MED);
 </script>
 </body>
 </html>
