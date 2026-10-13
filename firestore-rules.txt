@@ -280,5 +280,91 @@ service cloud.firestore {
                     && step('src_instagram')
                     && step('src_other');
     }
+
+    // ---------- Weekly MCQ quest (quest/) ----------
+    // The weeks: title, batches, open and close times. Signed-in students read.
+    match /questWeeks/{wk} {
+      allow read: if request.auth != null;
+      allow write: if owner();
+
+      // One attempt per student per week. It can only be started while the
+      // week is open and only by a student of a batch the week is set for.
+      // Answers are saved as the student goes and freeze when they finish,
+      // or (minutes + 2) after the start, whichever comes first.
+      match /attempts/{uid} {
+        function wkDoc() {
+          return get(/databases/$(database)/documents/questWeeks/$(wk)).data;
+        }
+        function mine() {
+          return get(/databases/$(database)/documents/questWeeks/$(wk)/attempts/$(request.auth.uid)).data;
+        }
+        function over(a) {
+          return a.done == true
+                 || request.time > a.startedAt + duration.value(wkDoc().minutes + 2, 'm');
+        }
+        allow create: if request.auth != null && request.auth.uid == uid
+                      && request.resource.data.keys().hasOnly(['uid','code','medium','startedAt','answers','done'])
+                      && request.resource.data.uid == uid
+                      && request.resource.data.startedAt == request.time
+                      && request.resource.data.done == false
+                      && request.resource.data.answers is list
+                      && request.resource.data.answers.size() == 20
+                      && meDoc().batch in wkDoc().batches
+                      && request.time >= wkDoc().openAt
+                      && request.time <= wkDoc().closeAt;
+        allow update: if request.auth != null && request.auth.uid == uid
+                      && !over(resource.data)
+                      && request.resource.data.diff(resource.data).affectedKeys()
+                           .hasOnly(['answers','done','finishedAt','medium'])
+                      && request.resource.data.answers is list
+                      && request.resource.data.answers.size() == 20
+                      && (request.resource.data.done == false
+                          || request.resource.data.finishedAt == request.time);
+        // Your own attempt any time. Everyone's (for the Hall of Fame) once
+        // yours is finished, or once the week has closed.
+        allow read: if owner() || (request.auth != null
+                      && (request.auth.uid == uid
+                          || request.time > wkDoc().closeAt
+                          || over(mine())));
+        allow delete: if owner();
+      }
+    }
+
+    // The 20 questions of a week, without answers. Readable only after the
+    // student has started that week (the clock is already running), or for
+    // practice once the week has closed.
+    match /questSets/{wk} {
+      allow read: if owner() || (request.auth != null
+                    && (exists(/databases/$(database)/documents/questWeeks/$(wk)/attempts/$(request.auth.uid))
+                        || request.time > get(/databases/$(database)/documents/questWeeks/$(wk)).data.closeAt));
+      allow write: if owner();
+    }
+
+    // The answers of a week. Readable once your own attempt is finished or
+    // its time is up, or after the week has closed.
+    match /questKeys/{wk} {
+      function wkDoc() {
+        return get(/databases/$(database)/documents/questWeeks/$(wk)).data;
+      }
+      function mine() {
+        return get(/databases/$(database)/documents/questWeeks/$(wk)/attempts/$(request.auth.uid)).data;
+      }
+      allow read: if owner() || (request.auth != null
+                    && (request.time > wkDoc().closeAt
+                        || mine().done == true
+                        || request.time > mine().startedAt + duration.value(wkDoc().minutes + 2, 'm')));
+      allow write: if owner();
+    }
+
+    // Quest profiles: the nickname shown in the Hall of Fame.
+    match /questProfiles/{uid} {
+      allow read: if request.auth != null;
+      allow create, update: if request.auth != null && request.auth.uid == uid
+                            && request.resource.data.keys().hasOnly(['nick','code','medium','at'])
+                            && request.resource.data.nick is string
+                            && request.resource.data.nick.size() > 0
+                            && request.resource.data.nick.size() <= 24;
+      allow delete: if owner();
+    }
   }
 }
