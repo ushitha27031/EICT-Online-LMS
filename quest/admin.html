@@ -86,19 +86,17 @@ th{color:var(--dim);font-size:12px;text-transform:uppercase;letter-spacing:.5px}
   </section>
 
   <main id="app" class="hide">
-    <div class="tabs"><button data-tab="make" class="on">➕ New week</button><button data-tab="weeks">📅 Weeks &amp; results</button></div>
+    <div class="tabs"><button data-tab="make" class="on">➕ New Quick Quiz</button><button data-tab="weeks">🚀 Launch &amp; results</button></div>
 
-    <!-- ===== make / edit a week ===== -->
+    <!-- ===== make / edit a quick quiz ===== -->
     <section id="tab-make">
       <div class="card">
-        <h2 id="formTitle">1 · The week</h2>
+        <h2 id="formTitle">1 · The quiz</h2>
         <div class="grid">
           <label class="f">Island name<input id="fTitle" maxlength="40" placeholder="Sunny Shores"></label>
-          <label class="f">Opens<input id="fOpen" type="datetime-local"></label>
-          <label class="f">Closes<input id="fClose" type="datetime-local"></label>
           <label class="f">Minutes<input id="fMin" type="number" min="5" max="180" value="40"></label>
         </div>
-        <p class="muted" style="margin:12px 0 6px">Classes that get this week</p>
+        <p class="muted" style="margin:12px 0 6px">Classes that get this quiz</p>
         <div class="row batches" id="fBatch"></div>
         <p class="muted" id="medNote" style="margin:8px 0 0"></p>
       </div>
@@ -108,10 +106,10 @@ th{color:var(--dim);font-size:12px;text-transform:uppercase;letter-spacing:.5px}
         <p class="muted" style="margin-top:-4px">Tick the lessons and sub-topics done in class so far. Numbers show how many questions are left to use.
           <span style="color:#ffe28f">★ New</span> = EICT’s own questions (the other 15%).</p>
         <div class="row" style="margin:8px 0 12px">
-          <button id="bPrev">↺ Lessons from earlier weeks</button>
+          <button id="bPrev">↺ Lessons from earlier quizzes</button>
           <button id="bAll">Tick all</button>
           <button id="bNone">Clear</button>
-          <label class="row muted" style="gap:6px"><input type="checkbox" id="fNoRep" checked> Don’t repeat questions from earlier weeks</label>
+          <label class="row muted" style="gap:6px"><input type="checkbox" id="fNoRep" checked> Don’t repeat questions from earlier quizzes</label>
         </div>
         <div class="tree" id="tree"></div>
       </div>
@@ -133,16 +131,17 @@ th{color:var(--dim);font-size:12px;text-transform:uppercase;letter-spacing:.5px}
       </div>
 
       <div class="sticky">
-        <button class="gold" id="bPub">🚀 Publish week</button>
-        <button id="bReset">New blank week</button>
+        <button class="gold" id="bLaunch">🚀 Save &amp; launch now</button>
+        <button id="bPub">💾 Save (launch later)</button>
+        <button id="bReset">New blank quiz</button>
         <span class="msg" id="pubMsg"></span>
       </div>
     </section>
 
-    <!-- ===== weeks and results ===== -->
+    <!-- ===== quizzes, launching and results ===== -->
     <section id="tab-weeks" class="hide">
       <div class="card">
-        <div class="row" style="justify-content:space-between"><h2 style="margin:0">Weeks</h2><button id="bReload">↻ Refresh</button></div>
+        <div class="row" style="justify-content:space-between"><h2 style="margin:0">Quick Quizzes</h2><button id="bReload">↻ Refresh</button></div>
         <div id="wkList"><p class="muted">Loading…</p></div>
       </div>
       <div class="card hide" id="resCard">
@@ -174,7 +173,8 @@ th{color:var(--dim);font-size:12px;text-transform:uppercase;letter-spacing:.5px}
 /* ============================================================
    MCQ admin for the Island Quest.
    Pick the lessons and sub-topics done in class, make 20 questions
-   (past papers + EICT's own), check them, publish the week.
+   (past papers + EICT's own), check them, then launch the quiz.
+   A launched quiz opens at once for its classes and stays open.
    Writes questWeeks/{wk}, questSets/{wk} (no answers) and
    questKeys/{wk} (answers, readable by a student only after they
    finish). Results come from questWeeks/{wk}/attempts.
@@ -186,9 +186,10 @@ const BATCHES=[{id:'AL-27',label:'2027 A/L · English',media:['en']},{id:'AL-27-
 const THEMES=['Sunny Shores','Jungle Kingdom','Crystal Caverns','Sky Castle','Volcano Valley','Space Station','Ocean Temple','Neon City','Enchanted Forest','Golden Kingdom','Meteor Mountain','Frozen Crystals'];
 const UNITS=(window.EICT_MCQ||{}).units||{};
 const NEW='★ New';
+/* not launched: opens far in the future. Launched: open from that moment until END */
+const FAR=Date.UTC(2099,0,1),DRAFT=new Date(Date.UTC(2099,5,1)),END=new Date(Date.UTC(2100,0,1));
 const ms=t=>t&&t.toMillis?t.toMillis():t instanceof Date?t.getTime():+t||0;
 const pad=n=>String(n).padStart(2,'0');
-const toLocal=d=>{d=new Date(d);return d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate())+'T'+pad(d.getHours())+':'+pad(d.getMinutes());};
 const fmt=t=>new Date(ms(t)).toLocaleString('en-GB',{weekday:'short',day:'numeric',month:'short',hour:'numeric',minute:'2-digit'});
 const rnd=a=>{a=a.slice();for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]];}return a;};
 
@@ -222,7 +223,7 @@ async function boot(){
     if(!u){$('#gate').classList.remove('hide');$('#app').classList.add('hide');$('#outBtn').classList.add('hide');return;}
     if(u.email!==OWNER){$('#gerr').textContent='This page is for the teacher account only.';await FB.signOut(auth);return;}
     $('#gerr').textContent='Loading…';
-    try{await loadWeeks();}catch(e){$('#gerr').textContent='Could not read the weeks: '+(e.code||e.message)+(/permission/.test(e.code||'')?' — publish firestore-rules.txt first.':'');return;}
+    try{await loadWeeks();}catch(e){$('#gerr').textContent='Could not read the quizzes: '+(e.code||e.message)+(/permission/.test(e.code||'')?' — publish firestore-rules.txt first.':'');return;}
     resetForm();
     $('#gerr').textContent='';
     $('#gate').classList.add('hide');$('#app').classList.remove('hide');$('#outBtn').classList.remove('hide');
@@ -242,10 +243,10 @@ async function loadWeeks(){
      cannot see which questions are coming before they start */
   const [s,k]=await Promise.all([FB.getDocs(FB.collection(db,'questWeeks')),FB.getDocs(FB.collection(db,'questKeys'))]);
   const K={};k.forEach(d=>{const x=d.data();K[d.id]={qids:x.qids||[],sel:x.sel||[]};});
-  WEEKS=s.docs.map(d=>({id:d.id,...d.data(),...(K[d.id]||{qids:[],sel:[]})})).sort((a,b)=>ms(a.openAt)-ms(b.openAt));
+  WEEKS=s.docs.map(d=>({id:d.id,...d.data(),...(K[d.id]||{qids:[],sel:[]})})).sort((a,b)=>(ms(a.openAt)>=FAR)-(ms(b.openAt)>=FAR)||ms(a.openAt)-ms(b.openAt)||ms(a.createdAt)-ms(b.createdAt));
   drawWeeks();
 }
-/* every question used by a week other than the one being edited */
+/* every question used by a quiz other than the one being edited */
 const usedIds=()=>new Set(WEEKS.filter(w=>!EDIT||w.id!==EDIT.id).flatMap(w=>w.qids||[]));
 
 /* ---------- tabs ---------- */
@@ -271,11 +272,9 @@ $('#fBatch').onchange=medNote;
 function resetForm(){
   EDIT=null;EDIT_LOCK=false;PICK=[];
   const n=WEEKS.length;
-  $('#formTitle').textContent='1 · The week (Week '+(n+1)+')';
+  $('#formTitle').textContent='1 · Quick Quiz '+(n+1);
   $('#fTitle').value='';$('#fTitle').placeholder=THEMES[n%THEMES.length];
-  const o=new Date();o.setDate(o.getDate()+((7-o.getDay())%7||7));o.setHours(7,0,0,0);   /* next Sunday 7:00 */
-  const c=new Date(o);c.setDate(c.getDate()+6);c.setHours(22,0,0,0);
-  $('#fOpen').value=toLocal(o);$('#fClose').value=toLocal(c);$('#fMin').value=40;
+  $('#fMin').value=40;
   document.querySelectorAll('#fBatch input').forEach(i=>i.checked=false);
   let last=null;try{last=JSON.parse(localStorage.getItem('eict-quest-admin-last')||'null');}catch(e){}
   SEL.clear();(last&&last.sel||[]).forEach(k=>SEL.add(k));
@@ -320,7 +319,7 @@ $('#bAll').onclick=()=>{BANK.forEach(q=>SEL.add(q.u+'|'+q.t));drawTree();};
 $('#bNone').onclick=()=>{SEL.clear();drawTree();};
 $('#bPrev').onclick=()=>{
   const ks=WEEKS.flatMap(w=>w.sel||[]);
-  if(!ks.length){$('#genMsg').textContent='No earlier weeks yet.';return;}
+  if(!ks.length){$('#genMsg').textContent='No earlier quizzes yet.';return;}
   ks.forEach(k=>SEL.add(k));drawTree();
 };
 
@@ -381,22 +380,25 @@ function item(q,id){
   if(q.ctx) o.ctx=clean(q.ctx); if(q.img) o.img=q.img; if(q.code) o.code=q.code; if(q.fixed) o.fixed=true;
   return o;
 }
-$('#bPub').onclick=async()=>{
+const isLive=w=>w&&ms(w.openAt)<FAR&&Date.now()>=ms(w.openAt);
+async function save(launchNow){
   const msg=t=>$('#pubMsg').textContent=t;
-  const bs=batches(),open=new Date($('#fOpen').value),close=new Date($('#fClose').value),minutes=Math.round(+$('#fMin').value||40);
+  const bs=batches(),minutes=Math.round(+$('#fMin').value||40);
   if(!bs.length) return msg('Pick at least one class.');
-  if(isNaN(open)||isNaN(close)||close<=open) return msg('Check the open and close times.');
+  if(minutes<5||minutes>180) return msg('Minutes should be between 5 and 180.');
   if(PICK.length!==20) return msg('Make the 20 questions first.');
   const media=needMedia();
   for(const id of PICK) for(const m of media) if(!BY[id][m]) return msg('Question '+id+' has no '+(m==='en'?'English':'Sinhala')+' version. Swap it.');
   const title=$('#fTitle').value.trim()||$('#fTitle').placeholder;
   const lessons=[...new Set(PICK.map(id=>BY[id].u))].sort((a,b)=>a-b);
   const cover='Covers: '+lessons.map(u=>UNITS[u]).join(' · ');
-  const id=EDIT?EDIT.id:'w'+open.getFullYear()+pad(open.getMonth()+1)+pad(open.getDate())+'-'+Math.random().toString(36).slice(2,6);
-  const wk={title,batches:bs,openAt:open,closeAt:close,minutes,media,cover,lessons,updatedAt:FB.serverTimestamp()};
-  if(!EDIT) wk.createdAt=FB.serverTimestamp();
+  const id=EDIT?EDIT.id:'q'+Date.now().toString(36)+Math.random().toString(36).slice(2,5);
+  const wk={title,batches:bs,minutes,media,cover,lessons,updatedAt:FB.serverTimestamp()};
+  if(!EDIT){wk.createdAt=FB.serverTimestamp();wk.openAt=DRAFT;wk.closeAt=END;}
+  if(launchNow&&!isLive(EDIT)){wk.openAt=FB.serverTimestamp();wk.closeAt=END;}
+  else if(launchNow) wk.closeAt=END;
   try{
-    msg('Publishing…');
+    msg(launchNow?'Launching…':'Saving…');
     const b=FB.writeBatch(db);
     if(!EDIT_LOCK){
       const set={},why={};
@@ -408,40 +410,58 @@ $('#bPub').onclick=async()=>{
     b.set(FB.doc(db,'questWeeks',id),wk,{merge:true});
     await b.commit();
     try{localStorage.setItem('eict-quest-admin-last',JSON.stringify({sel:[...SEL],batches:bs}));}catch(e){}
-    msg('✅ Published: '+title+' · opens '+fmt(open));
+    msg(launchNow||isLive(EDIT)?'🚀 '+title+' is live for '+bs.join(', ')+'!':'💾 Saved: '+title+'. Launch it from “Launch & results” when you are ready.');
     await loadWeeks();
     if(!EDIT) resetForm();
-  }catch(e){msg('Could not publish: '+(e.code||e.message)+(/permission/.test(e.code||'')?' — publish firestore-rules.txt in the Firebase console first.':''));}
-};
+  }catch(e){msg('Could not save: '+(e.code||e.message)+(/permission/.test(e.code||'')?' — publish firestore-rules.txt in the Firebase console first.':''));}
+}
+$('#bPub').onclick=()=>save(false);
+$('#bLaunch').onclick=()=>{if(!isLive(EDIT)&&!confirm('Launch this quiz now?\nStudents of '+(batches().join(', ')||'the ticked classes')+' see it straight away, and it stays open.'))return;save(true);};
 
 function lockUI(){
   $('#bGen').disabled=EDIT_LOCK;$('#lessonCard').style.opacity=EDIT_LOCK?.55:1;
-  $('#bPub').textContent=EDIT?(EDIT_LOCK?'💾 Save week details':'💾 Save changes'):'🚀 Publish week';
-  if(EDIT_LOCK) $('#genMsg').textContent='Students have already started this week, so its questions are locked. You can still change the name, classes and times.';
+  const live=isLive(EDIT);
+  $('#bPub').textContent=EDIT?(EDIT_LOCK?'💾 Save quiz details':'💾 Save changes'):'💾 Save (launch later)';
+  $('#bLaunch').classList.toggle('hide',live);
+  if(EDIT_LOCK) $('#genMsg').textContent='Students have already started this quiz, so its questions are locked. You can still change the name, classes and minutes.';
 }
 
 /* ---------- weeks list ---------- */
-function status(w){const t=Date.now();return t<ms(w.openAt)?['soon','Opens '+fmt(w.openAt)]:t>ms(w.closeAt)?['closed','Closed']:['open','Open now'];}
+function status(w){const t=Date.now();
+  if(ms(w.openAt)>=FAR) return ['soon','Not launched',true];
+  if(t<ms(w.openAt)) return ['soon','Opens '+fmt(w.openAt),true];
+  if(t>ms(w.closeAt)) return ['closed','Closed',true];
+  return ms(w.closeAt)>=FAR?['open','🟢 Live since '+fmt(w.openAt),false]:['open','Live until '+fmt(w.closeAt),true];}
 function drawWeeks(){
-  $('#wkList').innerHTML=WEEKS.map((w,i)=>{const [c,t]=status(w);
-    return `<div class="wk"><div class="sp"><b>Week ${i+1} · ${esc(w.title)}</b> <span class="pill ${c}">${esc(t)}</span><br>
-      <span class="muted">${esc((w.batches||[]).join(', '))} · ${fmt(w.openAt)} → ${fmt(w.closeAt)} · ${w.minutes||40} min · ${esc(w.cover||'')}</span></div>
-      <button data-res="${w.id}">📊 Results</button><button data-ed="${w.id}">✏️ Edit</button><button class="danger" data-del="${w.id}">🗑</button></div>`;
-  }).join('')||'<p class="muted">No weeks yet. Make one in “New week”.</p>';
+  $('#wkList').innerHTML=WEEKS.map((w,i)=>{const [c,t,canLaunch]=status(w);
+    return `<div class="wk"><div class="sp"><b>Quick Quiz ${i+1} · ${esc(w.title)}</b> <span class="pill ${c}">${esc(t)}</span><br>
+      <span class="muted">${esc((w.batches||[]).join(', '))} · ${w.minutes||40} min · ${esc(w.cover||'')}</span></div>
+      ${canLaunch?`<button class="gold" data-go="${w.id}">🚀 Launch</button>`:''}<button data-res="${w.id}">📊 Results</button><button data-ed="${w.id}">✏️ Edit</button><button class="danger" data-del="${w.id}">🗑</button></div>`;
+  }).join('')||'<p class="muted">No quizzes yet. Make one in “New Quick Quiz”.</p>';
 }
 $('#bReload').onclick=loadWeeks;
 $('#wkList').addEventListener('click',async e=>{
-  const r=e.target.closest('[data-res]'),ed=e.target.closest('[data-ed]'),dl=e.target.closest('[data-del]');
+  const r=e.target.closest('[data-res]'),ed=e.target.closest('[data-ed]'),dl=e.target.closest('[data-del]'),go=e.target.closest('[data-go]');
+  if(go) launch(WEEKS.find(w=>w.id===go.dataset.go));
   if(r) showResults(WEEKS.find(w=>w.id===r.dataset.res));
   if(ed) editWeek(WEEKS.find(w=>w.id===ed.dataset.ed));
   if(dl) delWeek(WEEKS.find(w=>w.id===dl.dataset.del));
 });
+/* launching: open now (or keep the time it opened) and never close */
+async function launch(w){
+  const i=WEEKS.indexOf(w)+1;
+  if(!confirm(`Launch Quick Quiz ${i} · ${w.title}?\nStudents of ${(w.batches||[]).join(', ')} see it straight away, and it stays open.`)) return;
+  const upd={closeAt:END,updatedAt:FB.serverTimestamp()};
+  if(!(ms(w.openAt)<FAR&&Date.now()>=ms(w.openAt))) upd.openAt=FB.serverTimestamp();
+  try{await FB.updateDoc(FB.doc(db,'questWeeks',w.id),upd);await loadWeeks();}
+  catch(e){alert('Could not launch: '+(e.code||e.message));}
+}
 async function attempts(w){const s=await FB.getDocs(FB.collection(db,'questWeeks',w.id,'attempts'));return s.docs.map(d=>({uid:d.id,...d.data()}));}
 async function editWeek(w){
   const at=await attempts(w);
   EDIT=w;EDIT_LOCK=at.length>0;PICK=(w.qids||[]).slice();
-  $('#formTitle').textContent='1 · Editing Week '+(WEEKS.indexOf(w)+1)+' · '+w.title;
-  $('#fTitle').value=w.title||'';$('#fOpen').value=toLocal(ms(w.openAt));$('#fClose').value=toLocal(ms(w.closeAt));$('#fMin').value=w.minutes||40;
+  $('#formTitle').textContent='1 · Editing Quick Quiz '+(WEEKS.indexOf(w)+1)+' · '+w.title;
+  $('#fTitle').value=w.title||'';$('#fMin').value=w.minutes||40;
   document.querySelectorAll('#fBatch input').forEach(i=>i.checked=(w.batches||[]).includes(i.value));
   SEL.clear();(w.sel||[]).forEach(k=>SEL.add(k));
   $('#genMsg').textContent='';$('#pubMsg').textContent='';
@@ -493,7 +513,7 @@ async function showResults(w){
   $('#resTbl').onclick=async e=>{
     const b=e.target.closest('[data-rt]');if(!b) return;
     const r=RES.find(x=>x.uid===b.dataset.rt);
-    if(!confirm(`Let ${r.name} take this week again?\nTheir current attempt (${r.score}/20) will be deleted.`)) return;
+    if(!confirm(`Let ${r.name} take this quiz again?\nTheir current attempt (${r.score}/20) will be deleted.`)) return;
     await FB.deleteDoc(FB.doc(db,'questWeeks',w.id,'attempts',r.uid));
     showResults(w);
   };

@@ -28,7 +28,7 @@ const MED = {Sinhala:'si', English:'en'}, MEDN = {si:'Sinhala', en:'English'};
 const V = '11.0.2', G = 'https://www.gstatic.com/firebasejs/' + V + '/firebase-';
 
 let FB = null, db = null, auth = null, U = null, ME = null, OWN = false, SKEW = 0;
-let WK = [], ATT = {}, SETS = {}, KEYS = {}, NICKS = {};
+let WK = [], ATT = {}, SETS = {}, KEYS = {}, NICKS = {}, SC = {};
 const now = () => Date.now() + SKEW;
 const ms = t => t && t.toMillis ? t.toMillis() : t instanceof Date ? t.getTime() : +t || 0;
 const mins = w => +w.minutes || 40;
@@ -58,7 +58,8 @@ function score(ans, key) {
   if (!key || !Array.isArray(ans)) return 0;
   return ans.reduce((n, a, i) => n + (a >= 0 && (a === key.ans[i] || (key.alt && (key.alt[i] || []).includes(a))) ? 1 : 0), 0);
 }
-const rewards = sc => ({stars: Math.round(sc / 4), coins: sc * 5, gems: sc > 15 ? 2 : 0});
+const starsFor = sc => sc >= 16 ? 3 : sc >= 11 ? 2 : sc >= 5 ? 1 : 0;
+const rewards = sc => ({stars: starsFor(sc), coins: sc * 5, gems: sc > 15 ? 2 : 0});
 function wkState(w) {
   const a = ATT[w.id], t = now();
   const open = t >= ms(w.openAt), closed = t > ms(w.closeAt);
@@ -71,7 +72,7 @@ function pickMed(w) {
 }
 function why(e) {
   const c = e && (e.code || e.message) || '';
-  return /permission/i.test(c) ? 'The database said no. This week may not be open for your class yet.'
+  return /permission/i.test(c) ? 'The database said no. This quiz may not be open for your class yet.'
        : /unavailable|network|offline/i.test(c) ? 'No connection. Check your internet and try again.'
        : 'Something went wrong (' + c + '). Please try again.';
 }
@@ -166,16 +167,25 @@ async function start() {
 
   await loadWeeks();
   loadBoard();
+  const i = WK.findIndex(w => { const s = wkState(w); return s.open && !s.over && !s.closed; });
+  if (!OWN && i >= 0) setTimeout(() => L.toast((wkState(WK[i]).running ? '⏳ Quick Quiz ' : '✨ Quick Quiz ') + (i + 1) + (wkState(WK[i]).running ? ' is waiting for you — tap the island!' : ' is open — tap the island to play!')), 600);
 }
 
-/* ---------- weeks ---------- */
+/* ---------- quick quizzes ---------- */
+/* a quiz is on from the moment sir launches it and stays on; a student
+   sees the launched ones of their class, then one locked island for the
+   next. SC holds each finished quiz's marks for the stars on its island. */
+const FAR = Date.UTC(2099, 0, 1);
 async function loadWeeks(keep) {
   const snap = await FB.getDocs(FB.collection(db, 'questWeeks'));
   WK = snap.docs.map(d => ({id: d.id, ...d.data()}))
-    .filter(w => OWN || (w.batches || []).includes(ME.batch))
-    .sort((a, b) => ms(a.openAt) - ms(b.openAt) || String(a.id).localeCompare(b.id));
+    .filter(w => OWN || ((w.batches || []).includes(ME.batch) && ms(w.openAt) <= now()))
+    .sort((a, b) => (ms(a.openAt) >= FAR) - (ms(b.openAt) >= FAR) || ms(a.openAt) - ms(b.openAt) || String(a.id).localeCompare(b.id));
   if (!OWN) await Promise.all(WK.map(async w => {
     try { const a = await FB.getDoc(attRef(w.id)); if (a.exists()) ATT[w.id] = a.data(); } catch (e) {}
+  }));
+  await Promise.all(WK.filter(w => wkState(w).over).map(async w => {
+    try { SC[w.id] = score(ATT[w.id].answers, await loadKey(w)); } catch (e) {}
   }));
   paintWeeks(keep);
   totals();
@@ -184,34 +194,39 @@ async function loadWeeks(keep) {
 function paintWeeks(keep) {
   if (!WK.length) {
     Q.setWeeks(Array.from({length: 6}, () => ({title: '', unlocked: false, completed: false})));
-    note(OWN ? 'No weeks yet. Make one in the MCQ admin.' : 'No quests yet. Your first island opens soon!');
+    note(OWN ? 'No quizzes yet. Make one in the MCQ admin.' : 'Your first island opens when sir launches Quick Quiz 1. Get ready!');
     return;
   }
   const sel = S.selected, chap = S.chapter;
-  Q.setWeeks(WK.map(w => { const s = wkState(w); return {title: w.title || '', unlocked: OWN || s.open, completed: s.over}; }));
-  let n = keep && sel <= WK.length ? sel : 0;
+  const list = WK.map(w => {
+    const s = wkState(w), sc = SC[w.id];
+    return {title: w.title || '', unlocked: OWN || s.open, completed: s.over,
+      stars: s.over && sc != null ? starsFor(sc) : null, score: sc ?? null};
+  });
+  if (!OWN) list.push({title: '', unlocked: false, completed: false});      /* the next island, still locked */
+  Q.setWeeks(list);
+  let n = keep && sel <= list.length ? sel : 0;
   if (!n) {
     const i = WK.findIndex(w => { const s = wkState(w); return s.open && !s.over && !s.closed; });
-    n = i >= 0 ? i + 1 : Math.max(1, WK.filter(w => wkState(w).open).length);
+    n = i >= 0 ? i + 1 : Math.max(1, WK.length);
   }
   S.selected = n;
   S.chapter = keep ? chap : Math.floor((n - 1) / 6);
-  S.leaderWeek = n;
+  S.leaderWeek = Math.min(n, WK.length);
   L.renderMap();
 }
 
-const when = d => new Date(ms(d) - SKEW).toLocaleString('en-GB', {weekday: 'short', day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit'});
 S.onMap = () => {
-  const w = WK[S.selected - 1];
-  if (!w || !U) return;
-  const s = wkState(w), n = S.selected;
+  if (!U) return;
+  const w = WK[S.selected - 1], n = S.selected;
+  if (!w) { note('🔒 Quick Quiz ' + n + ' opens when sir launches it. Get ready!'); $('selectedDesc').textContent = 'A new island is waiting just over the sea…'; return; }
+  const s = wkState(w);
   if (w.cover) $('selectedDesc').textContent = w.cover;
-  if (OWN) { note('Teacher view: every island opens as a practice run. Nothing is saved.'); return; }
-  if (!s.open) note('🔒 Opens ' + when(w.openAt));
-  else if (s.running) { note('⏳ Your timer is running. Continue now!'); $('playSelected').textContent = '⏳ CONTINUE WEEK ' + n + ' QUEST'; }
-  else if (s.over) { note('✓ Completed. See your result, review the answers or practice again.'); $('playSelected').textContent = '🏆 WEEK ' + n + ' RESULT'; }
-  else if (s.closed) note('This week closed on ' + when(w.closeAt) + '. You can still practice (not ranked).');
-  else note('Open until ' + when(w.closeAt) + ' · ' + mins(w) + ' minutes · your first attempt counts');
+  if (OWN) { note(ms(w.openAt) >= FAR ? 'Not launched yet — launch it from the MCQ admin. Opens here as a practice run.' : 'Teacher view: every island opens as a practice run. Nothing is saved.'); return; }
+  if (s.running) { note('⏳ Your timer is running. Tap the island to continue!'); $('playSelected').textContent = '⏳ CONTINUE QUICK QUIZ ' + n; }
+  else if (s.over) { note('Tap the island to see your stars, review the answers or practice again.'); $('playSelected').textContent = '🏆 QUICK QUIZ ' + n + ' RESULT'; }
+  else if (s.closed) note('This quiz has closed. You can still practice it (not ranked).');
+  else note('▶ Open now · 20 MCQs · ' + mins(w) + ' minutes · tap the island to start!');
 };
 
 /* ---------- questions and answers ---------- */
@@ -260,35 +275,35 @@ S.renderExtra = (entry, idx) => {
   }
 };
 
-/* ---------- starting a week ---------- */
+/* ---------- starting a quiz ---------- */
 S.liveStart = n => {
   if (!U) { showLogin(); return true; }
   const w = WK[n - 1];
-  if (!w) { L.toast('This island is locked.'); return true; }
+  if (!w) { L.toast('🔒 This island opens when sir launches it!'); return true; }
   const cur = S.quiz;
   if (cur && !cur.finished && !cur.review) {
     if (cur.live && cur.live.wk === w.id && !cur.practice) { L.currentPage('quiz'); L.renderQuiz(); return true; }
     if (!cur.practice) {
-      L.openModal('⏳', 'Another quest is running', 'Finish Week ' + cur.week + ' first. Its timer keeps running.',
+      L.openModal('⏳', 'Another quest is running', 'Finish Quick Quiz ' + cur.week + ' first. Its timer keeps running.',
         [{label: 'Back to it', run: () => L.currentPage('quiz')}]);
       return true;
     }
   }
   const s = wkState(w);
   if (OWN) { practice(w).catch(fail); return true; }
-  if (!s.open) { L.toast('This island opens ' + when(w.openAt) + '.'); return true; }
+  if (!s.open) { L.toast('🔒 This island is not open yet.'); return true; }
   if (s.running) { resume(w).catch(fail); return true; }
   if (s.over) { showResult(w).catch(fail); return true; }
   if (s.closed) {
-    L.openModal('🧭', 'This week has closed', 'You can still practice these 20 questions.\nPractice runs are not saved or ranked.',
+    L.openModal('🧭', 'This quiz has closed', 'You can still practice these 20 questions.\nPractice runs are not saved or ranked.',
       [{label: 'Not now', ghost: true}, {label: 'Practice', run: () => practice(w).catch(fail)}]);
     return true;
   }
   const med = pickMed(w);
-  L.openModal('⚡', 'Start Week ' + n + '?',
+  L.openModal('⚡', 'Start Quick Quiz ' + n + '?',
     '20 MCQs · ' + mins(w) + ' minutes · ' + MEDN[med] + ' medium.\n'
     + 'The timer starts now and keeps running even if you close the page. Only this first attempt counts.'
-    + (med !== MED[S.medium] ? '\n(This week is in ' + MEDN[med] + ' only.)' : ''),
+    + (med !== MED[S.medium] ? '\n(This quiz is in ' + MEDN[med] + ' only.)' : ''),
     [{label: 'Not yet', ghost: true}, {label: 'Start quest', run: () => begin(w).catch(fail)}]);
   return true;
 };
@@ -302,7 +317,7 @@ async function begin(w) {
   } catch (e) { err = e; }
   const a = await FB.getDoc(attRef(w.id));
   if (!a.exists()) {
-    L.openModal('⚠️', 'Could not start', why(err) + '\nIf it should be open, ask sir to check the week’s time and class.', [{label: 'OK'}]);
+    L.openModal('⚠️', 'Could not start', why(err) + '\nIf it should be open, ask sir to check that it is launched for your class.', [{label: 'OK'}]);
     return;
   }
   ATT[w.id] = a.data();
@@ -380,14 +395,86 @@ Q.setSubmitHandler(async p => {
   ATT[w.id] = (await FB.getDoc(attRef(w.id))).data();
   lv.orig = ATT[w.id].answers;
   const sc = score(lv.orig, await loadKey(w));
+  SC[w.id] = sc;
   setTimeout(() => { paintWeeks(true); loadBoard(); }, 60);
   return {score: sc, ...rewards(sc)};
 });
 
+/* ---------- the fun part: stars, star rain, sparkles ---------- */
+const calm = () => matchMedia('(prefers-reduced-motion: reduce)').matches;
+function starRain(n) {
+  if (calm()) return;
+  const glyphs = ['⭐', '🌟', '✨', '★'];
+  for (let i = 0; i < n; i++) {
+    const e = document.createElement('span');
+    e.className = 'star-drop';
+    e.textContent = glyphs[i % glyphs.length];
+    e.style.left = Math.random() * 100 + 'vw';
+    e.style.setProperty('--s', 16 + Math.random() * 26 + 'px');
+    e.style.setProperty('--d', 2.2 + Math.random() * 1.8 + 's');
+    e.style.setProperty('--dl', Math.random() * 1.6 + 's');
+    e.style.setProperty('--dx', (Math.random() - .5) * 160 + 'px');
+    e.style.setProperty('--r', (Math.random() - .5) * 900 + 'deg');
+    document.body.appendChild(e);
+    setTimeout(() => e.remove(), 4200);
+  }
+}
+function countUp(id, from, to) {
+  const el = $(id);
+  if (!el || calm() || to <= from) return;
+  const t0 = performance.now(), d = 1400;
+  const step = t => { const k = Math.min(1, (t - t0) / d); el.textContent = Math.round(from + (to - from) * (1 - Math.pow(1 - k, 3))); if (k < 1) requestAnimationFrame(step); };
+  requestAnimationFrame(step);
+}
 S.onResult = r => {
-  const q = S.quiz;
+  const q = S.quiz, fresh = !r.wk;
+  $('toast').classList.remove('show');
   if (!r.wk && q && q.live) { r.wk = q.live.wk; r.orig = q.live.orig; }
   $('reviewBtn').hidden = !(r.wk && r.orig);
+  const sc = r.grade ? r.grade.score : 0, st = starsFor(sc), who = S.nickname || 'Explorer';
+  $('resultTitle').textContent = [
+    'Keep going, ' + who + '! Practice for your first star ⭐',
+    'Nice, ' + who + '! You earned a star! ⭐',
+    'Great job, ' + who + '! Two stars! ⭐⭐',
+    'Superstar ' + who + '! Three stars! 🌟'][st];
+  /* restart the pop-in of the stars */
+  const box = $('resultStars');
+  [...box.children].forEach((i, k) => { i.classList.remove('on'); void i.offsetWidth; i.classList.toggle('on', k < st); });
+  setTimeout(() => starRain(fresh ? 18 + st * 30 : 10 + st * 8), fresh ? 900 : 300);
+  if (fresh && st === 3) setTimeout(() => L.sparkle(), 1500);
+  if (fresh && r.grade && !r.practice) setTimeout(() => {
+    countUp('coinTop', S.coins - r.grade.coins, S.coins);
+    countUp('gemTop', S.gems - r.grade.gems, S.gems);
+  }, 0);
+};
+
+/* a little burst when an answer is picked, and cheers along the way */
+S.onPick = (idx, i, was) => {
+  const q = S.quiz;
+  if (!q) return;
+  const b = $('options').children[i];
+  if (b) {
+    b.classList.add('just');
+    if (!calm()) {
+      const r = b.querySelector('.letter').getBoundingClientRect();
+      for (let k = 0; k < 8; k++) {
+        const e = document.createElement('span'), a = k / 8 * 6.283;
+        e.className = 'pick-spark';
+        e.textContent = k % 2 ? '✦' : '★';
+        e.style.left = r.left + r.width / 2 - 7 + 'px';
+        e.style.top = r.top + r.height / 2 - 9 + 'px';
+        e.style.setProperty('--x', Math.round(Math.cos(a) * 46) + 'px');
+        e.style.setProperty('--y', Math.round(Math.sin(a) * 46) + 'px');
+        document.body.appendChild(e);
+        setTimeout(() => e.remove(), 700);
+      }
+    }
+  }
+  if (was != null) return;
+  const n = q.answers.filter(x => x != null).length;
+  const cheer = {5: '🔥 5 done! Keep the streak going!', 10: '⚡ Halfway there! You’ve got this!', 15: '🚀 15 done! Just 5 more!',
+    20: '🏁 All 20 answered! Press Finish to see your stars ⭐'}[n];
+  if (cheer) L.toast(cheer);
 };
 $('reviewBtn').onclick = () => { const r = S.result, w = r && WK.find(x => x.id === r.wk); if (w) review(w, r.orig).catch(fail); };
 $('retry').onclick = () => { const r = S.result, w = r && WK.find(x => x.id === r.wk); if (!w) return; S.quiz = null; practice(w).catch(fail); };
@@ -427,7 +514,7 @@ async function loadBoard() {
   }));
   Q.setLeaderboard(rows);
 }
-S.boardEmpty = 'No results to show here yet. Finish the week’s quest to see its Hall of Fame!';
+S.boardEmpty = 'No results to show here yet. Finish this Quick Quiz to see its Hall of Fame!';
 
 /* ---------- profile ---------- */
 $('saveNickname').onclick = async () => {
@@ -441,13 +528,41 @@ $('saveNickname').onclick = async () => {
     loadBoard();
   } catch (e) { L.toast('Could not save. Check your internet.'); }
 };
+/* ---------- log out ---------- */
+async function logout() {
+  if (S.quiz && !S.quiz.finished && !S.quiz.review && !S.quiz.practice) await flush(S.quiz);
+  try { await FB.signOut(auth); } catch (e) {}
+  location.reload();
+}
+$('logoutBtn').onclick = () => { if (U) logout(); };
+const account = () => {
+  if (!U) { showLogin(); return; }
+  L.openModal('🧑‍🚀', S.nickname || 'Explorer',
+    (ME && ME.name ? ME.name + (ME.code ? ' · ' + ME.code : '') + '\n' : '') + 'Signed in as ' + U.email
+    + (S.quiz && !S.quiz.finished && !S.quiz.review && !S.quiz.practice ? '\n\nYour quiz timer keeps running if you log out.' : ''),
+    [{label: 'Stay', ghost: true}, {label: '🚪 Log out', run: logout}]);
+};
+$('profileChip').onclick = account;
+$('profileChip').onkeydown = e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); account(); } };
+
 $('mediumSwitch').addEventListener('change', () => {
   const m = MED[S.medium];
   try { localStorage.setItem('eict-quest-medium', m); } catch (e) {}
   if (U && FB) FB.updateDoc(profRef(), {medium: m}).catch(() => {});
 });
 
-/* a week that opens or closes while the page is open */
-setInterval(() => { if (U && WK.length && !(S.quiz && !S.quiz.finished)) { const before = JSON.stringify(WK.map(wkState).map(s => [s.open, s.closed])); if (before !== S._wkSig) { S._wkSig = before; paintWeeks(true); } } }, 30000);
+/* a quiz launched while the page is open shows up within a minute */
+setInterval(async () => {
+  if (!U || OWN || document.hidden || (S.quiz && !S.quiz.finished) || S.mode !== 'map') return;
+  try {
+    const snap = await FB.getDocs(FB.collection(db, 'questWeeks'));
+    const live = snap.docs.filter(d => (d.data().batches || []).includes(ME.batch) && ms(d.data().openAt) <= now()).length;
+    if (live > WK.length) {
+      await loadWeeks();
+      L.toast('✨ A new island just opened! Tap it to play!');
+      L.sparkle();
+    }
+  } catch (e) {}
+}, 60000);
 
 boot();
