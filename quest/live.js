@@ -43,6 +43,18 @@ const firstName = n => String(n || '').trim().split(/\s+/)[0].slice(0, 24);
 Q.disableDemo();
 Q.setLeaderboard([]);
 
+/* the name in the header: the one this device saw last, straight away,
+   never the template's "Explorer". The islands stay hidden until the
+   real ones are loaded, so nothing flashes and changes. */
+let CACHE = null;
+try { CACHE = JSON.parse(localStorage.getItem('eict-quest-me') || 'null'); } catch (e) {}
+const keepMe = (uid, nick, medium) => { try { localStorage.setItem('eict-quest-me', JSON.stringify({uid, nick, medium})); } catch (e) {} };
+const forgetMe = () => { try { localStorage.removeItem('eict-quest-me'); } catch (e) {} };
+S.nickname = CACHE && CACHE.nick || '…';
+if (CACHE && MEDN[CACHE.medium]) S.medium = MEDN[CACHE.medium];
+L.refreshStats();
+$('islandLayer').style.visibility = 'hidden';
+
 /* ---------- small helpers ---------- */
 function seed(str) {                         /* string -> 32-bit seed */
   let h = 1779033703 ^ str.length;
@@ -129,7 +141,8 @@ async function boot() {
   } catch (e) { note('Cannot reach the class database. Check your internet and reload.'); return; }
   FB.onAuthStateChanged(auth, u => {
     U = u;
-    if (!u) { note('Sign in to see your islands.'); showLogin(); return; }
+    if (!u) { forgetMe(); S.nickname = '…'; L.refreshStats(); note('Sign in to see your islands.'); showLogin(); return; }
+    if (!CACHE || CACHE.uid !== u.uid) { S.nickname = '…'; L.refreshStats(); }
     L.closeModal();
     start().catch(e => { note(why(e)); fail(e); });
   });
@@ -138,21 +151,25 @@ async function boot() {
 async function start() {
   note('Loading your islands…');
   OWN = U.email === OWNER;
+  /* the student record and the nickname, read together */
+  const [d, prof] = await Promise.all([
+    OWN ? null : FB.getDoc(FB.doc(db, 'students', U.uid)),
+    FB.getDoc(profRef()).then(p => p.exists() ? p.data() : null).catch(() => null)]);
   if (OWN) ME = {code: 'TEACHER', name: 'Teacher', batch: ''};
   else {
-    const d = await FB.getDoc(FB.doc(db, 'students', U.uid));
     if (!d.exists()) { await FB.signOut(auth); showLogin('This account has no student record. Ask sir to add you.'); return; }
     ME = d.data();
   }
   let m = null;
   try { m = localStorage.getItem('eict-quest-medium'); } catch (e) {}
   const med = m === 'si' || m === 'en' ? m : /-SI$/i.test(ME.batch || '') ? 'si' : 'en';
-
-  /* the profile: a nickname for the Hall of Fame. Writing it also tells
-     us the server's clock, which the quiz timer runs on */
-  let prof = null;
-  try { const p = await FB.getDoc(profRef()); prof = p.exists() ? p.data() : null; } catch (e) {}
   const nick = prof && prof.nick || firstName(ME.name) || 'Explorer';
+  NICKS[U.uid] = nick;
+  Q.setProfile({nickname: nick, medium: MEDN[med]});
+  keepMe(U.uid, nick, med);
+
+  /* writing the profile also tells us the server's clock, which the
+     quiz timer runs on */
   try {
     const t0 = Date.now();
     await FB.setDoc(profRef(), {nick, code: String(ME.code || ''), medium: med, at: FB.serverTimestamp()});
@@ -162,8 +179,6 @@ async function start() {
     if (at) SKEW = at - (t0 + t1) / 2;
     if (Math.abs(SKEW) < 1500) SKEW = 0;
   } catch (e) {}
-  NICKS[U.uid] = nick;
-  Q.setProfile({nickname: nick, medium: MEDN[med]});
 
   await loadWeeks();
   loadBoard();
@@ -192,6 +207,7 @@ async function loadWeeks(keep) {
 }
 
 function paintWeeks(keep) {
+  $('islandLayer').style.visibility = '';
   if (!WK.length) {
     Q.setWeeks(Array.from({length: 6}, () => ({title: '', unlocked: false, completed: false})));
     note(OWN ? 'No quizzes yet. Make one in the MCQ admin.' : 'Your first island opens when sir launches Quick Quiz 1. Get ready!');
@@ -524,6 +540,7 @@ $('saveNickname').onclick = async () => {
   try {
     await FB.setDoc(profRef(), {nick: s, code: String(ME.code || ''), medium: MED[S.medium] || 'si', at: FB.serverTimestamp()});
     NICKS[U.uid] = s;
+    keepMe(U.uid, s, MED[S.medium] || 'si');
     L.toast('Nickname saved!');
     loadBoard();
   } catch (e) { L.toast('Could not save. Check your internet.'); }
@@ -531,6 +548,7 @@ $('saveNickname').onclick = async () => {
 /* ---------- log out ---------- */
 async function logout() {
   if (S.quiz && !S.quiz.finished && !S.quiz.review && !S.quiz.practice) await flush(S.quiz);
+  forgetMe();
   try { await FB.signOut(auth); } catch (e) {}
   location.reload();
 }
