@@ -713,14 +713,21 @@ let PLAN_BATCH = 'AL-27';   /* the study plan and marking follow their own switc
 const courseDoc=()=>EDIT_BATCH==='AL-28'?'course28':EDIT_BATCH==='AL-27-SI'?'course27si':'course';
 const roadmapDoc=()=>PLAN_BATCH==='AL-27-SI'?'roadmapSin':'roadmap';
 const subTrack=()=>PLAN_BATCH==='AL-27-SI'?'journeySin':'journey';                       /* which batch the content screens edit */
-const planBatches=()=>(CO.batches||[]).filter(b=>b.studyPlan!==false);
+/* the study plan runs for the two 2027 batches, each with its own weeks,
+   papers and marking. Fixed here rather than read from the saved batch
+   list, which may not carry the Sinhala class at all. */
+const PLAN_LIST=[{id:'AL-27',label:'2027 A/L · English medium',page:'Journey.html',start:'2026-09-14'},
+                 {id:'AL-27-SI',label:'2027 A/L · Sinhala medium',page:'JourneySin.html',start:'2026-10-19'}];
+const planBatches=()=>PLAN_LIST;
+const planInfo=()=>PLAN_LIST.find(b=>b.id===PLAN_BATCH)||PLAN_LIST[0];
 const planSel=()=>{
   const list=planBatches();
   if(!list.some(b=>b.id===PLAN_BATCH)) PLAN_BATCH=(list[0]||{}).id||'AL-27';
   return `<div class="fld"><label>Which batch are you editing?</label>
     <select id="planPick">${list.map(b=>
       `<option value="${esc(b.id)}" ${b.id===PLAN_BATCH?'selected':''}>${esc(b.label)}</option>`).join('')}</select>
-    <span class="hint">The study plan runs for the 2027 batches only.</span></div>`;
+    <span class="hint">Each 2027 batch has its own weeks, papers and marking. Students see this one on
+      <b>${esc(planInfo().page)}</b>.</span></div>`;
 };
 /* the class portal settings list AL-27 and AL-28; the Sinhala medium 2027
    class (2027Sinhala.html, AL-27-SI) has its own records too */
@@ -771,6 +778,8 @@ roadmap:{ n:'Study plan', r:()=>`
     <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:16px">
       <button class="b b1" id="rmAdd">+ Add a week</button>
       <button class="b b2" id="rmFill">Build 37 weeks from the syllabus</button>
+      <label style="display:inline-flex;gap:8px;align-items:center;font-size:14px">starting
+        <input type="date" id="rmStart" value="${esc(planInfo().start)}" style="width:auto"></label>
     </div>
     <div id="rmMsg" style="font-size:14px;margin-top:12px"></div>
   </div>`},
@@ -2197,9 +2206,6 @@ function drawRoadmap(){
           <input type="date" data-rm="${i}.paper.due" value="${esc((w.paper||{}).due||'')}"></div>
         <div class="fld"><label>Due time</label>
           <input type="time" data-rm="${i}.paper.dueTime" value="${esc((w.paper||{}).dueTime||'23:59')}">
-          <span class="hint">Anything sent after this counts as late.</span></div>
-        <div class="fld"><label>Due time</label>
-          <input type="time" data-rm="${i}.paper.dueTime" value="${esc((w.paper||{}).dueTime||'23:59')}">
           <span class="hint">Sri Lanka time. Anything sent after this is marked late.</span></div>
       </div>
       <button class="b b2 rm-del" data-i="${i}">Remove this week</button>
@@ -2213,13 +2219,13 @@ function rmSet(path,val){
   for(let i=1;i<parts.length-1;i++){ o[parts[i]]=o[parts[i]]||{}; o=o[parts[i]]; }
   o[parts[parts.length-1]]=val;
 }
-function buildYear(){
-  const start=new Date('2026-09-14'); let n=0; const ws=[];
+function buildYear(from){
+  const start=new Date((from||planInfo().start)+'T00:00:00Z'); let n=0; const ws=[];
   UNITNAMES.forEach((u,ui)=>{
     for(let k=0;k<UNITWEEKS[ui];k++){
-      const f=new Date(start); f.setDate(f.getDate()+n*7);
-      const t=new Date(f); t.setDate(t.getDate()+6);
-      const d=new Date(f); d.setDate(d.getDate()+6);
+      const f=new Date(start); f.setUTCDate(f.getUTCDate()+n*7);
+      const t=new Date(f); t.setUTCDate(t.getUTCDate()+6);
+      const d=new Date(f); d.setUTCDate(d.getUTCDate()+6);
       ws.push({ title:u+(UNITWEEKS[ui]>1?' — part '+(k+1):''), unit:u,
         from:f.toISOString().slice(0,10), to:t.toISOString().slice(0,10),
         brief:'', materials:[], videos:[], tasks:[],
@@ -3269,11 +3275,21 @@ document.addEventListener('click',async e=>{
     return;
   }
   if(e.target.id==='pubCourse2') return publishCourse();
-  if(e.target.id==='rmAdd'){ RM.weeks=RM.weeks||[]; RM.weeks.push({title:'New week',unit:'',tasks:[],materials:[],videos:[],paper:{}});
+  if(e.target.id==='rmAdd'){ RM.weeks=RM.weeks||[];
+    const last=RM.weeks[RM.weeks.length-1], iso=d=>d.toISOString().slice(0,10);
+    let f;
+    if(last&&last.to){ f=new Date(last.to+'T00:00:00Z'); f.setUTCDate(f.getUTCDate()+1); }
+    else{ const t=new Date(); f=new Date(Date.UTC(t.getFullYear(),t.getMonth(),t.getDate())); f.setUTCDate(f.getUTCDate()-((f.getUTCDay()+6)%7)); }
+    const t=new Date(f); t.setUTCDate(t.getUTCDate()+6);
+    const n=RM.weeks.length+1;
+    RM.weeks.push({title:'New week',unit:'',from:iso(f),to:iso(t),brief:'',tasks:[],materials:[],videos:[],
+      paper:{title:'Week '+n+' paper',url:'',due:iso(t),dueTime:'23:59'}});
     drawRoadmap(); await rmSave('Week added'); return; }
   if(e.target.id==='rmFill'){
     if(RM.weeks&&RM.weeks.length&&!confirm('This replaces the '+RM.weeks.length+' week(s) you have. Continue?')) return;
-    RM.weeks=buildYear(); drawRoadmap(); await rmSave('37 weeks laid out, 14 Sep to 30 May'); return; }
+    const st=($('#rmStart')||{}).value||planInfo().start;
+    RM.weeks=buildYear(st); drawRoadmap();
+    const ws=RM.weeks; await rmSave(ws.length+' weeks laid out, '+dNice(ws[0].from)+' to '+dNice(ws[ws.length-1].to)); return; }
   if(e.target.id==='mkSave') return saveMark();
   if(e.target.id==='jwRefresh') return loadJourneySubs();
   if(e.target.id==='jwDone'){ jwShowDone=!jwShowDone;
