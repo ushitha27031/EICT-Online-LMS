@@ -141,11 +141,12 @@ th{color:var(--dim);font-size:12px;text-transform:uppercase;letter-spacing:.5px}
     <!-- ===== quizzes, launching and results ===== -->
     <section id="tab-weeks" class="hide">
       <div class="card">
-        <div class="row" style="justify-content:space-between"><h2 style="margin:0">Quick Quizzes</h2><button id="bReload">↻ Refresh</button></div>
+        <div class="row" style="justify-content:space-between"><h2 style="margin:0">Quick Quizzes</h2><span class="row"><button id="bReload">↻ Refresh</button><button class="danger" id="bResetAll" title="Delete every student's attempt in every quiz">🧹 Reset all students</button></span></div>
         <div id="wkList"><p class="muted">Loading…</p></div>
+        <p class="msg" id="resetMsg"></p>
       </div>
       <div class="card hide" id="resCard">
-        <div class="row" style="justify-content:space-between"><h2 id="resTitle" style="margin:0">Results</h2><button id="bCsv">⬇ CSV</button></div>
+        <div class="row" style="justify-content:space-between"><h2 id="resTitle" style="margin:0">Results</h2><span class="row"><button id="bCsv">⬇ CSV</button><button class="danger" id="bResetOne" title="Delete every student's attempt in this quiz">🧹 Reset this quiz</button></span></div>
         <p class="muted" id="resSum"></p>
         <div class="tblw"><table id="resTbl"></table></div>
       </div>
@@ -457,6 +458,30 @@ async function launch(w){
   catch(e){alert('Could not launch: '+(e.code||e.message));}
 }
 async function attempts(w){const s=await FB.getDocs(FB.collection(db,'questWeeks',w.id,'attempts'));return s.docs.map(d=>({uid:d.id,...d.data()}));}
+/* a fresh start: delete students' attempts (marks, stars, Hall of Fame)
+   in the given quizzes. The quizzes, their questions and answers, whether
+   they are launched, and students' nicknames all stay as they are. */
+async function resetAttempts(list,label){
+  const msg=t=>{$('#resetMsg').textContent=t;};
+  msg('Counting attempts…');
+  const all=[];
+  for(const w of list) for(const a of await attempts(w)) all.push({w,a});
+  if(!all.length){msg('Nothing to reset — there are no student attempts in '+label+'.');return false;}
+  const st=await students(), who=[...new Set(all.map(x=>(st[x.a.uid]||{}).name||x.a.code||x.a.uid))];
+  if(!confirm(`Reset ${label}?\n\n${all.length} attempt(s) by ${who.length} student(s) will be deleted:\n${who.slice(0,25).join(', ')}${who.length>25?' …':''}\n\nTheir marks, stars and Hall of Fame places go back to zero and they can start again. Your quizzes and questions stay as they are.`)){msg('');return false;}
+  msg('Resetting…');
+  for(let i=0;i<all.length;i+=400){
+    const b=FB.writeBatch(db);
+    all.slice(i,i+400).forEach(x=>b.delete(FB.doc(db,'questWeeks',x.w.id,'attempts',x.a.uid)));
+    await b.commit();
+  }
+  msg(`✅ Reset done: ${all.length} attempt(s) by ${who.length} student(s) deleted. Students start fresh.`);
+  return true;
+}
+$('#bResetAll').onclick=async()=>{
+  try{ if(await resetAttempts(WEEKS,'every quiz for all students')){ $('#resCard').classList.add('hide'); await loadWeeks(); } }
+  catch(e){ $('#resetMsg').textContent='Could not reset: '+(e.code||e.message); }
+};
 async function editWeek(w){
   const at=await attempts(w);
   EDIT=w;EDIT_LOCK=at.length>0;PICK=(w.qids||[]).slice();
@@ -516,6 +541,10 @@ async function showResults(w){
     if(!confirm(`Let ${r.name} take this quiz again?\nTheir current attempt (${r.score}/20) will be deleted.`)) return;
     await FB.deleteDoc(FB.doc(db,'questWeeks',w.id,'attempts',r.uid));
     showResults(w);
+  };
+  $('#bResetOne').onclick=async()=>{
+    try{ if(await resetAttempts([w],'“'+w.title+'”')) showResults(w); }
+    catch(e){ $('#resetMsg').textContent='Could not reset: '+(e.code||e.message); }
   };
   $('#bCsv').onclick=()=>{
     const rows=[['Rank','Name','Code','Class','Medium','Marks','Answered','Time','Status']].concat(RES.map((r,i)=>[i+1,r.name,r.code,r.batch,r.medium,r.score,r.answered,tm(r.time),r.state]));
