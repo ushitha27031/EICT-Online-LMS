@@ -206,6 +206,21 @@ async function loadWeeks(keep) {
   totals();
 }
 
+/* islands open in order: a launched quiz opens for a student only once
+   they have finished every quiz before it. waitsFor(i) is the number of
+   the first earlier quiz still to finish, or null when quiz i is free.
+   An attempt already started is never locked out. */
+function waitsFor(i) {
+  if (OWN || i <= 0 || !WK[i] || wkState(WK[i]).a) return null;
+  for (let k = 0; k < i; k++) if (!wkState(WK[k]).over) return k + 1;
+  return null;
+}
+S.lockMsg = n => {
+  if (!WK[n - 1]) return '🔒 This island opens when sir launches it!';
+  const k = waitsFor(n - 1);
+  return k ? '🔒 Finish Quick Quiz ' + k + ' first to open this island!' : null;
+};
+
 function paintWeeks(keep) {
   $('islandLayer').style.visibility = '';
   if (!WK.length) {
@@ -216,7 +231,7 @@ function paintWeeks(keep) {
   const sel = S.selected, chap = S.chapter;
   const list = WK.map(w => {
     const s = wkState(w), sc = SC[w.id];
-    return {title: w.title || '', unlocked: OWN || s.open, completed: s.over,
+    return {title: w.title || '', unlocked: OWN || (s.open && !waitsFor(WK.indexOf(w))), completed: s.over,
       stars: s.over && sc != null ? starsFor(sc) : null, score: sc ?? null};
   });
   if (!OWN) list.push({title: '', unlocked: false, completed: false});      /* the next island, still locked */
@@ -239,6 +254,9 @@ S.onMap = () => {
   const s = wkState(w);
   if (w.cover) $('selectedDesc').textContent = w.cover;
   if (OWN) { note(ms(w.openAt) >= FAR ? 'Not launched yet — launch it from the MCQ admin. Opens here as a practice run.' : 'Teacher view: every island opens as a practice run. Nothing is saved.'); return; }
+  const k = waitsFor(n - 1);
+  if (k) { note('🔒 Finish Quick Quiz ' + k + ' first — then this island opens!'); return; }
+  if (S._unlocked === n) { S._unlocked = 0; setTimeout(() => { L.toast('🔓 Quick Quiz ' + n + ' is unlocked! Tap the island to play!'); L.sparkle(); }, 300); }
   if (s.running) { note('⏳ Your timer is running. Tap the island to continue!'); $('playSelected').textContent = '⏳ CONTINUE QUICK QUIZ ' + n; }
   else if (s.over) { note('Tap the island to see your stars, review the answers or practice again.'); $('playSelected').textContent = '🏆 QUICK QUIZ ' + n + ' RESULT'; }
   else if (s.closed) note('This quiz has closed. You can still practice it (not ranked).');
@@ -307,6 +325,8 @@ S.liveStart = n => {
   }
   const s = wkState(w);
   if (OWN) { practice(w).catch(fail); return true; }
+  const k = waitsFor(n - 1);
+  if (k) { L.toast('🔒 Finish Quick Quiz ' + k + ' first!'); return true; }
   if (!s.open) { L.toast('🔒 This island is not open yet.'); return true; }
   if (s.running) { resume(w).catch(fail); return true; }
   if (s.over) { showResult(w).catch(fail); return true; }
@@ -412,7 +432,11 @@ Q.setSubmitHandler(async p => {
   lv.orig = ATT[w.id].answers;
   const sc = score(lv.orig, await loadKey(w));
   SC[w.id] = sc;
-  setTimeout(() => { paintWeeks(true); loadBoard(); }, 60);
+  const nx = WK.indexOf(w) + 1;
+  if (WK[nx] && wkState(WK[nx]).open && !wkState(WK[nx]).a) S._unlocked = nx + 1;
+  /* the map now points at the island this result opened (if any); the
+     Hall of Fame stays on the quiz just finished */
+  setTimeout(() => { const lw = S.leaderWeek; if (S._unlocked) S.selected = S._unlocked; paintWeeks(true); S.leaderWeek = lw; loadBoard(); }, 60);
   return {score: sc, ...rewards(sc)};
 });
 
