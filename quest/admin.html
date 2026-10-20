@@ -170,6 +170,10 @@ th{color:var(--dim);font-size:12px;text-transform:uppercase;letter-spacing:.5px}
 <script src="../pp/pp-en-2023.js"></script>
 <script src="../pp/pp-en-2024.js"></script>
 <script src="../pp/pp-en-2025.js"></script>
+<script src="../pp/sp-sp22.js"></script>
+<script src="../pp/sp-sbv19.js"></script>
+<script src="../pp/sp-vis16.js"></script>
+<script src="../pp/sp-devi21.js"></script>
 <script type="module">
 /* ============================================================
    MCQ admin for the Island Quest.
@@ -198,7 +202,10 @@ const rnd=a=>{a=a.slice();for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.
 const PP=window.EICT_PP||{si:[],en:[]};
 const EN=Object.fromEntries((PP.en||[]).map(q=>[q.id.replace(/^en-/,''),q]));
 const BANK=[];
-for(const s of PP.si||[]){const k=s.id.replace(/^si-/,'');BANK.push({id:'pp-'+k,u:s.u,t:s.t,src:s.y+' Q'+s.n,si:s,en:EN[k]||null,chk:!!s.chk});}
+/* past papers and school papers: one entry per question, with whichever media it exists in */
+const SI=Object.fromEntries((PP.si||[]).map(q=>[q.id.replace(/^si-/,''),q]));
+for(const k of [...new Set([...Object.keys(SI),...Object.keys(EN)])]){const s=SI[k],e=EN[k],x=s||e;
+  BANK.push({id:'pp-'+k,u:x.u,t:x.t,src:(x.sch?(e||x).src:'A/L '+x.y)+' Q'+x.n,si:s||null,en:e||null,chk:!!x.chk,sch:x.sch||''});}
 const GS=window.EICT_MCQ_SI, GE=window.EICT_MCQ;
 if(GS&&GE) for(const lv of Object.keys(GE.levels)) GE.levels[lv].questions.forEach((e,i)=>{
   const s=GS.levels[lv]&&GS.levels[lv].questions[i]; if(!s) return;
@@ -263,9 +270,10 @@ const batches=()=>[...document.querySelectorAll('#fBatch input:checked')].map(i=
 const needMedia=()=>{const m=new Set(batches().flatMap(b=>BATCHES.find(x=>x.id===b).media));return m.size?[...m]:['si','en'];};
 function medNote(){
   const m=needMedia();
-  $('#medNote').textContent=m.includes('en')
-    ?'Sinhala and English: only past paper questions that exist in both media are used (2020–2025).'
-    :'Sinhala only: the 2026 paper can be used too.';
+  $('#medNote').textContent=m.length>1
+    ?'Sinhala and English: only questions that exist in both media are used (A/L 2020–2025 and the Southern Province paper).'
+    :m[0]==='si'?'Sinhala only: the 2026 A/L paper can be used too.'
+    :'English only: the school term-test papers (Visakha, Sirimavo, Devi Balika) can be used too.';
   drawTree();
 }
 $('#fBatch').onchange=medNote;
@@ -357,7 +365,7 @@ function drawPreview(){
   $('#pvCount').textContent=PICK.length?PICK.length+' / 20':'';
   $('#preview').innerHTML=PICK.map((id,i)=>{
     const b=BY[id];if(!b) return `<div class="pv">Missing question ${esc(id)}</div>`;
-    const q=b[PM]||b.si;
+    const q=b[PM]||b.si||b.en;
     return `<div class="pv"><div class="meta"><b>${i+1}.</b><span>${b.u}. ${esc(UNITS[b.u])}</span><span class="${b.gen?'nw':''}">${esc(b.t)}</span><span>${esc(b.src)}</span>${b.chk?'<span class="w">⚠ check answer</span>':''}
       ${EDIT_LOCK?'':`<button data-sw="${i}">↻ Swap</button>`}</div>
       ${q.ctx?`<div class="ctx">${esc(q.ctx.text)}${q.ctx.code?`<pre>${esc(q.ctx.code)}</pre>`:''}${q.ctx.img?`<img src="${src(q.ctx.img)}" alt="">`:''}</div>`:''}
@@ -404,9 +412,9 @@ async function save(launchNow){
     if(!EDIT_LOCK){
       const set={},why={};
       for(const m of media){set[m]=PICK.map((i,n)=>item(BY[i][m],'q'+(n+1)));why[m]=PICK.map(i=>BY[i][m].why||'');}
-      const alt={};PICK.forEach((i,n)=>{const a=BY[i].si.alt;if(a&&a.length)alt[n]=a.map(x=>x-1);});
+      const alt={};PICK.forEach((i,n)=>{const a=(BY[i].si||BY[i].en).alt;if(a&&a.length)alt[n]=a.map(x=>x-1);});
       b.set(FB.doc(db,'questSets',id),set);
-      b.set(FB.doc(db,'questKeys',id),{ans:PICK.map(i=>BY[i].si.ans-1),alt,why,qids:PICK.slice(),sel:[...SEL]});
+      b.set(FB.doc(db,'questKeys',id),{ans:PICK.map(i=>(BY[i].si||BY[i].en).ans-1),alt,why,qids:PICK.slice(),sel:[...SEL]});
     }
     b.set(FB.doc(db,'questWeeks',id),wk,{merge:true});
     await b.commit();
