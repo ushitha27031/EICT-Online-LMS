@@ -1128,6 +1128,7 @@ function paint(){
     <span style="display:block;margin-top:14px;opacity:.6">© ${new Date().getFullYear()} ${esc(C.brand.name)}</span>
     <a href="Journey.html">Study plan</a>
     <a href="quest/">Weekly MCQ</a>
+    <a href="cp/">Checkpoint papers</a>
   <a class="adm" href="Admin.html">Admin</a>`;
   ['#chipA','#chipB'].forEach((s,i)=>{const c=C.stats[i]; if(!c){$(s).innerHTML='';return;}
     $(s).innerHTML=`<div class="k"><span data-count="${c.value}">${counted?esc(c.value):0}</span>${esc(c.suffix)}</div><div class="l">${esc(c.label)}</div>`;});
