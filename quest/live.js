@@ -78,10 +78,21 @@ function wkState(w) {
   const over = !!a && (a.done || t > ms(a.startedAt) + mins(w) * 60000);
   return {a, open, closed, over, running: !!a && !over};
 }
+/* a class's medium is fixed: the Sinhala class always gets the Sinhala
+   questions and the English class the English ones, whatever this
+   browser chose before. Only a class with both media (and the teacher)
+   can switch. */
+const CLASS_MED = {'AL-27': 'en', 'AL-27-SI': 'si'};
+const fixedMed = () => (!OWN && ME && CLASS_MED[ME.batch]) || null;
 function pickMed(w) {
-  const has = w.media || ['si', 'en'], m = MED[S.medium] || 'si';
+  const has = w.media || ['si', 'en'], m = fixedMed() || MED[S.medium] || 'si';
   return has.includes(m) ? m : has[0];
 }
+/* Quest Points, which the Hall of Fame ranks by: 5 for every correct
+   answer (100 for full marks), plus up to 10 for finishing early. The
+   bonus grows with the marks, so rushing through with guesses earns
+   little: more correct answers in less time always ranks higher. */
+const points = (sc, used, lim) => sc * 5 + Math.round(10 * Math.max(0, 1 - used / lim) * sc / 20);
 function why(e) {
   const c = e && (e.code || e.message) || '';
   return /permission/i.test(c) ? 'The database said no. This quiz may not be open for your class yet.'
@@ -162,7 +173,9 @@ async function start() {
   }
   let m = null;
   try { m = localStorage.getItem('eict-quest-medium'); } catch (e) {}
-  const med = m === 'si' || m === 'en' ? m : /-SI$/i.test(ME.batch || '') ? 'si' : 'en';
+  const med = fixedMed() || (m === 'si' || m === 'en' ? m : /-SI$/i.test(ME.batch || '') ? 'si' : 'en');
+  $('mediumSwitch').disabled = !!fixedMed();
+  $('mediumSwitch').title = fixedMed() ? 'Your class is ' + MEDN[fixedMed()] + ' medium' : 'Class medium';
   const nick = prof && prof.nick || firstName(ME.name) || 'Explorer';
   NICKS[U.uid] = nick;
   Q.setProfile({nickname: nick, medium: MEDN[med]});
@@ -472,6 +485,8 @@ S.onResult = r => {
   if (!r.wk && q && q.live) { r.wk = q.live.wk; r.orig = q.live.orig; }
   $('reviewBtn').hidden = !(r.wk && r.orig);
   const sc = r.grade ? r.grade.score : 0, st = starsFor(sc), who = S.nickname || 'Explorer';
+  const rw = WK.find(x => x.id === r.wk);
+  if (r.grade && !r.practice && rw) $('resultSubtitle').textContent += ' • 🏅 ' + points(sc, r.elapsedSeconds, mins(rw) * 60) + ' Quest Points';
   $('resultTitle').textContent = [
     'Keep going, ' + who + '! Practice for your first star ⭐',
     'Nice, ' + who + '! You earned a star! ⭐',
@@ -546,9 +561,10 @@ async function loadBoard() {
       snap.forEach(d => {
         const a = d.data(), t0 = ms(a.startedAt);
         if (!(a.done || now() > t0 + lim * 1000)) return;
-        const used = a.done && a.finishedAt ? (ms(a.finishedAt) - t0) / 1000 : lim;
-        rows.push({nickname: (NICKS[d.id] || 'Explorer') + (d.id === U.uid ? ' (you)' : ''), week: num(w),
-          score: score(a.answers, key), elapsedSeconds: Math.min(Math.max(0, Math.round(used)), lim)});
+        const used = Math.min(Math.max(0, Math.round(a.done && a.finishedAt ? (ms(a.finishedAt) - t0) / 1000 : lim)), lim);
+        const sc = score(a.answers, key);
+        rows.push({key: d.id, nickname: (NICKS[d.id] || 'Explorer') + (d.id === U.uid ? ' (you)' : ''), week: num(w),
+          score: sc, elapsedSeconds: used, points: points(sc, used, lim)});
       });
     } catch (e) {}
   }));
@@ -588,6 +604,7 @@ $('profileChip').onclick = account;
 $('profileChip').onkeydown = e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); account(); } };
 
 $('mediumSwitch').addEventListener('change', () => {
+  if (fixedMed()) { S.medium = MEDN[fixedMed()]; L.refreshStats(); return; }
   const m = MED[S.medium];
   try { localStorage.setItem('eict-quest-medium', m); } catch (e) {}
   if (U && FB) FB.updateDoc(profRef(), {medium: m}).catch(() => {});
