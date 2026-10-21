@@ -366,5 +366,95 @@ service cloud.firestore {
                             && request.resource.data.nick.size() <= 24;
       allow delete: if owner();
     }
+
+    // ---------- Checkpoint Papers ----------
+    // A checkpoint's settings are readable by any signed-in student and hold
+    // nothing secret. Zoom links, question papers, answers and marks live in
+    // the sub-collections below, each with its own guard. Times are checked
+    // against the server clock (request.time), never the student's device.
+    match /cp/{id} {
+      allow read: if request.auth != null;
+      allow write: if owner();
+
+      function cpDoc() {
+        return get(/databases/$(database)/documents/cp/$(id)).data;
+      }
+      function asg(u) {
+        return get(/databases/$(database)/documents/cp/$(id)/assign/$(u)).data;
+      }
+      function live() {
+        return !(cpDoc().stage in ['draft', 'postponed', 'cancelled']);
+      }
+
+      // Availability: one response per eligible student, editable until the
+      // poll closes.
+      match /votes/{uid} {
+        allow read: if owner() || (request.auth != null && request.auth.uid == uid);
+        allow create, update: if request.auth != null && request.auth.uid == uid
+                              && cpDoc().stage == 'poll'
+                              && request.time < cpDoc().pollCloseAt
+                              && (meDoc().batch in cpDoc().batches || uid in cpDoc().extra)
+                              && request.resource.data.keys().hasOnly(['uid','code','name','batch','ok','pref','no','note','at'])
+                              && request.resource.data.uid == uid
+                              && request.resource.data.ok is list && request.resource.data.ok.size() <= 20
+                              && request.resource.data.no is list && request.resource.data.no.size() <= 20
+                              && request.resource.data.note is string && request.resource.data.note.size() <= 300
+                              && request.resource.data.at == request.time;
+        allow delete: if owner();
+      }
+
+      // The session a student sits, with its Zoom link and the exact times
+      // each part opens and closes. Written by you; the student can only
+      // acknowledge it.
+      match /assign/{uid} {
+        allow read: if owner() || (request.auth != null && request.auth.uid == uid);
+        allow create, delete: if owner();
+        allow update: if owner() || (request.auth != null && request.auth.uid == uid
+                      && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['ack','ackAt'])
+                      && request.resource.data.ack == true
+                      && request.resource.data.ackAt == request.time);
+      }
+
+      // Question papers, one per session, part and medium. A paper can be
+      // opened only by a student assigned to that session, and only once
+      // its start time has passed.
+      match /papers/{pid} {
+        allow get: if owner() || (request.auth != null && live()
+                   && asg(request.auth.uid).session == resource.data.session
+                   && request.time >= resource.data.openAt);
+        allow list, write: if owner();
+      }
+
+      // Answer sheets: the student's own Drive links for Part A or Part B,
+      // accepted from the moment that part opens until its upload deadline.
+      match /subs/{sid} {
+        allow get: if owner() || (request.auth != null
+                   && (sid == request.auth.uid + '_A' || sid == request.auth.uid + '_B'));
+        allow create, update: if request.auth != null && live()
+                              && request.resource.data.part in ['A', 'B']
+                              && sid == request.auth.uid + '_' + request.resource.data.part
+                              && request.resource.data.keys().hasOnly(['uid','code','part','session','links','at'])
+                              && request.resource.data.uid == request.auth.uid
+                              && request.resource.data.links is list
+                              && request.resource.data.links.size() > 0
+                              && request.resource.data.links.size() <= 20
+                              && request.resource.data.at == request.time
+                              && request.time >= (request.resource.data.part == 'A'
+                                   ? asg(request.auth.uid).openA : asg(request.auth.uid).openB)
+                              && request.time <= (request.resource.data.part == 'A'
+                                   ? asg(request.auth.uid).dueA : asg(request.auth.uid).dueB);
+        allow list, delete: if owner();
+      }
+
+      // Attendance, marks and feedback while marking, and the log of
+      // privileged changes. Yours only; results reach students when you
+      // publish them into marks/{code}.
+      match /grade/{uid} {
+        allow read, write: if owner();
+      }
+      match /log/{lid} {
+        allow read, write: if owner();
+      }
+    }
   }
 }

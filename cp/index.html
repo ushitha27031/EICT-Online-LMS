@@ -1,0 +1,330 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#070B1C">
+<title>Checkpoint Papers · EICT</title>
+<link href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@500;600;700&family=Nunito:wght@400;600;700;800&family=Noto+Sans+Sinhala:wght@400;600;700&display=swap" rel="stylesheet">
+<style>
+:root{--ink:#070B1C;--panel:#0d1433;--wire:rgba(142,164,255,.18);--paper:#EAF0FF;--dim:#93A0C8;--cyan:#38E1FF;--gold:#FFC93C;--ok:#7CF29B;--bad:#FF4D6D;--d:'Chakra Petch','Noto Sans Sinhala',system-ui,sans-serif}
+*{box-sizing:border-box}
+body{margin:0;min-height:100vh;color:var(--paper);font:15px/1.6 'Nunito','Noto Sans Sinhala',system-ui,sans-serif;
+  background:radial-gradient(ellipse at 15% -10%,#1b2a66 0,transparent 55%),radial-gradient(ellipse at 100% 100%,#2a1650 0,transparent 50%),var(--ink)}
+.wrap{max-width:860px;margin:0 auto;padding:16px 16px 70px}
+header{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:14px}
+header h1{font:700 22px var(--d);margin:0;flex:1;letter-spacing:.02em}
+header h1 small{display:block;font:600 11px var(--d);color:var(--gold);letter-spacing:.24em}
+a{color:var(--cyan)}
+.btn{font:700 14px var(--d);letter-spacing:.03em;border:1px solid var(--wire);background:#151f4a;color:#fff;border-radius:11px;padding:10px 15px;cursor:pointer;text-decoration:none;display:inline-flex;gap:6px;align-items:center;justify-content:center}
+.btn:hover{filter:brightness(1.15)}.btn:disabled{opacity:.4;cursor:not-allowed}
+.b1{background:linear-gradient(135deg,var(--cyan),#2a8cff);color:#04202B;border-color:transparent}
+.b2{background:linear-gradient(135deg,#ffe28a,var(--gold));color:#2b1d00;border-color:transparent}
+.ghost{background:transparent}
+.card{position:relative;background:linear-gradient(160deg,#111a42,#0b1230);border:1px solid var(--wire);border-radius:18px;padding:18px;margin:12px 0}
+.cp{border-color:rgba(255,201,60,.45);box-shadow:0 0 0 1px rgba(56,225,255,.12) inset,0 14px 40px -18px rgba(56,225,255,.35)}
+.k{font:600 11px var(--d);letter-spacing:.22em;color:var(--gold);text-transform:uppercase}
+h2{font:700 22px var(--d);margin:4px 0 6px}h3{font:700 16px var(--d);margin:16px 0 8px;letter-spacing:.02em}
+.muted{color:var(--dim);font-size:13.5px}
+.pill{display:inline-block;font:700 11.5px var(--d);letter-spacing:.06em;padding:3px 10px;border-radius:99px;border:1px solid currentColor}
+.pill.c{color:var(--cyan)}.pill.g{color:var(--gold)}.pill.o{color:var(--ok)}.pill.r{color:var(--bad)}.pill.d{color:var(--dim)}
+.list{display:grid;gap:10px}
+.item{display:flex;gap:12px;align-items:center;cursor:pointer;text-align:left;width:100%;color:inherit;font:inherit}
+.item .n{font:700 26px var(--d);color:var(--gold);min-width:46px;text-align:center}
+.item .t{flex:1}
+.item b{font:700 16px var(--d);display:block}
+.opt{display:grid;grid-template-columns:1fr auto;gap:10px;align-items:center;padding:12px;border:1px solid var(--wire);border-radius:13px;margin:8px 0;background:#0a1029}
+.opt.yes{border-color:rgba(124,242,155,.6);background:rgba(124,242,155,.07)}.opt.no{opacity:.6}
+.seg{display:inline-flex;border:1px solid var(--wire);border-radius:10px;overflow:hidden}
+.seg button{font:700 13px var(--d);background:transparent;color:var(--dim);border:0;padding:8px 11px;cursor:pointer}
+.seg button.on{background:#1d2a5c;color:#fff}.seg button.on.y{background:#1c5a3a}.seg button.on.n{background:#5e1430}
+.star{font-size:20px;background:none;border:0;cursor:pointer;color:#3a4570;padding:2px 4px}.star.on{color:var(--gold)}
+textarea,input{font:inherit;background:#0a1029;color:var(--paper);border:1px solid var(--wire);border-radius:10px;padding:10px 12px;width:100%}
+.tl{display:grid;grid-template-columns:auto 1fr auto;gap:4px 12px;font-size:14px;margin:8px 0}
+.tl b{font-family:var(--d)}
+.big{font:700 30px var(--d);color:var(--cyan);letter-spacing:.03em}
+.part{border:1px solid var(--wire);border-radius:14px;padding:14px;margin:10px 0;background:#0a1029}
+.part.live{border-color:rgba(56,225,255,.6);box-shadow:0 0 22px -8px rgba(56,225,255,.6)}
+.link{display:grid;grid-template-columns:auto 1fr auto auto auto;gap:6px;align-items:center;margin:6px 0}
+.link .i{font:700 13px var(--d);color:var(--dim);min-width:28px}
+.link button{padding:7px 9px}
+.res{display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:8px;margin:10px 0}
+.res div{background:#0a1029;border:1px solid var(--wire);border-radius:12px;padding:10px;text-align:center}
+.res b{display:block;font:700 24px var(--d);color:var(--gold)}
+.badge{font-size:42px;line-height:1}
+.note{background:rgba(255,201,60,.08);border:1px solid rgba(255,201,60,.35);border-radius:12px;padding:10px 12px;font-size:14px}
+.err{color:var(--bad);font-weight:700}.okc{color:var(--ok);font-weight:700}
+.toast{position:fixed;left:50%;bottom:18px;transform:translateX(-50%);background:#111a42;border:1px solid var(--cyan);border-radius:12px;padding:11px 16px;font-weight:800;display:none;z-index:9;max-width:92vw;text-align:center}
+.toast.on{display:block}
+.gate{max-width:380px;margin:40px auto;text-align:center}.gate input{margin:6px 0}
+.hide{display:none!important}
+.steps{display:flex;gap:4px;flex-wrap:wrap;margin:10px 0 0}.steps span{font:600 11px var(--d);padding:3px 8px;border-radius:99px;border:1px solid #ffffff1a;color:var(--dim)}
+.steps span.on{color:var(--gold);border-color:var(--gold)}.steps span.done{color:var(--ok);border-color:rgba(124,242,155,.4)}
+@media(max-width:560px){.link{grid-template-columns:auto 1fr auto auto}.link .dn{display:none}.big{font-size:26px}}
+@media(prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1><small>EICT · A/L ICT</small>Checkpoint Papers</h1>
+    <a class="btn ghost" id="backPlan" href="../Journey.html">← Study plan</a>
+  </header>
+
+  <section class="card gate hide" id="gate">
+    <h2>Sign in</h2>
+    <p class="muted">Use the same email and password as your class page.</p>
+    <form id="gform"><input id="em" type="email" placeholder="Email" autocomplete="username" required>
+      <input id="pw" type="password" placeholder="Password" autocomplete="current-password" required>
+      <button class="btn b1" style="width:100%;margin-top:8px">Sign in</button></form>
+    <p class="err" id="gerr"></p>
+  </section>
+
+  <main id="app"><p class="muted" id="loading">Loading…</p></main>
+</div>
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+<script src="../firebase-config.js"></script>
+<script type="module">
+/* ============================================================
+   Checkpoint Papers — the student side.
+   Availability poll → the session sir assigns (Zoom, times) →
+   question papers that open at their start time → answer links
+   for Part A and Part B until each upload deadline → results.
+   What a student may read or write, and when, is enforced by the
+   Firestore rules against the server clock; the times shown here
+   are corrected to the server's clock as well.
+   ============================================================ */
+const $=s=>document.querySelector(s);
+const esc=s=>String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const ms=t=>t&&t.toMillis?t.toMillis():t instanceof Date?t.getTime():+t||0;
+const fmt=(t,o)=>t?new Date(ms(t)).toLocaleString('en-GB',Object.assign({timeZone:'Asia/Colombo',weekday:'long',day:'numeric',month:'long',hour:'numeric',minute:'2-digit'},o||{})):'—';
+const fmtT=t=>t?new Date(ms(t)).toLocaleTimeString('en-GB',{timeZone:'Asia/Colombo',hour:'numeric',minute:'2-digit'}):'—';
+const MEDN={si:'Sinhala',en:'English'};
+const dur=m=>m<60?m+' min':Math.floor(m/60)+' h'+(m%60?' '+m%60+' min':'');
+let FB=null,db=null,auth=null,U=null,ME=null,CPS=[],CUR=null,SKEW=0,tick=null;
+const now=()=>Date.now()+SKEW;
+const D=(...p)=>FB.doc(db,...p);
+let tt;const toast=t=>{const e=$('#toast');e.textContent=t;e.classList.add('on');clearTimeout(tt);tt=setTimeout(()=>e.classList.remove('on'),3000);};
+const left=t=>{let s=Math.max(0,Math.round((ms(t)-now())/1000));const d=Math.floor(s/86400);s%=86400;const h=Math.floor(s/3600),m=Math.floor(s%3600/60),x=s%60;
+  return d?`${d}d ${h}h ${m}m`:h?`${h}h ${String(m).padStart(2,'0')}m`:`${m}:${String(x).padStart(2,'0')}`;};
+
+/* the server's clock, from the Date header of this very site */
+async function syncClock(){try{const t0=Date.now(),r=await fetch(location.href.split('#')[0],{method:'HEAD',cache:'no-store'}),t1=Date.now(),d=Date.parse(r.headers.get('date'));
+  if(d){const sk=d-(t0+t1)/2;SKEW=Math.abs(sk)>2000?sk:0;}}catch(e){}}
+
+async function boot(){
+  const cfg=window.FIREBASE_CONFIG;if(!cfg||!cfg.projectId){$('#loading').textContent='Cannot reach the class database.';return;}
+  const G='https://www.gstatic.com/firebasejs/11.0.2/firebase-';
+  try{const [A,F,Au]=await Promise.all([import(G+'app.js'),import(G+'firestore.js'),import(G+'auth.js')]);
+    const app=A.initializeApp(cfg);FB={...F,...Au};db=F.getFirestore(app);auth=Au.getAuth(app);
+    try{await Au.setPersistence(auth,Au.browserLocalPersistence);}catch(e){}}
+  catch(e){$('#loading').textContent='Cannot reach the class database. Check your internet and reload.';return;}
+  syncClock();
+  FB.onAuthStateChanged(auth,async u=>{U=u;
+    if(!u){$('#gate').classList.remove('hide');$('#app').classList.add('hide');return;}
+    $('#gate').classList.add('hide');$('#app').classList.remove('hide');
+    try{const d=await FB.getDoc(D('students',u.uid));
+      if(!d.exists()){$('#app').innerHTML='<div class="card"><p class="err">This account has no student record. Ask sir to add you.</p></div>';return;}
+      ME={uid:u.uid,...d.data()};
+      if(ME.batch==='AL-27-SI') $('#backPlan').href='../JourneySin.html';
+      else if(ME.batch!=='AL-27') $('#backPlan').href=ME.batch==='AL-28'?'../Class2.html':'../EICT.html';
+      await loadList();
+    }catch(e){$('#app').innerHTML='<div class="card"><p class="err">Could not load: '+esc(e.code||e.message)+'</p></div>';}
+  });
+}
+$('#gform').onsubmit=async e=>{e.preventDefault();$('#gerr').textContent='Checking…';
+  try{await FB.signInWithEmailAndPassword(auth,$('#em').value.trim(),$('#pw').value);$('#gerr').textContent='';}
+  catch(x){$('#gerr').textContent=/invalid|wrong|not-found/.test(x.code||'')?'Wrong email or password.':(x.code||x.message);}};
+
+async function loadList(){
+  const s=await FB.getDocs(FB.collection(db,'cp'));
+  CPS=s.docs.map(d=>({id:d.id,...d.data()})).filter(c=>c.stage!=='draft'&&((c.batches||[]).includes(ME.batch)||(c.extra||[]).includes(ME.uid)))
+    .sort((a,b)=>(a.n||0)-(b.n||0));
+  const want=location.hash.slice(1);
+  if(want&&CPS.find(c=>c.id===want)) return openCp(want);
+  if(CPS.length===1) return openCp(CPS[0].id);
+  drawList();
+}
+window.addEventListener('hashchange',()=>{const h=location.hash.slice(1);if(!h){CUR=null;drawList();}else if(!CUR||CUR.id!==h) openCp(h);});
+
+/* ---------- my state in a checkpoint ---------- */
+let V=null,A=null,S={},R=null;
+function myStage(c,a,r){
+  if(c.stage==='cancelled') return ['Cancelled','r'];
+  if(c.stage==='postponed') return ['Postponed','r'];
+  if(r&&['published','archived'].includes(c.stage)) return [r.absent?'Absent':'Results published','o'];
+  if(c.stage==='poll') return [V?'Availability sent':'Availability open',V?'o':'g'];
+  if(c.stage==='scheduling') return ['Waiting for the schedule','d'];
+  if(!a) return ['No session yet','d'];
+  const t=now();
+  if(t<ms(a.openA)) return ['Confirmed','c'];
+  if(t<=ms(a.dueB)) return ['In progress','g'];
+  return [S.A&&S.B?'Submitted':'Exam over','o'];
+}
+async function drawList(){
+  if(!CPS.length){$('#app').innerHTML='<div class="card"><div class="k">Checkpoint papers</div><h2>Nothing yet</h2><p class="muted">A checkpoint paper appears here when sir opens one for your class — usually after weeks 8, 16, 24 and 32 of the study plan.</p></div>';return;}
+  $('#app').innerHTML='<div class="list">'+CPS.map(c=>`<button class="card cp item" data-id="${c.id}"><span class="n">${String(c.n||'?').padStart(2,'0')}</span>
+    <span class="t"><b>${esc(c.title)}</b><span class="muted">${esc(c.coverage||'')}${c.afterWeek?' · after week '+c.afterWeek:''}</span></span>
+    <span class="pill ${c.stage==='poll'?'g':c.stage==='published'?'o':['cancelled','postponed'].includes(c.stage)?'r':'c'}">${c.stage==='poll'?'Vote now':c.stage==='published'?'Results':c.stage==='confirmed'?'Scheduled':c.stage==='scheduling'?'Scheduling':c.stage==='archived'?'Done':c.stage}</span></button>`).join('')+'</div>';
+  $('#app').onclick=e=>{const b=e.target.closest('[data-id]');if(b) location.hash=b.dataset.id;};
+}
+async function openCp(id){
+  CUR=CPS.find(c=>c.id===id);if(!CUR) return drawList();
+  if(location.hash.slice(1)!==id) history.replaceState(null,'','#'+id);
+  $('#app').onclick=null;$('#app').innerHTML='<p class="muted">Loading…</p>';
+  const g=p=>FB.getDoc(p).then(d=>d.exists()?d.data():null).catch(()=>null);
+  [V,A,S.A,S.B]=await Promise.all([g(D('cp',id,'votes',U.uid)),g(D('cp',id,'assign',U.uid)),g(D('cp',id,'subs',U.uid+'_A')),g(D('cp',id,'subs',U.uid+'_B'))]);
+  R=null;if(ME.code){const m=await g(D('marks',ME.code));R=m&&m.cp&&m.cp[id]||null;}
+  draw();clearInterval(tick);tick=setInterval(()=>{if(!document.hidden&&!document.activeElement.matches('input,textarea'))drawLive();},1000);
+}
+
+/* ---------- drawing ---------- */
+function draw(){
+  const c=CUR,[st,cl]=myStage(c,A,R);
+  const steps=['Availability','Session','Part A','Part B','Results'],at=c.stage==='poll'?0:!A?1:now()<ms(A.openA)?1:now()<ms(A.openB)?2:now()<=ms(A.dueB)?3:4;
+  $('#app').innerHTML=`${CPS.length>1?'<a href="#" class="muted">← All checkpoints</a>':''}
+    <div class="card cp"><div class="k">Checkpoint ${String(c.n||'?').padStart(2,'0')}${c.afterWeek?' · after week '+c.afterWeek:''}</div>
+      <h2>${esc(c.title)}</h2><span class="pill ${cl}">${esc(st)}</span>
+      ${c.coverage?`<p style="margin:10px 0 0"><b>Covers:</b> ${esc(c.coverage)}</p>`:''}${c.desc?`<p class="muted" style="margin:6px 0 0">${esc(c.desc)}</p>`:''}
+      <div class="steps">${steps.map((s,i)=>`<span class="${i<at?'done':i===at?'on':''}">${i+1}. ${s}</span>`).join('')}</div></div>
+    ${['postponed','cancelled'].includes(c.stage)?`<div class="card"><p class="note">This checkpoint has been ${c.stage}.${c.notice?' '+esc(c.notice):''} Papers and uploads are closed for now.</p></div>`:''}
+    <div id="body"></div>`;
+  if(c.stage==='poll'||c.stage==='scheduling'&&!A) drawPoll();
+  else if(R&&['published','archived'].includes(c.stage)) drawResult();
+  else if(A) drawExam();
+  else $('#body').innerHTML='<div class="card"><p class="muted">'+(c.stage==='scheduling'?'Sir is choosing the two exam sessions from everyone’s answers. Your session will show here.':'You have not been placed in a session. Please contact sir.')+'</p></div>';
+}
+
+/* availability */
+let PICK={};
+function drawPoll(){
+  const c=CUR,open=c.stage==='poll'&&now()<ms(c.pollCloseAt),opts=c.pollOptions||[];
+  PICK={};opts.forEach(o=>PICK[o.id]=V?((V.ok||[]).includes(o.id)?'y':(V.no||[]).includes(o.id)?'n':''):'');let pref=V&&V.pref||'';
+  const render=()=>{
+    $('#body').innerHTML=`<div class="card"><div class="k">Step 1 · Availability</div><h3 style="margin-top:4px">When can you sit this paper?</h3>
+      <p class="muted">Tick every time you can attend and star the one you prefer. This is <b>not</b> a booking — sir picks two sessions from everyone’s answers and then tells you yours.</p>
+      ${opts.map(o=>`<div class="opt ${PICK[o.id]==='y'?'yes':PICK[o.id]==='n'?'no':''}"><div><b>${fmt(o.at)}</b><div class="muted">${esc(c.secA.title)} + ${esc(c.secB.title)} · about ${dur(c.secA.min+c.breakMin+c.secB.min)}</div></div>
+        <div style="display:flex;gap:6px;align-items:center">${open?`<button class="star ${pref===o.id?'on':''}" data-pref="${o.id}" title="My preferred time" ${PICK[o.id]==='y'?'':'disabled'}>★</button>
+        <span class="seg"><button class="${PICK[o.id]==='y'?'on y':''}" data-y="${o.id}">✓ Can</button><button class="${PICK[o.id]==='n'?'on n':''}" data-n="${o.id}">✕ Can’t</button></span>`
+        :`<span class="pill ${PICK[o.id]==='y'?'o':PICK[o.id]==='n'?'r':'d'}">${PICK[o.id]==='y'?(pref===o.id?'★ Preferred':'Can attend'):PICK[o.id]==='n'?'Cannot':'—'}</span>`}</div></div>`).join('')}
+      ${open?`<h3>Anything else? <span class="muted">(optional)</span></h3><textarea id="note" maxlength="300" placeholder="E.g. I can only start after 7 PM on weekdays">${esc(V&&V.note||'')}</textarea>
+        <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-top:12px"><button class="btn b2" id="vSave">${V?'Update my answer':'Send my answer'}</button>
+        <span class="muted">You can change it until <b>${fmt(c.pollCloseAt)}</b> (${left(c.pollCloseAt)} left).</span></div>
+        ${V?`<p class="okc">✓ Sent ${fmt(V.at,{weekday:undefined})}</p>`:''}`
+      :`<p class="muted">${V?'Your answer is in. ':'You did not answer. '}The poll ${c.stage==='poll'?'has closed':'is closed'}. Sir is choosing the sessions.</p>`}</div>`;
+  };
+  render();
+  $('#body').onclick=async e=>{const t=e.target;
+    if(t.dataset.y){PICK[t.dataset.y]=PICK[t.dataset.y]==='y'?'':'y';if(PICK[t.dataset.y]!=='y'&&pref===t.dataset.y)pref='';render();}
+    else if(t.dataset.n){PICK[t.dataset.n]=PICK[t.dataset.n]==='n'?'':'n';if(pref===t.dataset.n)pref='';render();}
+    else if(t.dataset.pref){pref=pref===t.dataset.pref?'':t.dataset.pref;render();}
+    else if(t.id==='vSave'){
+      const ok=opts.filter(o=>PICK[o.id]==='y').map(o=>o.id),no=opts.filter(o=>PICK[o.id]==='n').map(o=>o.id);
+      if(!ok.length&&!confirm('You have not ticked any time you can attend. Send anyway? Sir will contact you.')) return;
+      t.disabled=true;
+      try{const v={uid:U.uid,code:ME.code||'',name:ME.name||'',batch:ME.batch||'',ok,pref:ok.includes(pref)?pref:'',no,note:($('#note').value||'').trim().slice(0,300),at:FB.serverTimestamp()};
+        await FB.setDoc(D('cp',c.id,'votes',U.uid),v);V={...v,at:FB.Timestamp.now()};toast('✓ Your availability is saved');render();}
+      catch(x){t.disabled=false;toast(/permission/.test(x.code||'')?'The poll has closed.':'Could not save. Check your internet.');}
+    }};
+}
+
+/* the exam itself */
+const PARTS=()=>[['A',CUR.secA,'openA','endA','dueA'],['B',CUR.secB,'openB','endB','dueB']];
+const LINKS={A:null,B:null};
+function drawExam(){
+  const c=CUR,a=A;
+  $('#body').innerHTML=`<div class="card"><div class="k">Step 2 · Your session</div>
+      <h3 style="margin-top:4px">${esc(a.label||'Your session')} · ${fmt(a.start)}</h3>
+      <div class="tl">${PARTS().map(([p,s,o,e,d])=>`<b>${esc(s.title)}</b><span>${fmtT(a[o])} – ${fmtT(a[e])}</span><span class="muted">${dur(s.min)}</span>${p==='A'&&c.breakMin?`<b>Break</b><span>${fmtT(a.endA)} – ${fmtT(a.openB)}</span><span class="muted">${c.breakMin} min</span>`:''}`).join('')}</div>
+      <p class="muted">Sri Lanka time · ${MEDN[a.medium]} medium paper · answer uploads close ${c.graceMin} minutes after each part ends.</p>
+      <div id="cd" style="margin:10px 0"></div>
+      <div style="display:flex;gap:10px;flex-wrap:wrap">${a.zoom?`<a class="btn b1" href="${esc(a.zoom)}" target="_blank" rel="noopener">🎥 Join Zoom</a>`:'<span class="muted">The Zoom link will appear here.</span>'}
+        ${a.ack?'<span class="pill o" style="align-self:center">✓ You confirmed this time</span>':'<button class="btn b2" id="ack">✓ I will be there</button>'}</div>
+      ${a.ack?'':'<p class="muted">Cannot make it? Tell sir now — he can move you to the other session.</p>'}</div>
+    <div class="card"><div class="k">Rules</div>
+      <p style="white-space:pre-line;margin:6px 0">${esc(c.instructions||'')}</p>${c.materials?`<p><b>Allowed:</b> ${esc(c.materials)}</p>`:''}
+      <p class="muted">Keep your camera on during the Zoom session so sir can supervise. The session is not recorded by this site. If you need an accommodation, tell sir before the exam.</p></div>
+    ${PARTS().map(([p,s])=>`<div class="part" id="part${p}"><div class="k">Step ${p==='A'?3:4} · ${esc(s.title)}</div><div id="pb${p}"></div></div>`).join('')}`;
+  if($('#ack')) $('#ack').onclick=async()=>{try{await FB.updateDoc(D('cp',c.id,'assign',U.uid),{ack:true,ackAt:FB.serverTimestamp()});A.ack=true;toast('✓ See you there');drawExam();}catch(e){toast('Could not save. Check your internet.');}};
+  PARTS().forEach(([p])=>{LINKS[p]=(S[p]&&S[p].links||[]).slice();if(!LINKS[p].length)LINKS[p]=[''];drawPart(p);});
+  drawLive();
+}
+function partState(p){const a=A,t=now(),[o,e,d]=p==='A'?['openA','endA','dueA']:['openB','endB','dueB'];
+  if(['postponed','cancelled'].includes(CUR.stage)) return 'closed';
+  return t<ms(a[o])?'soon':t<ms(a[e])?'writing':t<=ms(a[d])?'upload':'closed';}
+const lastState={A:'',B:''};
+function drawPart(p){
+  const a=A,st=partState(p),[o,e,d]=p==='A'?['openA','endA','dueA']:['openB','endB','dueB'],sub=S[p];lastState[p]=st;
+  $('#part'+p).classList.toggle('live',st==='writing'||st==='upload');
+  const canEdit=st==='writing'||st==='upload';
+  $('#pb'+p).innerHTML=`<div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;justify-content:space-between;margin-top:6px">
+      <span>${st==='soon'?`Opens <b>${fmt(a[o])}</b>`:st==='writing'?`<b class="okc">Writing now</b> · ends ${fmtT(a[e])}`:st==='upload'?`<b style="color:var(--gold)">Upload time</b> · closes ${fmtT(a[d])}`:`Closed ${fmt(a[d],{weekday:undefined})}`}</span>
+      <span class="muted" data-left="${p}"></span></div>
+    <div style="margin:10px 0"><button class="btn b1" data-paper="${p}" ${st==='soon'?'disabled':''}>📄 ${st==='soon'?'Paper opens at '+fmtT(a[o]):'Open the question paper'}</button></div>
+    <h3>Your answers</h3>
+    ${sub?`<p class="okc">✓ Submitted ${fmt(sub.at,{weekday:undefined})} · ${sub.links.length} file${sub.links.length>1?'s':''}</p>`:st==='closed'?'<p class="err">Nothing was submitted for this part.</p>':''}
+    ${canEdit?`<p class="muted">Photograph every page in order → put them in <b>one PDF</b> (or upload the images) → Google Drive → Share → <b>Anyone with the link · Editor</b> → Copy link → paste below. Add one line per file, in page order.</p>
+      <div id="lk${p}">${LINKS[p].map((l,i)=>`<div class="link"><span class="i">${i+1}.</span><input data-l="${p}" data-i="${i}" value="${esc(l)}" placeholder="https://drive.google.com/…" inputmode="url">
+        <button class="btn ghost" data-up="${p},${i}" title="Move up" ${i?'':'disabled'}>↑</button><button class="btn ghost dn" data-dn="${p},${i}" title="Move down" ${i<LINKS[p].length-1?'':'disabled'}>↓</button><button class="btn ghost" data-rm="${p},${i}" title="Remove">✕</button></div>`).join('')}</div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px"><button class="btn ghost" data-add="${p}">+ Add another file</button>
+        <button class="btn b2" data-send="${p}">${sub?'Replace my submission':'Submit '+esc(p==='A'?CUR.secA.title:CUR.secB.title)}</button></div>
+      <p class="muted" id="lm${p}"></p>`
+    :sub?`<div>${sub.links.map((l,i)=>`<div><a href="${esc(l)}" target="_blank" rel="noopener">File ${i+1}</a></div>`).join('')}</div>`:''}`;
+}
+function drawLive(){
+  if(!CUR||!A||!$('#cd')) return;
+  const a=A,t=now(),ev=[[a.openA,'Part A starts'],[a.endA,'Part A ends'],[a.dueA,'Part A uploads close'],[a.openB,'Part B starts'],[a.endB,'Part B ends'],[a.dueB,'Part B uploads close']].find(x=>ms(x[0])>t);
+  $('#cd').innerHTML=ev?`<div class="muted">${ev[1]} in</div><div class="big">${left(ev[0])}</div>`:'<div class="okc">This exam is over. Results appear here once sir publishes them.</div>';
+  ['A','B'].forEach(p=>{if(partState(p)!==lastState[p]) drawPart(p);const el=document.querySelector(`[data-left="${p}"]`);if(!el)return;
+    const st=partState(p),k=p==='A'?{soon:'openA',writing:'endA',upload:'dueA'}:{soon:'openB',writing:'endB',upload:'dueB'};el.textContent=k[st]?left(a[k[st]])+' left':'';});
+}
+const tidy=v=>String(v||'').replace(/[​-‍﻿]/g,'').trim();
+$('#app').addEventListener('input',e=>{const i=e.target;if(i.dataset.l) LINKS[i.dataset.l][+i.dataset.i]=i.value;});
+$('#app').addEventListener('click',async e=>{
+  const b=e.target.closest('button');if(!b||!A) return;
+  const sp=k=>b.dataset[k].split(','),pl=(p,i)=>[p,+i];
+  if(b.dataset.add){LINKS[b.dataset.add].push('');drawPart(b.dataset.add);}
+  else if(b.dataset.rm){const [p,i]=pl(...sp('rm'));LINKS[p].splice(i,1);if(!LINKS[p].length)LINKS[p]=[''];drawPart(p);}
+  else if(b.dataset.up){const [p,i]=pl(...sp('up'));[LINKS[p][i-1],LINKS[p][i]]=[LINKS[p][i],LINKS[p][i-1]];drawPart(p);}
+  else if(b.dataset.dn){const [p,i]=pl(...sp('dn'));[LINKS[p][i+1],LINKS[p][i]]=[LINKS[p][i],LINKS[p][i+1]];drawPart(p);}
+  else if(b.dataset.paper){
+    const p=b.dataset.paper;b.disabled=true;
+    try{const d=await FB.getDoc(D('cp',CUR.id,'papers',`${A.session}_${p}_${A.medium}`));
+      if(!d.exists()) toast('The paper is not uploaded yet. Tell sir on Zoom.');else window.open(d.data().link,'_blank','noopener');}
+    catch(x){toast(/permission/.test(x.code||'')?'The paper opens at '+fmtT(p==='A'?A.openA:A.openB)+'.':'Could not open. Check your internet.');}
+    b.disabled=false;
+  }
+  else if(b.dataset.send){
+    const p=b.dataset.send,links=LINKS[p].map(tidy).filter(Boolean),m=$('#lm'+p);
+    if(!links.length){m.innerHTML='<span class="err">Paste the link to your answer file first.</span>';return;}
+    const bad=links.find(l=>!/^https?:\/\/\S+$/i.test(l));if(bad){m.innerHTML='<span class="err">This is not a link: '+esc(bad.slice(0,60))+'</span>';return;}
+    if(links.length>20){m.innerHTML='<span class="err">At most 20 files — put the pages into one PDF.</span>';return;}
+    b.disabled=true;m.textContent='Sending…';
+    const v={uid:U.uid,code:ME.code||'',part:p,session:A.session,links,at:FB.serverTimestamp()};
+    for(let k=0;k<3;k++){try{await FB.setDoc(D('cp',CUR.id,'subs',U.uid+'_'+p),v);S[p]={...v,at:FB.Timestamp.now()};LINKS[p]=links.slice();toast('✓ Part '+p+' submitted');drawPart(p);return;}
+      catch(x){if(/permission/.test(x.code||'')){m.innerHTML='<span class="err">The upload time for this part has closed. If something went wrong, tell sir now.</span>';b.disabled=false;return;}
+        m.textContent='Retrying…';await new Promise(r=>setTimeout(r,1500*(k+1)));}}
+    m.innerHTML='<span class="err">Could not send — check your internet and press the button again. Your links are kept.</span>';b.disabled=false;
+  }
+});
+
+/* results */
+function drawResult(){
+  const r=R,c=CUR,B={gold:['🥇','Gold badge'],silver:['🥈','Silver badge'],bronze:['🥉','Bronze badge']}[r.badge];
+  $('#body').innerHTML=`<div class="card cp"><div class="k">Step 5 · Results</div>
+    ${r.absent?'<h3>You were marked absent for this checkpoint.</h3><p class="muted">Talk to sir if this is wrong.</p>':`
+    <div class="res"><div><b>${r.total}/${r.max}</b><span class="muted">Total</span></div><div><b>${r.pct}%</b><span class="muted">Score</span></div>
+      <div><b>${r.rank?'#'+r.rank:'—'}</b><span class="muted">of ${r.of}</span></div><div><b>+${r.coins}</b><span class="muted">coins</span></div></div>
+    <div class="tl"><b>${esc(c.secA.title)}</b><span>${r.a} / ${c.secA.marks}</span><span></span><b>${esc(c.secB.title)}</b><span>${r.b} / ${c.secB.marks}</span><span></span></div>
+    <div style="display:flex;gap:16px;flex-wrap:wrap;align-items:center;margin-top:10px">
+      ${B?`<div style="text-align:center"><div class="badge">${B[0]}</div><b>${B[1]}</b></div>`:''}
+      ${r.trophy?`<div style="text-align:center"><div class="badge">🏆</div><b>${r.trophy} place</b></div>`:''}
+      ${!B&&!r.trophy?'<p class="muted">Keep going — the next checkpoint is another chance at a badge.</p>':''}</div>`}
+    ${A&&A.feedback?`<h3>Feedback from sir</h3><p class="note" style="white-space:pre-line">${esc(A.feedback)}</p>`:''}
+    <p class="muted">Your result is also in My Marks and the Hall of Fame on the study plan.</p></div>`;
+}
+boot();
+</script>
+</body>
+</html>

@@ -153,6 +153,11 @@ a{color:inherit;text-decoration:none}
 .node.now{border-color:var(--cyan);box-shadow:0 0 0 0 rgba(56,225,255,.45);animation:ping 2.6s infinite}
 .node.now .num{color:var(--cyan);border-color:var(--cyan)}
 .node.lock{opacity:.55}
+/* checkpoint papers: premium milestone cards between the weeks */
+.node.cpn{display:block;text-decoration:none;color:inherit;border-color:rgba(255,201,60,.6);background:linear-gradient(165deg,rgba(255,201,60,.16),rgba(56,225,255,.07) 60%,var(--deep));box-shadow:0 0 0 1px rgba(56,225,255,.12) inset}
+.node.cpn .num{color:var(--gold);border-color:var(--gold);font-size:11px;letter-spacing:.04em}
+.node.cpn.go{box-shadow:0 0 0 1px rgba(255,201,60,.35) inset,0 0 26px -8px rgba(255,201,60,.6)}
+.hseg{display:flex;gap:6px;flex-wrap:wrap;margin:0 0 14px}.hseg button{font-family:var(--d);font-weight:700;font-size:13px;padding:8px 14px;border-radius:10px;border:1px solid var(--edge);background:transparent;color:var(--dim);cursor:pointer}.hseg button.on{border-color:var(--gold);color:var(--gold);background:rgba(255,201,60,.08)}
 .node.lock .num{color:var(--dimmer)}
 @keyframes ping{70%{box-shadow:0 0 0 12px rgba(56,225,255,0)}100%{box-shadow:0 0 0 0 rgba(56,225,255,0)}}
 .node b{display:block;font-family:var(--d);font-size:14.5px;line-height:1.25}
@@ -476,7 +481,7 @@ const SHOP=[
 ];
 const $=(s,r=document)=>r.querySelector(s), $$=(s,r=document)=>[...r.querySelectorAll(s)];
 const esc=s=>String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
-let FB=null, CODE='', ROAD={weeks:[]}, DONE=new Set(), OWNED=new Set(), MARKS={}, SPENT=0, tab='map';
+let FB=null, CODE='', ROAD={weeks:[]}, DONE=new Set(), OWNED=new Set(), MARKS={}, CPM={}, CPL=[], SPENT=0, tab='map';
 let SENT={}, BONUS=0, firstMarks=true, settled=false;
 
 let starsOn=()=>{};
@@ -544,6 +549,7 @@ function totals(){
   let c=DONE.size*5;
   for(const k in MARKS){ const r=MARKS[k]; c+=coinsFor(+r.mark||0); if(r.onTime) c+=25; }
   c+=BONUS;                                   /* coins sir has added by hand */
+  for(const k in CPM) c+=Math.max(0,+CPM[k].coins||0);   /* checkpoint rewards, one entry per checkpoint */
   return {earned:c, coins:c-SPENT};
 }
 const paperList=()=>Object.keys(MARKS).map(k=>({w:+k,...MARKS[k]})).sort((a,b)=>a.w-b.w);
@@ -611,6 +617,10 @@ boot();
 async function loadAll(){
   try{ const d=await FB.getDoc(FB.doc(FB.db,'site','roadmap'));
        if(d.exists()&&d.data().json) ROAD=JSON.parse(d.data().json); }catch(e){}
+  /* checkpoint papers open for this student (their class, or picked individually) */
+  try{ const q=await FB.getDocs(FB.collection(FB.db,'cp')); CPL=[];
+       q.forEach(d=>{ const v=d.data(); if(v.stage!=='draft'&&((v.batches||[]).includes(MYBATCH)||(v.extra||[]).includes(UID)))
+         CPL.push({id:d.id,...v}); }); CPL.sort((a,b)=>(a.n||0)-(b.n||0)); }catch(e){}
   try{ const j=await FB.getDoc(FB.doc(FB.db,'journey',CODE));
        if(j.exists()){ DONE=new Set(j.data().done||[]); OWNED=new Set(j.data().owned||[]);
                        SPENT=+j.data().spent||0; SENT=j.data().sent||{}; } }catch(e){}
@@ -618,6 +628,8 @@ async function loadAll(){
          const d=s.exists()?s.data():{};
          const before=BONUS, hadMarks=Object.keys(MARKS).length;
          MARKS=d.weeks||{}; BONUS=+d.bonus||0;
+         if(JSON.stringify(d.cp||{})!==JSON.stringify(CPM)) HALL=null;
+         CPM=d.cp||{};                         /* published checkpoint results */
          if(firstMarks){ firstMarks=false; }
          else if(settled && BONUS>before) coinBurst(BONUS-before,'coins added');
          else if(settled && Object.keys(MARKS).length>hadMarks){
@@ -824,12 +836,26 @@ function paintMap(){
       (dueAt(w)&&!m?'<span style="color:'+(Date.now()>dueAt(w)?'#FF4D6D':'#FFC93C')+'">'+
         (Date.now()>dueAt(w)?'past due':'due '+dueText(w))+'</span>':'')+
       '<span class="stars">'+[0,1,2].map(n=>'<i class="'+(n<stars?'on':'')+'"></i>').join('')+'</span>'+
-    '</button>';}).join('')+'</div>';
+    '</button>'+cpCards(i+1);}).join('')+cpCards(-1)+'</div>';
+}
+const CP_TX={poll:'Vote for a time',scheduling:'Schedule coming',confirmed:'Scheduled',marking:'Being marked',published:'Results out',archived:'Completed',postponed:'Postponed',cancelled:'Cancelled'};
+function cpCards(after){
+  const n=(ROAD.weeks||[]).length;
+  return CPL.filter(c=>after<0?!(c.afterWeek>=1&&c.afterWeek<=n):c.afterWeek===after).map(c=>{
+    const r=CPM[c.id], badge={gold:'\uD83E\uDD47',silver:'\uD83E\uDD48',bronze:'\uD83E\uDD49'}[r&&r.badge]||'';
+    const go=c.stage==='poll'||c.stage==='confirmed';
+    return '<a class="node cpn'+(go?' go':'')+'" href="cp/index.html#'+esc(c.id)+'">'+
+      (r&&!r.absent?'<span class="mk" style="color:#FFC93C">'+badge+esc(r.pct)+'%</span>':'')+
+      '<span class="num">CP'+String(c.n||'').padStart(2,'0')+'</span>'+
+      '<b>'+esc(c.title||'Checkpoint paper')+'</b>'+
+      '<span>'+esc(c.coverage||'Checkpoint paper')+'</span>'+
+      '<span style="color:'+(go?'#FFC93C':r?'#7CF29B':'#93A0C8')+'">'+(r?(r.absent?'Absent':(r.rank?'Rank #'+r.rank+' of '+r.of:'Results out')+(r.trophy?' \u00B7 \uD83C\uDFC6':'')):(CP_TX[c.stage]||''))+'</span>'+
+    '</a>';}).join('');
 }
 
 function paintMarks(){
   const p=paperList(), avg=average(), g=gradeOf(avg), box=$('#vMarks');
-  if(!p.length){ box.innerHTML='<div class="empty">No papers marked yet. They appear here the moment sir enters them.</div>'; return; }
+  if(!p.length){ box.innerHTML=cpMarks()+'<div class="empty">No weekly papers marked yet. They appear here the moment sir enters them.</div>'; return; }
   const best=Math.max(...p.map(x=>+x.mark||0)), worst=Math.min(...p.map(x=>+x.mark||0));
   const onTime=p.filter(x=>x.onTime).length;
   const W=640,H=210,pad=34;
@@ -854,20 +880,65 @@ function paintMarks(){
         '<text x="'+q[0]+'" y="'+(H-12)+'" fill="#6A77A0" font-size="10" font-family="monospace" text-anchor="middle">W'+(p[i].w+1)+'</text>').join('')+
     '</svg></div>'+
     '<div style="font-family:var(--m);font-size:12.5px;color:var(--dim);margin-top:14px;line-height:1.9">'+
-      'A above 74 \u00B7 B above 64 \u00B7 C above 49 \u00B7 S above 34 \u00B7 W below 35</div>';
+      'A above 74 \u00B7 B above 64 \u00B7 C above 49 \u00B7 S above 34 \u00B7 W below 35</div>'+cpMarks();
+}
+function cpMarks(){
+  const rs=Object.keys(CPM).map(k=>({id:k,...CPM[k]})).sort((a,b)=>(a.n||0)-(b.n||0));
+  if(!rs.length) return '';
+  const B={gold:'\uD83E\uDD47 Gold',silver:'\uD83E\uDD48 Silver',bronze:'\uD83E\uDD49 Bronze'};
+  const cnt=k=>rs.filter(r=>r.badge===k).length, tro=rs.filter(r=>r.trophy).length;
+  return '<div class="pane" style="margin:0 0 16px;border-color:rgba(255,201,60,.45)"><h5>Checkpoint papers</h5>'+
+    '<div style="font-family:var(--m);font-size:12.5px;color:var(--dim);margin:-4px 0 10px">Collection: '+
+      '\uD83E\uDD47 '+cnt('gold')+' \u00B7 \uD83E\uDD48 '+cnt('silver')+' \u00B7 \uD83E\uDD49 '+cnt('bronze')+' \u00B7 \uD83C\uDFC6 '+tro+'</div>'+
+    '<table class="tt"><thead><tr><th>Checkpoint</th><th>Score</th><th>%</th><th>Rank</th><th>Badge</th><th>Coins</th></tr></thead><tbody>'+
+    rs.map(r=>'<tr><td><a href="cp/index.html#'+esc(r.id)+'" style="color:#FFC93C">CP'+String(r.n||'').padStart(2,'0')+'</a> '+esc(r.title||'')+'</td>'+
+      (r.absent?'<td colspan="5" style="color:#FF4D6D">absent</td>':
+      '<td>'+r.total+'/'+r.max+'</td><td><b>'+r.pct+'%</b></td><td>'+(r.rank?'#'+r.rank+' / '+r.of:'\u2014')+(r.trophy?' \uD83C\uDFC6':'')+'</td>'+
+      '<td>'+(B[r.badge]||'\u2014')+'</td><td>+'+(+r.coins||0)+'</td>')+'</tr>').join('')+
+    '</tbody></table></div>';
 }
 
-let HALL=null, hallBusy=false;
+let HALL=null, hallBusy=false, CPH=[], HALLMODE='week', HALLCP='';
 async function paintHall(){
+  await paintHallWeekly();
+  const box=$('#vHall'); if(!box||HALL===null) return;
+  if(HALLMODE==='cp') box.innerHTML=cpHall();
+  box.insertAdjacentHTML('afterbegin','<div class="hseg"><button data-hm="week" class="'+(HALLMODE==='week'?'on':'')+'">Weekly papers</button>'+
+    '<button data-hm="cp" class="'+(HALLMODE==='cp'?'on':'')+'">\uD83C\uDFC6 Checkpoint rankings</button></div>');
+  box.querySelectorAll('[data-hm]').forEach(b=>b.onclick=()=>{HALLMODE=b.dataset.hm;paintHall();});
+  const sel=box.querySelector('#cpPick'); if(sel) sel.onchange=()=>{HALLCP=sel.value;paintHall();};
+}
+/* one ranking per checkpoint, across both sessions, both media and every class */
+function cpHall(){
+  if(!CPH.length) return '<div class="empty">No checkpoint results yet. They appear here when sir publishes them.</div>';
+  const ids=[...new Map(CPH.map(r=>[r.id,r])).values()].sort((a,b)=>(a.n||0)-(b.n||0));
+  if(!ids.find(r=>r.id===HALLCP)) HALLCP=ids[ids.length-1].id;
+  const rows=CPH.filter(r=>r.id===HALLCP).sort((a,b)=>(a.rank||1e9)-(b.rank||1e9)||a.name.localeCompare(b.name));
+  const B={gold:'\uD83E\uDD47',silver:'\uD83E\uDD48',bronze:'\uD83E\uDD49'}, tint=k=>k===1?'#FFC93C':k===2?'#CBD5E1':k===3?'#D9873A':'#6A77A0';
+  return (ids.length>1?'<select id="cpPick" style="margin-bottom:12px;padding:8px 10px;border-radius:9px;background:#0b1230;color:#EAF0FF;border:1px solid var(--edge)">'+
+      ids.map(r=>'<option value="'+esc(r.id)+'" '+(r.id===HALLCP?'selected':'')+'>Checkpoint '+String(r.n||'').padStart(2,'0')+' \u00B7 '+esc(r.title||'')+'</option>').join('')+'</select>':'')+
+    '<div class="pane"><h5>Checkpoint '+String(rows[0].n||'').padStart(2,'0')+' \u00B7 '+esc(rows[0].title||'')+' \u2014 everyone who sat it</h5><table class="tt"><thead><tr>'+
+      '<th style="width:56px">#</th><th>Student</th><th>Score</th><th>%</th><th>Distinction</th></tr></thead><tbody>'+
+      rows.map(r=>{const mine=r.code===CODE; return '<tr style="'+(mine?'background:rgba(56,225,255,.12)':'')+'">'+
+        '<td style="color:'+tint(r.rank)+';font-family:var(--d);font-weight:700;font-size:16px">'+(r.rank<=3?['','\u2460','\u2461','\u2462'][r.rank]:r.rank)+'</td>'+
+        '<td><b style="font-family:var(--b);font-size:14.5px">'+esc(r.name||r.code)+'</b>'+(mine?' <span style="color:#38E1FF;font-size:12px">\u2190 you</span>':'')+
+          '<br><span style="color:#6A77A0;font-size:11.5px">'+esc(r.code)+'</span></td>'+
+        '<td>'+r.total+'/'+r.max+'</td><td><b>'+r.pct+'%</b></td><td>'+(B[r.badge]||'')+(r.trophy?' \uD83C\uDFC6 '+r.trophy:'')+'</td></tr>';}).join('')+
+    '</tbody></table></div>'+
+    '<div style="font-family:var(--m);font-size:12.5px;color:#93A0C8;margin-top:14px;line-height:1.9">Ranked by total marks; equal marks share a place. Badges: Gold, Silver and Bronze by score \u2014 a high score earns a badge even without a trophy.</div>';
+}
+async function paintHallWeekly(){
   const box=$('#vHall'); if(!box) return;
   if(HALL===null && !hallBusy){
     hallBusy=true;
     box.innerHTML='<div class="empty">Counting everyone\u2019s marks\u2026</div>';
     try{
       const q=await FB.getDocs(FB.collection(FB.db,'marks'));
-      const rows=[];
+      const rows=[]; CPH=[];
       q.forEach(d=>{
         const v=d.data(), weeks=v.weeks||{};
+        for(const k in (v.cp||{})){ const r=v.cp[k]; if(r&&!r.absent&&r.rank)
+          CPH.push({id:k,n:r.n,title:r.title,code:v.code||d.id,name:v.name||'',total:r.total,max:r.max,pct:r.pct,rank:r.rank,badge:r.badge,trophy:r.trophy}); }
         const ms=Object.values(weeks).map(x=>+x.mark||0);
         if(!ms.length) return;
         if(MYBATCH && v.batch && v.batch!==MYBATCH) return;   /* one batch, one table */
