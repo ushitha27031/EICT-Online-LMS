@@ -891,7 +891,7 @@ function cpMarks(){
     '<div style="font-family:var(--m);font-size:12.5px;color:var(--dim);margin:-4px 0 10px">Collection: '+
       '\uD83E\uDD47 '+cnt('gold')+' \u00B7 \uD83E\uDD48 '+cnt('silver')+' \u00B7 \uD83E\uDD49 '+cnt('bronze')+' \u00B7 \uD83C\uDFC6 '+tro+'</div>'+
     '<table class="tt"><thead><tr><th>Checkpoint</th><th>Score</th><th>%</th><th>Rank</th><th>Badge</th><th>Coins</th></tr></thead><tbody>'+
-    rs.map(r=>'<tr><td><a href="cp/index.html#'+esc(r.id)+'" style="color:#FFC93C">CP'+String(r.n||'').padStart(2,'0')+'</a> '+esc(r.title||'')+'</td>'+
+    rs.map(r=>'<tr><td><a href="cp/index.html#'+esc(r.id)+'" style="color:#FFC93C">CP'+String(r.n||'').padStart(2,'0')+'</a> '+esc(r.title||'')+(r.sheet?' <a href="'+esc(r.sheet)+'" target="_blank" rel="noopener" title="Marked answer sheet">\uD83D\uDCDD</a>':'')+'</td>'+
       (r.absent?'<td colspan="5" style="color:#FF4D6D">absent</td>':
       '<td>'+r.total+'/'+r.max+'</td><td><b>'+r.pct+'%</b></td><td>'+(r.rank?'#'+r.rank+' / '+r.of:'\u2014')+(r.trophy?' \uD83C\uDFC6':'')+'</td>'+
       '<td>'+(B[r.badge]||'\u2014')+'</td><td>+'+(+r.coins||0)+'</td>')+'</tr>').join('')+

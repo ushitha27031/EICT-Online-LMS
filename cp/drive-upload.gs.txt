@@ -1,0 +1,115 @@
+/* ============================================================
+   EICT · Checkpoint uploads → your Google Drive
+
+   Students' answer sheets (CamScanner PDFs or photos) and the
+   marked sheets you send back are saved into one folder in YOUR
+   Drive: "EICT Checkpoint Answers / CP01 … / Part A / E27-001 Name".
+
+   Set up once (5 minutes):
+     1. Open https://script.google.com → New project.
+     2. Delete what is there, paste this whole file, press Save.
+     3. Deploy → New deployment → ⚙ → Web app.
+          Execute as:      Me
+          Who has access:  Anyone
+        Deploy → Authorize access → choose your Google account →
+        Advanced → Go to (unsafe) → Allow.
+     4. Copy the Web app URL (…/exec) and paste it into
+        Checkpoint Manager → Drive upload → Save → Test.
+
+   Who can upload: only a signed-in EICT student who is in that
+   checkpoint, only for their own answer sheet, and only while that
+   part's upload window is open. Marked sheets: only you. The
+   website's sign-in token is checked against your Firestore rules
+   on every upload, so nobody can fill your Drive from outside.
+   ============================================================ */
+var PROJECT = 'eict-60955';
+var ROOT = 'EICT Checkpoint Answers';
+var MAX_MB = 25;
+
+function doGet() {
+  return out({ ok: true, app: 'eict-cp-upload', v: 1, folder: root().getUrl() });
+}
+
+function doPost(e) {
+  try {
+    var q = JSON.parse(e.postData.contents);
+    var uid = claim(q.token, 'user_id');
+    if (!uid || !/^[A-Za-z0-9_-]{1,64}$/.test(String(q.cp || ''))) return out({ ok: false, error: 'signin' });
+    var cp = read('cp/' + q.cp, q.token);
+    if (!cp) return out({ ok: false, error: 'checkpoint' });
+    var top = sub(root(), 'CP' + pad(cp.n) + ' ' + clean(cp.title));
+    var folder, name;
+    if (q.kind === 'marked') {
+      /* only the teacher may read grade/_private, so this proves who is asking */
+      if (!allowed('cp/' + q.cp + '/grade/_private', q.token)) return out({ ok: false, error: 'owner' });
+      folder = sub(top, 'Marked sheets');
+      name = clean(q.code) + ' ' + clean(q.name) + ' - marked';
+    } else {
+      var a = read('cp/' + q.cp + '/assign/' + uid, q.token);
+      if (!a) return out({ ok: false, error: 'assign' });
+      var part = q.part === 'B' ? 'B' : 'A';
+      var now = Date.now(), open = Date.parse(a['open' + part]), due = Date.parse(a['due' + part]);
+      if (!(now >= open - 60000 && now <= due + 5 * 60000)) return out({ ok: false, error: 'closed' });
+      folder = sub(sub(top, 'Part ' + part), clean(a.code) + ' ' + clean(a.name));
+      name = clean(a.code) + ' Part ' + part;
+    }
+    var mime = String(q.mime || '').toLowerCase();
+    var ext = { 'application/pdf': '.pdf', 'image/jpeg': '.jpg', 'image/png': '.png', 'image/webp': '.webp',
+                'image/heic': '.heic', 'image/heif': '.heif' }[mime];
+    if (!ext) return out({ ok: false, error: 'type' });
+    var bytes = Utilities.base64Decode(String(q.data || ''));
+    if (!bytes.length) return out({ ok: false, error: 'empty' });
+    if (bytes.length > MAX_MB * 1048576) return out({ ok: false, error: 'big' });
+    var stamp = Utilities.formatDate(new Date(), 'Asia/Colombo', 'yyyy-MM-dd HH-mm-ss');
+    var k = 1, it = folder.getFiles();
+    while (it.hasNext()) { it.next(); k++; }
+    var file = folder.createFile(Utilities.newBlob(bytes, mime, name + ' (' + k + ') ' + stamp + ext));
+    try { file.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW); } catch (x) {}
+    return out({ ok: true, url: file.getUrl(), id: file.getId(), name: file.getName() });
+  } catch (err) {
+    return out({ ok: false, error: String(err && err.message || err) });
+  }
+}
+
+/* ---------- helpers ---------- */
+function out(o) {
+  return ContentService.createTextOutput(JSON.stringify(o)).setMimeType(ContentService.MimeType.JSON);
+}
+function root() {
+  var it = DriveApp.getFoldersByName(ROOT);
+  return it.hasNext() ? it.next() : DriveApp.createFolder(ROOT);
+}
+function sub(parent, name) {
+  var it = parent.getFoldersByName(name);
+  return it.hasNext() ? it.next() : parent.createFolder(name);
+}
+function clean(s) {
+  return String(s == null ? '' : s).replace(/[\\\/:*?"<>|#\u0000-\u001f]/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 60) || '-';
+}
+function pad(n) { n = Math.max(0, Math.round(+n || 0)); return n < 10 ? '0' + n : String(n); }
+
+/* a field from the sign-in token; read() below is what proves the token is real */
+function claim(token, key) {
+  try {
+    var p = String(token || '').split('.')[1];
+    p += '===='.slice(0, (4 - p.length % 4) % 4);
+    return JSON.parse(Utilities.newBlob(Utilities.base64DecodeWebSafe(p)).getDataAsString())[key] || '';
+  } catch (x) { return ''; }
+}
+function get(path, token) {
+  return UrlFetchApp.fetch('https://firestore.googleapis.com/v1/projects/' + PROJECT +
+    '/databases/(default)/documents/' + path, { headers: { Authorization: 'Bearer ' + token }, muteHttpExceptions: true });
+}
+/* the document as plain values, read as the student or teacher — so your Firestore rules decide */
+function read(path, token) {
+  var r = get(path, token);
+  if (r.getResponseCode() !== 200) return null;
+  var f = JSON.parse(r.getContentText()).fields || {}, o = {};
+  for (var k in f) { var v = f[k]; o[k] = 'stringValue' in v ? v.stringValue : 'timestampValue' in v ? v.timestampValue
+    : 'integerValue' in v ? +v.integerValue : 'doubleValue' in v ? v.doubleValue : 'booleanValue' in v ? v.booleanValue : null; }
+  return o;
+}
+function allowed(path, token) {
+  var c = get(path, token).getResponseCode();
+  return c === 200 || c === 404;
+}
