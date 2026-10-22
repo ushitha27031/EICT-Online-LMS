@@ -7,63 +7,140 @@
 <title>Checkpoint Manager · EICT</title>
 <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800;900&family=Noto+Sans+Sinhala:wght@400;600;700&display=swap" rel="stylesheet">
 <style>
-:root{--ink:#070B1C;--panel:#0e1534;--panel2:#0a1029;--wire:rgba(142,164,255,.2);--paper:#E9EDFF;--dim:#9AA3D6;--gold:#FFC24B;--cyan:#38E1FF;--ok:#35E08F;--bad:#FF4D6D}
+:root{--ink:#070B1C;--panel2:#0a1029;--wire:rgba(142,164,255,.2);--paper:#E9EDFF;--dim:#9AA3D6;--gold:#FFC24B;--cyan:#38E1FF;--ok:#35E08F;--bad:#FF4D6D}
 *{box-sizing:border-box}
 body{margin:0;background:radial-gradient(ellipse at 20% 0%,#16245a 0,transparent 55%),var(--ink);color:var(--paper);font:15px/1.55 'Nunito','Noto Sans Sinhala',system-ui,sans-serif;min-height:100vh}
-.wrap{max-width:1180px;margin:0 auto;padding:16px 16px 80px}
+.wrap{max-width:1100px;margin:0 auto;padding:16px 16px 90px}
 header{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:10px}
-h1{font-size:23px;margin:0;flex:1;min-width:220px}h2{font-size:19px;margin:0 0 10px}h3{font-size:16px;margin:14px 0 8px}
+h1{font-size:23px;margin:0;flex:1;min-width:220px}h2{font-size:19px;margin:0 0 10px}h3{font-size:16px;margin:16px 0 8px}
 a{color:var(--cyan)}
 .card{background:linear-gradient(160deg,#121b44,#0b1230);border:1px solid var(--wire);border-radius:16px;padding:16px;margin:12px 0}
-button,.btn{font:inherit;font-weight:800;border:1px solid var(--wire);background:#18245a;color:#fff;border-radius:10px;padding:8px 13px;cursor:pointer;text-decoration:none;display:inline-block}
-button:hover{filter:brightness(1.15)}button:disabled{opacity:.4;cursor:not-allowed}
+.step{display:inline-grid;place-items:center;width:26px;height:26px;border-radius:50%;background:var(--gold);color:#3d2600;font-weight:900;font-size:14px;margin-right:6px}
+
+/* buttons, and what they do when pressed */
+button,.btn{font:inherit;font-weight:800;border:1px solid var(--wire);background:#18245a;color:#fff;border-radius:10px;padding:9px 14px;cursor:pointer;text-decoration:none;display:inline-flex;align-items:center;gap:6px;justify-content:center;
+  position:relative;transition:transform .12s,filter .15s,background .2s,box-shadow .2s;-webkit-tap-highlight-color:transparent}
+button:hover,.btn:hover{filter:brightness(1.18)}
+button:active:not(:disabled),.btn:active{transform:scale(.95)}
+button:disabled{opacity:.45;cursor:not-allowed}
 .gold{background:linear-gradient(#ffe18a,#ffb52e);color:#3d2600;border-color:#fff6}
 .cyan{background:linear-gradient(#5feaff,#1aa9d6);color:#03222c;border-color:#fff6}
+.green{background:linear-gradient(#6ff5ad,#1fb36a);color:#03281a;border-color:#fff6}
 .danger{background:#5e1430;border-color:#ff7a9a66}
-.small{padding:5px 9px;font-size:12.5px}
-input,select,textarea{font:inherit;background:#0a1029;color:var(--paper);border:1px solid var(--wire);border-radius:9px;padding:8px 10px;max-width:100%}
-textarea{width:100%;min-height:70px}
-input[type=checkbox],input[type=radio]{width:17px;height:17px;accent-color:var(--gold);vertical-align:middle}
-.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:10px}
+.ghost{background:transparent}
+.small{padding:6px 10px;font-size:13px}
+button.busy{pointer-events:none;opacity:.85}
+.spin{display:inline-block;width:16px;height:16px;border-radius:50%;border:3px solid rgba(255,255,255,.3);border-top-color:#fff;animation:spin .7s linear infinite;vertical-align:-3px}
+.gold .spin,.green .spin,.cyan .spin{border-color:rgba(0,0,0,.18);border-top-color:#3d2600}
+button.did{background:linear-gradient(#6ff5ad,#1fb36a)!important;color:#03281a!important}
+@keyframes spin{to{transform:rotate(360deg)}}
+button.did{animation:did .9s ease-out}
+@keyframes did{0%{box-shadow:0 0 0 0 rgba(53,224,143,.9);filter:brightness(1.4)}100%{box-shadow:0 0 0 16px rgba(53,224,143,0);filter:none}}
+.shake{animation:shake .45s}
+@keyframes shake{20%,60%{transform:translateX(-6px)}40%,80%{transform:translateX(6px)}}
+
+input,select,textarea{font:inherit;background:#0a1029;color:var(--paper);border:1px solid var(--wire);border-radius:9px;padding:9px 11px;max-width:100%;transition:border-color .2s,box-shadow .2s}
+input:focus,select:focus,textarea:focus{outline:0;border-color:var(--cyan);box-shadow:0 0 0 3px rgba(56,225,255,.18)}
+input.bad{border-color:var(--bad);box-shadow:0 0 0 3px rgba(255,77,109,.2)}
+textarea{width:100%;min-height:64px}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:10px}
 label.f{display:flex;flex-direction:column;gap:4px;font-size:12.5px;font-weight:800;color:var(--dim)}
 label.f input,label.f select,label.f textarea{width:100%}
 .row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
 .muted{color:var(--dim);font-size:13px}
-.chk{display:inline-flex;gap:6px;align-items:center;background:var(--panel2);border:1px solid var(--wire);padding:6px 10px;border-radius:9px;cursor:pointer;font-weight:700;font-size:14px}
-.tabs{display:flex;gap:4px;flex-wrap:wrap;border-bottom:1px solid var(--wire);margin:6px 0 12px}
-.tabs button{border-radius:10px 10px 0 0;border-bottom:0;background:transparent;color:var(--dim)}
-.tabs button.on{background:#18245a;color:#fff}
-.cps{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:10px}
-.cpc{background:var(--panel2);border:1px solid var(--wire);border-radius:14px;padding:12px;cursor:pointer;text-align:left;color:var(--paper)}
-.cpc.on{border-color:var(--gold);box-shadow:0 0 0 1px var(--gold) inset}
-.cpc b{display:block;font-size:16px}
+.hide{display:none!important}
+.ok{color:var(--ok)}.bad-t{color:var(--bad)}.warn{color:var(--gold)}
+.tag{font-size:11.5px;padding:1px 7px;border-radius:99px;background:#1b2550;color:#c9d4ff;white-space:nowrap}
+
+/* tick boxes that show they were ticked */
+.pick{position:relative;display:flex;gap:10px;align-items:center;background:var(--panel2);border:1.5px solid var(--wire);padding:9px 11px;border-radius:11px;cursor:pointer;font-weight:700;font-size:14px;
+  transition:background .25s,border-color .25s,transform .12s;user-select:none}
+.pick:active{transform:scale(.97)}
+.pick input{position:absolute;opacity:0;width:1px;height:1px;pointer-events:none}
+.pick .box{flex:none;width:22px;height:22px;border-radius:7px;border:2px solid #5b67a8;display:grid;place-items:center;transition:background .2s,border-color .2s}
+.pick .box::after{content:'';width:6px;height:11px;border:solid #3d2600;border-width:0 3px 3px 0;transform:rotate(45deg) scale(0);margin-top:-3px;transition:transform .2s}
+.pick.on{background:rgba(255,194,75,.14);border-color:var(--gold)}
+.pick.on .box{background:var(--gold);border-color:var(--gold);animation:pop .35s}
+.pick.on .box::after{transform:rotate(45deg) scale(1)}
+@keyframes pop{0%{transform:scale(.6)}60%{transform:scale(1.25)}100%{transform:scale(1)}}
+.pick .t{flex:1;min-width:0}.pick small{display:block;color:var(--dim);font-weight:600;font-size:12px}
+.pick.big{padding:12px 14px;font-size:15px}
+.picks{display:grid;gap:6px;grid-template-columns:repeat(auto-fill,minmax(250px,1fr))}
+.count{display:inline-block;font-weight:900;color:var(--gold);transition:transform .2s}
+.count.bump{animation:bump .4s}
+@keyframes bump{50%{transform:scale(1.5)}}
+.seg{display:inline-flex;border:1px solid var(--wire);border-radius:9px;overflow:hidden}
+.seg button{border:0;border-radius:0;padding:5px 10px;font-size:12.5px;background:transparent;color:var(--dim)}
+.seg button.on{background:#2a3a7a;color:#fff}
+
+/* paper list */
+.cps{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:10px}
+.cpc{background:var(--panel2);border:1.5px solid var(--wire);border-radius:14px;padding:13px;text-align:left;color:var(--paper);display:block;width:100%}
+.cpc:hover{border-color:var(--gold)}
+.cpc .n{font-size:12px;font-weight:900;color:var(--gold);letter-spacing:.12em}
+.cpc b{display:block;font-size:16.5px;margin:2px 0}
 .pill{display:inline-block;font-size:11.5px;font-weight:900;padding:2px 9px;border-radius:99px;background:#2a3a7a;color:#dfe6ff;letter-spacing:.3px}
-.pill.draft{background:#3a3f5c}.pill.poll{background:#6b4bd6}.pill.scheduling{background:#9a6a12}.pill.confirmed{background:#127a8a}
-.pill.marking{background:#8a3f12}.pill.published{background:#147a42}.pill.archived{background:#2c3247}.pill.postponed,.pill.cancelled{background:#7a1838}
+.pill.draft{background:#3a3f5c}.pill.up{background:#127a8a}.pill.live{background:#b8322e;animation:glow 1.4s infinite}.pill.mark{background:#8a5a12}.pill.done{background:#147a42}.pill.stop{background:#7a1838}
+@keyframes glow{50%{box-shadow:0 0 12px rgba(255,90,90,.9)}}
+.badge-n{display:inline-block;background:var(--bad);color:#fff;font-weight:900;border-radius:99px;padding:0 8px;font-size:12px;margin-left:6px;animation:pop .4s}
+
+/* summary */
+.sum{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:8px;margin:10px 0}
+.sum div{background:var(--panel2);border:1px solid var(--wire);border-radius:11px;padding:10px 12px;font-size:14px}
+.sum b{display:block;font-size:12px;color:var(--dim);text-transform:uppercase;letter-spacing:.06em}
+
+/* answer sheets, like the weekly papers */
+.filt{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px}
+.filt button{background:transparent;color:var(--dim)}
+.filt button.on{background:#2a3a7a;color:#fff;border-color:#8ea4ff66}
+.jw{background:var(--panel2);border:1.5px solid var(--wire);border-radius:14px;padding:12px;margin:8px 0;transition:border-color .3s}
+.jw.new{animation:arrive 2.4s ease-out;border-color:var(--cyan)}
+@keyframes arrive{0%{box-shadow:0 0 0 0 rgba(56,225,255,.9);transform:translateY(-6px)}20%{transform:none}100%{box-shadow:0 0 0 18px rgba(56,225,255,0)}}
+.jw.sent{border-color:rgba(53,224,143,.45)}
+.jw-h{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.av{width:38px;height:38px;border-radius:50%;display:grid;place-items:center;font-weight:900;background:linear-gradient(135deg,#2a8cff,#38E1FF);color:#04202B;flex:none}
+.jw-n{flex:1;min-width:150px}.jw-n b{display:block}.jw-n span{color:var(--dim);font-size:12.5px}
+.jw-t{font-size:11.5px;font-weight:900;padding:3px 9px;border-radius:99px;letter-spacing:.04em}
+.jw-t.on{background:rgba(53,224,143,.15);color:var(--ok)}.jw-t.late{background:rgba(255,194,75,.15);color:var(--gold)}.jw-t.none{background:rgba(255,77,109,.13);color:var(--bad)}
+.files{display:flex;gap:6px 14px;flex-wrap:wrap;margin:8px 0 2px;font-size:13.5px}
+.files a{background:#16224f;border:1px solid var(--wire);border-radius:8px;padding:4px 9px;text-decoration:none;font-weight:800}
+.jw-b{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:8px;margin-top:10px;align-items:end}
+.jw-b .wide{grid-column:1/-1;display:flex;gap:8px;flex-wrap:wrap}
+.jw-b .wide input{flex:1;min-width:200px}
+.mk{display:flex;align-items:center;gap:6px;font-weight:800;font-size:13px;color:var(--dim)}
+.mk input{width:80px;font-size:17px;font-weight:900;text-align:center}
+.tot{font-weight:900;font-size:17px;color:var(--gold)}
+.jw-done{margin-top:8px;display:flex;gap:10px;flex-wrap:wrap;align-items:center;color:var(--ok);font-weight:800}
+
 table{width:100%;border-collapse:collapse;font-size:13.5px}
-th,td{text-align:left;padding:7px 7px;border-bottom:1px solid #ffffff14;vertical-align:top}
+th,td{text-align:left;padding:7px;border-bottom:1px solid #ffffff14;vertical-align:top}
 th{color:var(--dim);font-size:11.5px;text-transform:uppercase;letter-spacing:.5px}
 .tblw{overflow-x:auto}
-td input[type=number]{width:74px}
-.msg{min-height:20px;font-weight:800;color:var(--gold)}
-.ok{color:var(--ok)}.bad{color:var(--bad)}.warn{color:var(--gold)}
-.stagebar{display:flex;gap:8px;flex-wrap:wrap;align-items:center;background:#0a1029;border:1px solid var(--wire);border-radius:12px;padding:10px 12px}
-.flow{display:flex;gap:4px;flex-wrap:wrap;font-size:11.5px;color:var(--dim);margin:6px 0 0}
-.flow span{padding:2px 7px;border-radius:99px;border:1px solid #ffffff1c}.flow span.on{border-color:var(--gold);color:var(--gold)}
-.bar{height:9px;border-radius:9px;background:#1b2550;overflow:hidden}.bar i{display:block;height:100%;background:linear-gradient(90deg,var(--cyan),var(--gold))}
-.opt{display:grid;grid-template-columns:1fr auto;gap:8px;align-items:center;background:var(--panel2);border:1px solid var(--wire);border-radius:10px;padding:8px 10px;margin:6px 0}
-.hide{display:none!important}
 .gate{max-width:380px;margin:60px auto;text-align:center}.gate input{width:100%;margin:6px 0}
-.sticky{position:sticky;bottom:10px;z-index:5;display:flex;gap:8px;flex-wrap:wrap;align-items:center;background:#0b1230f2;border:1px solid var(--wire);border-radius:12px;padding:10px 12px;backdrop-filter:blur(6px);margin-top:12px}
-.sticky:has(.msg:empty){display:none}
-.tag{font-size:11.5px;padding:1px 7px;border-radius:99px;background:#1b2550;color:#c9d4ff;white-space:nowrap}
-@media(max-width:600px){.tabs button{padding:7px 9px;font-size:13px}}
+.foot{position:sticky;bottom:10px;z-index:5;display:flex;gap:8px;flex-wrap:wrap;align-items:center;justify-content:flex-end;background:#0b1230f2;border:1px solid var(--wire);border-radius:14px;padding:10px 12px;backdrop-filter:blur(6px);margin-top:12px}
+.tl{background:#0a1029;border:1px dashed #8ea4ff55;border-radius:10px;padding:9px 12px;font-size:13.5px;margin-top:10px}
+details summary{cursor:pointer;font-weight:800;color:var(--dim);padding:6px 0}
+pre.code{background:#050817;border:1px solid var(--wire);border-radius:10px;padding:12px;max-height:260px;overflow:auto;font-size:12px;white-space:pre-wrap}
+ol.how li{margin:5px 0}
+
+/* toast and the sent pop */
+.toast{position:fixed;left:50%;bottom:86px;transform:translate(-50%,30px);opacity:0;background:#111a42;border:1.5px solid var(--cyan);border-radius:12px;padding:11px 18px;font-weight:800;z-index:50;max-width:92vw;text-align:center;transition:transform .3s,opacity .3s;pointer-events:none}
+.toast.on{transform:translate(-50%,0);opacity:1}.toast.ok{border-color:var(--ok)}.toast.bad{border-color:var(--bad)}
+.sentpop{position:fixed;left:50%;top:40%;transform:translate(-50%,-50%) scale(.6);opacity:0;background:#0d1a3a;border:2px solid var(--ok);border-radius:20px;padding:22px 30px;text-align:center;z-index:60;transition:all .35s cubic-bezier(.2,1.6,.4,1);box-shadow:0 20px 60px #000a}
+.sentpop.go{transform:translate(-50%,-50%) scale(1);opacity:1}
+.sentpop b{display:block;font-size:19px;margin-top:8px}.sentpop span{color:var(--dim)}
+.sentpop svg{width:64px;height:64px}.sentpop path{fill:none;stroke:var(--ok);stroke-width:5;stroke-linecap:round;stroke-linejoin:round;stroke-dasharray:50;stroke-dashoffset:50;animation:draw .5s .15s forwards}
+@keyframes draw{to{stroke-dashoffset:0}}
+.live-dot{display:inline-block;width:9px;height:9px;border-radius:50%;background:var(--ok);margin-right:5px;animation:glow2 1.6s infinite}
+@keyframes glow2{50%{box-shadow:0 0 0 5px rgba(53,224,143,.25)}}
+@media(max-width:600px){.foot{justify-content:stretch}.foot button{flex:1}}
+@media(prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
 </style>
 </head>
 <body>
 <div class="wrap">
   <header>
-    <h1>🏁 Checkpoint Manager</h1>
+    <h1>🏁 Checkpoint Papers</h1>
     <a class="btn" href="./" target="_blank">Student view ↗</a>
     <a class="btn" href="../Admin.html">Admin</a>
     <button id="outBtn" class="hide">Sign out</button>
@@ -75,63 +152,90 @@ td input[type=number]{width:74px}
     <form id="gform"><input id="em" type="email" placeholder="Email" autocomplete="username" required>
     <input id="pw" type="password" placeholder="Password" autocomplete="current-password" required>
     <button class="gold" style="width:100%;margin-top:6px">Sign in</button></form>
-    <p class="msg" id="gerr"></p>
+    <p class="warn" id="gerr" style="font-weight:800"></p>
   </section>
 
   <main id="app" class="hide">
     <div class="card">
-      <div class="row" style="justify-content:space-between"><h2 style="margin:0">Checkpoint Papers</h2>
-        <span class="row"><button id="bNew" class="gold">➕ New checkpoint</button><button id="bReload">↻</button></span></div>
-      <p class="muted">Extra, supervised papers after milestone weeks. They do not replace the weekly papers.</p>
-      <div class="cps" id="cpList"></div>
+      <div class="row" style="justify-content:space-between"><h2 style="margin:0">Your checkpoint papers</h2>
+        <span class="row"><button id="bDrive" class="small"></button><button id="bNew" class="gold">➕ Add a checkpoint paper</button></span></div>
+      <div class="cps" id="cpList" style="margin-top:12px"></div>
     </div>
-
-    <div id="ed" class="hide">
-      <div class="stagebar" id="stageBar"></div>
-      <div class="tabs" id="tabs"></div>
-      <div id="pane"></div>
-      <div class="sticky"><span class="msg" id="msg"></span></div>
-    </div>
+    <div id="view"></div>
   </main>
 </div>
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
 
 <script src="../firebase-config.js"></script>
+<script src="../press.js" defer></script>
 <script type="module">
 /* ============================================================
-   Checkpoint Manager. The whole life of a checkpoint paper:
-   set up → availability poll → two sessions → papers → exam day
-   (attendance, uploads, extensions) → marking → results.
+   Checkpoint Manager.
+   1. Add a paper: name, date and time, Zoom link, the question
+      papers and who sits it. Publish → students see it.
+   2. Answer sheets arrive by themselves (students upload from
+      CamScanner straight into your Drive) — enter the marks, the
+      marked sheet and a note, and send. The ranking, badges and
+      coins update for everyone at once.
 
    Firestore (rules in firestore-rules.txt):
-     cp/{id}                 settings, stage (students read it)
-     cp/{id}/votes/{uid}     availability, written by the student
-     cp/{id}/assign/{uid}    session, Zoom link and exact times
-     cp/{id}/papers/{s_p_m}  question paper link, opens at its time
-     cp/{id}/subs/{uid_P}    the student's answer links per part
-     cp/{id}/grade/{uid}     attendance, marks, feedback (yours)
-     cp/{id}/grade/_private  Zoom links and the draft assignment
-     cp/{id}/log/{…}         privileged changes
-     marks/{code}.cp.{id}    the published result (My Marks, Hall of Fame, coins)
-   All times are Sri Lanka time (Asia/Colombo, UTC+5:30).
+     cp/_settings            the Drive upload link
+     cp/{id}                 the paper (students read it)
+     cp/{id}/assign/{uid}    each student's Zoom link and exact times
+     cp/{id}/papers/S1_{A|B}_{si|en}  question paper, opens at its time
+     cp/{id}/subs/{uid}_{A|B} the student's answer files
+     cp/{id}/grade/{uid}     marks, marked sheet, note (yours)
+     cp/{id}/grade/_private  Zoom link and each student's medium
+     marks/{code}.cp.{id}    what the student sees (My Marks, Hall of Fame)
+   All times are Sri Lanka time (UTC+5:30).
    ============================================================ */
-const $=s=>document.querySelector(s);
+const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
 const esc=s=>String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 const OWNER='ushithasamudaya@gmail.com';
-const SL=5.5*3600e3;                                       /* Asia/Colombo has no daylight saving */
-const ms=t=>t&&t.toMillis?t.toMillis():t instanceof Date?t.getTime():+t||0;
+const SL=5.5*3600e3;
+const ms=t=>t&&t.toMillis?t.toMillis():t&&t.seconds!=null?t.seconds*1e3:t instanceof Date?t.getTime():+t||0;
 const toInput=t=>{const v=ms(t);return v?new Date(v+SL).toISOString().slice(0,16):'';};
-const fromInput=v=>v?new Date(Date.parse(v+':00Z')-SL):null;
+const fromInput=v=>v?Date.parse(v+':00Z')-SL:0;
 const fmt=(t,o)=>t?new Date(ms(t)).toLocaleString('en-GB',Object.assign({timeZone:'Asia/Colombo',weekday:'short',day:'numeric',month:'short',hour:'numeric',minute:'2-digit'},o||{})):'—';
 const fmtT=t=>t?new Date(ms(t)).toLocaleTimeString('en-GB',{timeZone:'Asia/Colombo',hour:'numeric',minute:'2-digit'}):'—';
-const dayKey=t=>new Date(ms(t)+SL).toISOString().slice(0,10);
-const BATCHES=[['AL-27','2027 A/L · English'],['AL-27-SI','2027 A/L · Sinhala'],['AL-28','2028 A/L']];
+const BATCHES=[['AL-27','2027 A/L · English medium'],['AL-27-SI','2027 A/L · Sinhala medium'],['AL-28','2028 A/L']];
+const FIXED={'AL-27':'en','AL-27-SI':'si'};
 const MEDN={si:'Sinhala',en:'English'};
-const STAGES=['draft','poll','scheduling','confirmed','marking','published','archived'];
-const STAGE_TX={draft:'Draft',poll:'Availability open',scheduling:'Scheduling',confirmed:'Schedule confirmed',marking:'Marking',published:'Results published',archived:'Archived',postponed:'Postponed',cancelled:'Cancelled'};
-const MILESTONES=[[1,8],[2,16],[3,24],[4,32],[5,36]];
+const WEEKS=[8,16,24,32,36];
+const BADGE={gold:'🥇 Gold',silver:'🥈 Silver',bronze:'🥉 Bronze'};
 
-let FB=null,db=null,auth=null,CPS=[],CUR=null,STU={},TAB='setup';
-let VOTES={},ASG={},SUBS={},GRADE={},PRIV={zoom:{},plan:{}},LOG=[];
+let FB=null,db=null,auth=null,STU={},CPS=[],SET={},CUR=null,VIEW='';
+let ASG={},SUBS={},GRADE={},PRIV={zoom:{},plan:{}},LOG=[],FILT='',FILTU=false,NEWU=new Set(),stopSubs=null,pendingDraw=false;
+const DRAFT={};
+
+/* ---------- feedback ---------- */
+let tt;
+function toast(t,k){const e=$('#toast');e.textContent=t;e.className='toast on '+(k||'');clearTimeout(tt);tt=setTimeout(()=>e.className='toast '+(k||''),3200);}
+/* runs a button's job: spinner while it works, a green pulse when done, a shake and the reason if not */
+async function act(btn,fn,okText){
+  if(btn&&btn.classList.contains('busy')) return;
+  const html=btn&&btn.innerHTML;
+  if(btn){btn.style.minWidth=btn.offsetWidth+'px';btn.classList.add('busy');btn.innerHTML='<span class="spin"></span> Working…';}
+  const back=()=>{if(btn){btn.classList.remove('busy','did');btn.innerHTML=html;btn.style.minWidth='';}};
+  try{
+    const r=await fn();
+    if(btn&&r!==false&&btn.isConnected){btn.classList.remove('busy');btn.classList.add('did');btn.innerHTML='✓ Done';setTimeout(back,1300);}
+    else back();
+    if(r!==false&&okText) toast(okText,'ok');
+    return r;
+  }catch(e){
+    back();
+    if(btn){btn.classList.remove('shake');void btn.offsetWidth;btn.classList.add('shake');}
+    toast(e.user?e.message:'Could not do that: '+(e.code||e.message)+(/permission/.test(e.code||'')?' — publish firestore-rules.txt in the Firebase console.':''),'bad');
+  }
+}
+const stop=(m,el)=>{if(el){el.classList.add('bad');el.focus();setTimeout(()=>el.classList.remove('bad'),1800);}const e=new Error(m);e.user=1;throw e;};
+function sentPop(name,line){
+  const b=document.createElement('div');b.className='sentpop';
+  b.innerHTML='<svg viewBox="0 0 48 48"><path d="M13 25l8 8 16-17"/></svg><b>'+esc(name)+'</b><span>'+esc(line)+'</span>';
+  document.body.appendChild(b);requestAnimationFrame(()=>b.classList.add('go'));
+  setTimeout(()=>{b.classList.remove('go');setTimeout(()=>b.remove(),400);},1900);
+}
 
 /* ---------- firebase ---------- */
 async function boot(){
@@ -150,459 +254,516 @@ async function boot(){
     try{await Promise.all([loadStudents(),loadList()]);}
     catch(e){$('#gerr').textContent='Could not load: '+(e.code||e.message)+(/permission/.test(e.code||'')?' — publish firestore-rules.txt in the Firebase console first.':'');return;}
     $('#gerr').textContent='';$('#gate').classList.add('hide');$('#app').classList.remove('hide');$('#outBtn').classList.remove('hide');
-    const want=location.hash.slice(1);if(want&&CPS.find(c=>c.id===want)) openCp(want);
+    const want=location.hash.slice(1);
+    if(want==='drive') showDrive(); else if(want&&CPS.find(c=>c.id===want)) openPaper(want);
   });
 }
 $('#gform').onsubmit=async e=>{e.preventDefault();if(!FB){$('#gerr').textContent='Still connecting…';return;}
-  $('#gerr').textContent='Checking…';
-  try{await FB.signInWithEmailAndPassword(auth,$('#em').value.trim(),$('#pw').value);}
-  catch(x){$('#gerr').textContent=/invalid|wrong|not-found/.test(x.code||'')?'Wrong email or password.':(x.code||x.message);}};
+  const b=e.submitter||$('#gform button');
+  await act(b,async()=>{try{await FB.signInWithEmailAndPassword(auth,$('#em').value.trim(),$('#pw').value);}
+    catch(x){stop(/invalid|wrong|not-found/.test(x.code||'')?'Wrong email or password.':(x.code||x.message));}});};
 $('#outBtn').onclick=()=>FB.signOut(auth);
 const D=(...p)=>FB.doc(db,...p), C=(...p)=>FB.collection(db,...p);
-const msg=(t,cls)=>{const m=$('#msg');m.textContent=t||'';m.className='msg '+(cls||'');};
-async function logIt(what){try{await FB.addDoc(C('cp',CUR.id,'log'),{what,at:FB.serverTimestamp()});}catch(e){}}
+async function logIt(what){try{await FB.addDoc(C('cp',CUR.id,'log'),{what,at:FB.serverTimestamp()});LOG.unshift({what,at:Date.now()});}catch(e){}}
 
 async function loadStudents(){
   STU={};const s=await FB.getDocs(C('students'));
   s.forEach(d=>{const v=d.data();STU[d.id]={uid:d.id,name:v.name||'(no name)',code:v.code||'',batch:v.batch||'',track:v.track||'',whatsapp:v.whatsapp||''};});
 }
 async function loadList(){
-  const s=await FB.getDocs(C('cp'));
-  CPS=s.docs.map(d=>({id:d.id,...d.data()})).sort((a,b)=>(a.n||0)-(b.n||0)||ms(a.createdAt)-ms(b.createdAt));
-  drawList();
+  const s=await FB.getDocs(C('cp'));SET={};
+  CPS=[];s.forEach(d=>{if(d.id==='_settings')SET=d.data();else CPS.push({id:d.id,...d.data()});});
+  CPS.sort((a,b)=>(a.n||0)-(b.n||0)||ms(a.createdAt)-ms(b.createdAt));
+  drawList();countWaiting();
 }
-function drawList(){
-  $('#cpList').innerHTML=CPS.map(c=>`<button class="cpc ${CUR&&CUR.id===c.id?'on':''}" data-id="${c.id}">
-    <span class="pill ${c.stage}">${esc(STAGE_TX[c.stage]||c.stage)}</span>
-    <b style="margin-top:6px">Checkpoint ${String(c.n||'?').padStart(2,'0')} · ${esc(c.title||'')}</b>
-    <span class="muted">After week ${c.afterWeek||'—'} · ${esc((c.batches||[]).join(', '))}${(c.extra||[]).length?' + '+c.extra.length+' individual':''}</span></button>`).join('')
-    ||'<p class="muted">No checkpoints yet. Press “New checkpoint”.</p>';
-}
-$('#cpList').onclick=e=>{const b=e.target.closest('[data-id]');if(b) openCp(b.dataset.id);};
-$('#bReload').onclick=async()=>{await loadList();if(CUR) openCp(CUR.id);};
 
-/* ---------- new / open ---------- */
-function blank(n){
-  const ms_=MILESTONES.find(m=>m[0]===n)||[n,n*8];
-  return {n,title:n===5?'Final Assessment':'Checkpoint Paper '+String(n).padStart(2,'0'),desc:'',afterWeek:ms_[1],coverage:n===1?'Weeks 01–08: Number Systems and Logic Gates':'Weeks 01–'+String(ms_[1]).padStart(2,'0'),
-    instructions:'Write your answers on paper. Keep your camera on during the Zoom session. Photograph or scan every page in order, put them into one PDF, upload it to Google Drive (Anyone with the link · Editor) and paste the link before the upload deadline.',
-    materials:'Pens and pencils. No calculators, phones or notes.',
-    batches:['AL-27','AL-27-SI'],extra:[],
-    secA:{title:'Part A: MCQ',min:120,marks:100},secB:{title:'Part B: Structured',min:180,marks:100},breakMin:30,graceMin:20,
-    pollOptions:[],pollCloseAt:null,sessions:[{id:'S1',at:null,opt:''},{id:'S2',at:null,opt:''}],
-    badges:{gold:90,silver:75,bronze:60},coins:{part:20,gold:100,silver:60,bronze:30,r1:100,r2:60,r3:40},stage:'draft'};
-}
-$('#bNew').onclick=async()=>{
-  const n=Math.max(0,...CPS.map(c=>c.n||0))+1;
-  const id='cp'+Date.now().toString(36);
-  const c=blank(Math.min(n,5));c.n=n;c.createdAt=FB.serverTimestamp();c.updatedAt=FB.serverTimestamp();
-  try{await FB.setDoc(D('cp',id),c);await loadList();await openCp(id);TAB='setup';drawTabs();logIt('Created');}catch(e){alert('Could not create: '+(e.code||e.message));}
-};
-async function openCp(id){
-  CUR=CPS.find(c=>c.id===id);if(!CUR) return;location.hash=id;drawList();
-  $('#ed').classList.remove('hide');msg('Loading…');
-  const [v,a,s,g,l]=await Promise.all([FB.getDocs(C('cp',id,'votes')),FB.getDocs(C('cp',id,'assign')),FB.getDocs(C('cp',id,'subs')),FB.getDocs(C('cp',id,'grade')),FB.getDocs(FB.query(C('cp',id,'log'),FB.orderBy('at','desc'),FB.limit(80)))]);
-  VOTES={};v.forEach(d=>VOTES[d.id]=d.data());ASG={};a.forEach(d=>ASG[d.id]=d.data());
-  SUBS={};s.forEach(d=>SUBS[d.id]=d.data());GRADE={};PRIV={zoom:{},plan:{}};
-  g.forEach(d=>{if(d.id==='_private')PRIV=Object.assign({zoom:{},plan:{}},d.data());else GRADE[d.id]=d.data();});
-  LOG=l.docs.map(d=>d.data());
-  msg('');drawStage();drawTabs();
-}
-const eligible=()=>Object.values(STU).filter(s=>(CUR.batches||[]).includes(s.batch)||(CUR.extra||[]).includes(s.uid)).sort((a,b)=>a.batch.localeCompare(b.batch)||a.name.localeCompare(b.name));
-const medOf=s=>(PRIV.plan[s.uid]&&PRIV.plan[s.uid].m)||(ASG[s.uid]&&ASG[s.uid].medium)||(s.batch==='AL-27'?'en':'si');
-async function patch(fields,what){
-  Object.assign(CUR,fields);
-  await FB.updateDoc(D('cp',CUR.id),{...fields,updatedAt:FB.serverTimestamp()});
-  if(what) logIt(what);
-  drawList();
-}
-async function savePriv(){await FB.setDoc(D('cp',CUR.id,'grade','_private'),PRIV);}
-
-/* ---------- session times ---------- */
-function times(at){
-  const a=ms(at);if(!a) return null;const A=CUR.secA,B=CUR.secB,M=60e3,g=(+CUR.graceMin||0)*M;
-  const endA=a+A.min*M,openB=endA+(+CUR.breakMin||0)*M,endB=openB+B.min*M;
+/* ---------- times ---------- */
+const startOf=c=>c.at||(c.sessions&&c.sessions[0]&&c.sessions[0].at)||null;
+const twoParts=c=>!!(c.secB&&c.secB.on!==false);
+function times(c){
+  const a=ms(startOf(c));if(!a) return null;const M=60e3,g=(+c.graceMin||0)*M,endA=a+c.secA.min*M;
+  if(!twoParts(c)) return {openA:a,endA,dueA:endA+g,openB:endA,endB:endA,dueB:endA+g};
+  const openB=endA+(+c.breakMin||0)*M,endB=openB+c.secB.min*M;
   return {openA:a,endA,dueA:endA+g,openB,endB,dueB:endB+g};
 }
-const sess=id=>(CUR.sessions||[]).find(s=>s.id===id)||{};
-
-/* ---------- stage bar ---------- */
-function drawStage(){
-  const st=CUR.stage, i=STAGES.indexOf(st);
-  const act=[];
-  if(st==='draft') act.push(['🗳️ Open availability poll','openPoll','gold'],['Skip the poll → scheduling','toSched','']);
-  if(st==='poll') act.push(['Close the poll','closePoll','gold']);
-  if(st==='scheduling') act.push(['Reopen the poll','openPoll','']);
-  if(st==='scheduling'||st==='confirmed') act.push([st==='confirmed'?'📣 Publish schedule again':'📣 Publish schedule','pubSched','gold']);
-  if(st==='confirmed') act.push(['Move to marking','toMark',''],['🏆 Publish results','pubRes','']);
-  if(st==='marking') act.push(['🏆 Publish results','pubRes','gold'],['Back to schedule','toConfirmed','']);
-  if(st==='published') act.push(['Unpublish results','unpub','danger'],['Archive','archive','']);
-  if(st==='archived') act.push(['Unarchive','unarchive','']);
-  if(['postponed','cancelled'].includes(st)) act.push(['Resume','resume','gold']);
-  else if(!['published','archived'].includes(st)) act.push(['Postpone','postpone',''],['Cancel','cancel','danger']);
-  act.push(['Duplicate','dup','']);if(st==='draft') act.push(['Delete','del','danger']);
-  $('#stageBar').innerHTML=`<div style="flex:1;min-width:240px"><b style="font-size:17px">Checkpoint ${String(CUR.n||'?').padStart(2,'0')} · ${esc(CUR.title)}</b>
-    <div class="flow">${STAGES.map((s,k)=>`<span class="${s===st?'on':''}">${k+1}. ${STAGE_TX[s]}</span>`).join('')}${['postponed','cancelled'].includes(st)?`<span class="on">${STAGE_TX[st]}</span>`:''}</div></div>
-    ${act.map(([t,k,c])=>`<button class="${c}" data-act="${k}">${t}</button>`).join('')}`;
+function status(c){
+  if(c.stage==='draft') return ['Draft — students cannot see it','draft'];
+  if(c.stage==='postponed'||c.stage==='cancelled') return [c.stage==='postponed'?'Postponed':'Cancelled','stop'];
+  const t=times(c),n=Date.now();
+  if(!t||n<t.openA) return ['Upcoming','up'];
+  if(n<=t.dueB) return ['● Live now','live'];
+  return ['Marking','mark'];
 }
-$('#stageBar').onclick=async e=>{
-  const b=e.target.closest('[data-act]');if(!b) return;const k=b.dataset.act;
-  try{
-    if(k==='openPoll'){
-      if(!(CUR.pollOptions||[]).length) return msg('Add the proposed dates and times in Availability first.','bad');
-      if(!CUR.pollCloseAt||ms(CUR.pollCloseAt)<Date.now()) return msg('Set a poll closing time in the future (Availability).','bad');
-      if(!confirm('Open the availability poll? Eligible students can answer until '+fmt(CUR.pollCloseAt)+'.')) return;
-      await patch({stage:'poll'},'Opened the availability poll');TAB='poll';
-    }
-    if(k==='closePoll'){ if(!confirm('Close the poll? Students can no longer change their answers.')) return; await patch({stage:'scheduling',pollCloseAt:FB.Timestamp.fromMillis(Math.min(Date.now(),ms(CUR.pollCloseAt)))},'Closed the poll');CUR.pollCloseAt=FB.Timestamp.fromMillis(Math.min(Date.now(),ms(CUR.pollCloseAt)));TAB='sched';}
-    if(k==='toSched'){ await patch({stage:'scheduling'},'Skipped the poll');TAB='sched';}
-    if(k==='pubSched') return publishSchedule();
-    if(k==='toMark'){ await patch({stage:'marking'},'Moved to marking');TAB='mark';}
-    if(k==='toConfirmed'){ await patch({stage:'confirmed'},'Back to confirmed schedule');}
-    if(k==='pubRes') return publishResults();
-    if(k==='unpub') return unpublish();
-    if(k==='archive'){ if(!confirm('Archive this checkpoint? Results stay on students’ records.')) return; await patch({stage:'archived'},'Archived');}
-    if(k==='unarchive') await patch({stage:'published'},'Unarchived');
-    if(k==='postpone'||k==='cancel'){
-      const why=prompt((k==='cancel'?'Cancel':'Postpone')+' this checkpoint? Papers and uploads close at once.\nReason (shown to students):','');
-      if(why===null) return;
-      await patch({stage:k==='cancel'?'cancelled':'postponed',prevStage:CUR.stage,notice:why},(k==='cancel'?'Cancelled':'Postponed')+(why?': '+why:''));
-    }
-    if(k==='resume') await patch({stage:CUR.prevStage||'scheduling',notice:''},'Resumed');
-    if(k==='dup'){ const id='cp'+Date.now().toString(36);const c=JSON.parse(JSON.stringify(CUR));delete c.id;
-      Object.assign(c,{n:Math.max(...CPS.map(x=>x.n||0))+1,title:CUR.title+' (copy)',stage:'draft',pollOptions:[],pollCloseAt:null,sessions:[{id:'S1',at:null,opt:''},{id:'S2',at:null,opt:''}],notice:'',prevStage:'',createdAt:FB.serverTimestamp(),updatedAt:FB.serverTimestamp(),publishedAt:null});
-      await FB.setDoc(D('cp',id),c);await loadList();await openCp(id);msg('Duplicated as a new draft.','ok');return; }
-    if(k==='del'){ if(!confirm('Delete this draft checkpoint?')) return; await FB.deleteDoc(D('cp',CUR.id));CUR=null;$('#ed').classList.add('hide');location.hash='';await loadList();return; }
-    drawStage();drawTabs();
-  }catch(x){msg('Could not do that: '+(x.code||x.message),'bad');}
-};
+const maxOf=c=>(+c.secA.marks||0)+(twoParts(c)?(+c.secB.marks||0):0);
 
-/* ---------- tabs ---------- */
-const TABS=[['setup','⚙️ Setup'],['poll','🗳️ Availability'],['sched','📅 Sessions'],['papers','📄 Papers'],['day','🎥 Exam day'],['mark','✍️ Marking'],['res','🏆 Results'],['log','🧾 Log']];
-function drawTabs(){
-  $('#tabs').innerHTML=TABS.map(([k,t])=>`<button data-t="${k}" class="${TAB===k?'on':''}">${t}</button>`).join('');
-  $('#pane').onchange=null;$('#pane').oninput=null;$('#pane').onclick=null;   /* each tab sets its own */
-  ({setup:drawSetup,poll:drawPoll,sched:drawSched,papers:drawPapers,day:drawDay,mark:drawMark,res:drawRes,log:drawLog})[TAB]();
+/* ---------- list ---------- */
+const WAIT={};
+function drawList(){
+  $('#bDrive').innerHTML=SET.uploadUrl?'<span class="live-dot"></span>Drive upload on':'⚠️ Set up Drive upload';
+  $('#bDrive').className='small '+(SET.uploadUrl?'':'gold');
+  $('#cpList').innerHTML=CPS.map(c=>{const [st,k]=status(c),t=times(c);
+    return `<button class="cpc" data-id="${c.id}" style="${CUR&&CUR.id===c.id?'border-color:var(--gold)':''}">
+      <span class="n">CP${String(c.n||'?').padStart(2,'0')}${c.afterWeek?' · AFTER WEEK '+c.afterWeek:''}</span>
+      <b>${esc(c.title||'')}${WAIT[c.id]?`<span class="badge-n" title="answer sheets waiting">${WAIT[c.id]} new</span>`:''}</b>
+      <span class="muted">📅 ${t?fmt(t.openA):'no date yet'}</span><br>
+      <span class="pill ${k}" style="margin-top:6px">${st}</span></button>`;}).join('')
+    ||'<p class="muted">No checkpoint papers yet. Press <b>Add a checkpoint paper</b>.</p>';
 }
-$('#tabs').onclick=e=>{const b=e.target.closest('[data-t]');if(!b) return;TAB=b.dataset.t;drawTabs();};
-
-/* ---------- setup ---------- */
-function drawSetup(){
-  const c=CUR,ind=Object.values(STU).filter(s=>!(c.batches||[]).includes(s.batch)).sort((a,b)=>a.name.localeCompare(b.name));
-  $('#pane').innerHTML=`<div class="card"><h2>About the paper</h2><div class="grid">
-    <label class="f">Number<input id="sN" type="number" min="1" value="${c.n||1}"></label>
-    <label class="f">Title<input id="sTitle" value="${esc(c.title)}"></label>
-    <label class="f">After study week<input id="sWeek" type="number" min="1" max="40" value="${c.afterWeek||''}"></label>
-    <label class="f">Syllabus coverage<input id="sCov" value="${esc(c.coverage||'')}"></label></div>
-    <label class="f" style="margin-top:10px">Short description<textarea id="sDesc">${esc(c.desc||'')}</textarea></label>
-    <label class="f" style="margin-top:10px">Instructions for students<textarea id="sIns">${esc(c.instructions||'')}</textarea></label>
-    <label class="f" style="margin-top:10px">Permitted materials<input id="sMat" value="${esc(c.materials||'')}"></label></div>
-
-    <div class="card"><h2>Who sits it</h2>
-    <div class="row">${BATCHES.map(([id,l])=>`<label class="chk"><input type="checkbox" class="sBatch" value="${id}" ${(c.batches||[]).includes(id)?'checked':''}> ${l}</label>`).join('')}</div>
-    <h3>Individual students <span class="muted">(one-to-one or anyone outside the ticked classes)</span></h3>
-    <div class="row" style="margin-bottom:6px"><input id="sFind" placeholder="Search name or number" style="flex:1;min-width:200px"><button class="small" id="sSolo">Tick all one-to-one students</button></div>
-    <div id="sInd" style="max-height:220px;overflow:auto;display:grid;gap:4px;grid-template-columns:repeat(auto-fill,minmax(240px,1fr))">${ind.map(s=>`<label class="chk" data-q="${esc((s.name+' '+s.code).toLowerCase())}"><input type="checkbox" class="sExtra" value="${s.uid}" ${(c.extra||[]).includes(s.uid)?'checked':''}> ${esc(s.name)} <span class="tag">${esc(s.code)} · ${esc(s.batch||'—')}${s.track==='solo'?' · 1:1':''}</span></label>`).join('')||'<span class="muted">Nobody else.</span>'}</div>
-    <p class="muted" id="sCount"></p></div>
-
-    <div class="card"><h2>Exam structure</h2><div class="grid">
-    <label class="f">Part A title<input id="aT" value="${esc(c.secA.title)}"></label><label class="f">Part A minutes<input id="aM" type="number" min="10" value="${c.secA.min}"></label><label class="f">Part A marks<input id="aK" type="number" min="1" value="${c.secA.marks}"></label>
-    <label class="f">Break minutes<input id="brk" type="number" min="0" value="${c.breakMin}"></label>
-    <label class="f">Part B title<input id="bT" value="${esc(c.secB.title)}"></label><label class="f">Part B minutes<input id="bM" type="number" min="10" value="${c.secB.min}"></label><label class="f">Part B marks<input id="bK" type="number" min="1" value="${c.secB.marks}"></label>
-    <label class="f">Upload grace after each part (minutes)<input id="grc" type="number" min="0" value="${c.graceMin}"></label></div>
-    <p class="muted">Writing time is ${c.secA.min+c.secB.min} minutes. The upload grace is separate: it does not add writing time.</p></div>
-
-    <div class="card"><h2>Badges and coins</h2><div class="grid">
-    <label class="f">🥇 Gold from %<input id="bgG" type="number" value="${c.badges.gold}"></label><label class="f">🥈 Silver from %<input id="bgS" type="number" value="${c.badges.silver}"></label><label class="f">🥉 Bronze from %<input id="bgB" type="number" value="${c.badges.bronze}"></label>
-    <label class="f">Coins for sitting both parts<input id="cnP" type="number" min="0" value="${c.coins.part}"></label>
-    <label class="f">Coins · Gold badge<input id="cnG" type="number" min="0" value="${c.coins.gold}"></label><label class="f">Coins · Silver badge<input id="cnS" type="number" min="0" value="${c.coins.silver}"></label><label class="f">Coins · Bronze badge<input id="cnB" type="number" min="0" value="${c.coins.bronze}"></label>
-    <label class="f">Coins · 1st place<input id="cn1" type="number" min="0" value="${c.coins.r1}"></label><label class="f">Coins · 2nd place<input id="cn2" type="number" min="0" value="${c.coins.r2}"></label><label class="f">Coins · 3rd place<input id="cn3" type="number" min="0" value="${c.coins.r3}"></label></div>
-    <p class="muted">Checkpoint coins are added once per checkpoint, separately from the weekly paper coins, and are recalculated (never doubled) if you correct marks and publish again.</p>
-    <button class="gold" id="sSave" style="margin-top:8px">💾 Save setup</button></div>`;
-  const count=()=>{$('#sCount').textContent=eligibleFromForm().length+' students will sit this checkpoint.';};
-  const eligibleFromForm=()=>{const b=[...document.querySelectorAll('.sBatch:checked')].map(i=>i.value),x=[...document.querySelectorAll('.sExtra:checked')].map(i=>i.value);return Object.values(STU).filter(s=>b.includes(s.batch)||x.includes(s.uid));};
-  $('#pane').onchange=count;count();
-  $('#sFind').oninput=()=>{const q=$('#sFind').value.toLowerCase();document.querySelectorAll('#sInd [data-q]').forEach(l=>l.classList.toggle('hide',!!q&&!l.dataset.q.includes(q)));};
-  $('#sSolo').onclick=()=>{document.querySelectorAll('.sExtra').forEach(i=>{if(STU[i.value].track==='solo')i.checked=true;});count();};
-  $('#sSave').onclick=async()=>{
-    const v=id=>$(id).value, n=id=>Math.max(0,Math.round(+$(id).value||0));
-    const f={n:n('#sN')||1,title:v('#sTitle').trim()||'Checkpoint Paper',afterWeek:n('#sWeek'),coverage:v('#sCov').trim(),desc:v('#sDesc').trim(),instructions:v('#sIns').trim(),materials:v('#sMat').trim(),
-      batches:[...document.querySelectorAll('.sBatch:checked')].map(i=>i.value),extra:[...document.querySelectorAll('.sExtra:checked')].map(i=>i.value),
-      secA:{title:v('#aT').trim()||'Part A',min:n('#aM'),marks:n('#aK')},secB:{title:v('#bT').trim()||'Part B',min:n('#bM'),marks:n('#bK')},breakMin:n('#brk'),graceMin:n('#grc'),
-      badges:{gold:n('#bgG'),silver:n('#bgS'),bronze:n('#bgB')},coins:{part:n('#cnP'),gold:n('#cnG'),silver:n('#cnS'),bronze:n('#cnB'),r1:n('#cn1'),r2:n('#cn2'),r3:n('#cn3')}};
-    if(f.secA.min<10||f.secB.min<10) return msg('Each part needs at least 10 minutes.','bad');
-    if(!f.secA.marks||!f.secB.marks) return msg('Each part needs its total marks.','bad');
-    if(!(f.badges.gold>f.badges.silver&&f.badges.silver>f.badges.bronze)) return msg('Badge levels must go Gold > Silver > Bronze.','bad');
-    const timing=['secA','secB','breakMin','graceMin'].some(k=>JSON.stringify(f[k])!==JSON.stringify(CUR[k]));
-    if(timing&&Object.keys(ASG).length&&!confirm('The timings changed. Students already have a published schedule — press “Publish schedule again” afterwards so their times update. Continue?')) return;
-    try{await patch(f,'Saved setup');msg('Saved.','ok');drawStage();}catch(e){msg('Could not save: '+(e.code||e.message),'bad');}
-  };
+async function countWaiting(){
+  for(const c of CPS){ if(c.stage==='draft') continue;
+    try{const [s,g]=await Promise.all([FB.getDocs(C('cp',c.id,'subs')),FB.getDocs(C('cp',c.id,'grade'))]);
+      const done=new Set();g.forEach(d=>{const v=d.data();if(v.sent||v.absent)done.add(d.id);});
+      const u=new Set();s.forEach(d=>{const v=d.data();if(!done.has(v.uid))u.add(v.uid);});WAIT[c.id]=u.size;}catch(e){}}
+  drawList();
 }
+$('#cpList').onclick=e=>{const b=e.target.closest('[data-id]');if(b) openPaper(b.dataset.id);};
+$('#bNew').onclick=()=>{closeLive();CUR=null;ASG={};SUBS={};GRADE={};PRIV={zoom:{},plan:{}};LOG=[];location.hash='';drawList();showForm();};
+$('#bDrive').onclick=()=>showDrive();
 
-/* ---------- availability poll ---------- */
-function drawPoll(){
-  const c=CUR,el=eligible(),opts=c.pollOptions||[],resp=el.filter(s=>VOTES[s.uid]),miss=el.filter(s=>!VOTES[s.uid]);
-  const cnt=o=>resp.filter(s=>(VOTES[s.uid].ok||[]).includes(o.id)).length, pref=o=>resp.filter(s=>VOTES[s.uid].pref===o.id).length;
-  const pairs=[];for(let i=0;i<opts.length;i++)for(let j=i+1;j<opts.length;j++){const a=opts[i],b=opts[j];
-    const cov=resp.filter(s=>{const ok=VOTES[s.uid].ok||[];return ok.includes(a.id)||ok.includes(b.id);}).length;
-    pairs.push({a,b,cov,pref:pref(a)+pref(b),days:dayKey(a.at)!==dayKey(b.at)});}
-  pairs.sort((x,y)=>y.cov-x.cov||(y.days-x.days)||y.pref-x.pref);
-  const editable=['draft','poll','scheduling'].includes(c.stage);
-  $('#pane').innerHTML=`<div class="card"><h2>Proposed dates and times</h2>
-    <p class="muted">Students tick every time they can attend, mark one as preferred and say which they cannot attend. This is a poll, not a booking.</p>
-    <div id="opts">${opts.map(o=>`<div class="opt"><span><b>${fmt(o.at)}</b> <span class="muted">Sri Lanka time</span></span>${editable?`<button class="small danger" data-rm="${o.id}">Remove</button>`:''}</div>`).join('')||'<p class="muted">None yet.</p>'}</div>
-    ${editable?`<div class="row" style="margin-top:8px"><input type="datetime-local" id="oAt"><button id="oAdd">+ Add option</button></div>`:''}
-    <div class="row" style="margin-top:12px"><label class="f">Poll closes (Sri Lanka time)<input type="datetime-local" id="pClose" value="${toInput(c.pollCloseAt)}" ${editable?'':'disabled'}></label>
-    ${editable?'<button id="pSave" style="align-self:flex-end">Save closing time</button>':''}</div>
-    <p class="muted">Collect availability about 5–7 days before the checkpoint. Status: <b>${STAGE_TX[c.stage]}</b>${c.pollCloseAt?' · closes '+fmt(c.pollCloseAt):''}</p></div>
-
-    <div class="card"><h2>Responses <span class="muted">${resp.length} of ${el.length} answered</span></h2>
-    <div class="bar"><i style="width:${el.length?100*resp.length/el.length:0}%"></i></div>
-    <div class="tblw" style="margin-top:10px"><table><tr><th>Option</th><th>Can attend</th><th>Preferred</th><th>Cannot</th></tr>
-    ${opts.map(o=>`<tr><td>${fmt(o.at)}</td><td><b>${cnt(o)}</b></td><td>${pref(o)}</td><td>${resp.filter(s=>(VOTES[s.uid].no||[]).includes(o.id)).length}</td></tr>`).join('')}</table></div>
-    <h3>Best two sessions</h3>${pairs.slice(0,3).map((p,k)=>`<div class="opt"><span>${k===0?'⭐ ':''}<b>${fmt(p.a.at)}</b> + <b>${fmt(p.b.at)}</b> — fits <b>${p.cov}</b> of ${resp.length} who answered${p.days?'':' <span class="warn">(same day)</span>'} · ${p.pref} preferred</span>
-      <button class="small gold" data-use="${p.a.id},${p.b.id}">Use these</button></div>`).join('')||'<p class="muted">Needs at least two options and some answers.</p>'}
-    <p class="muted">A suggestion only. Nothing is fixed until you publish the schedule.</p>
-    ${pairs[0]&&pairs[0].cov<resp.length?`<p class="warn">⚠ ${resp.length-pairs[0].cov} student(s) cannot attend either of the best two times — see Sessions to place them.</p>`:''}
-    <h3>Answers</h3><div class="tblw"><table><tr><th>Student</th><th>Can attend</th><th>Preferred</th><th>Cannot</th><th>Comment</th></tr>
-    ${resp.map(s=>{const v=VOTES[s.uid],ot=id=>{const o=opts.find(x=>x.id===id);return o?fmtShort(o.at):'?';};
-      return `<tr><td>${esc(s.name)}<br><span class="muted">${esc(s.code)} · ${esc(s.batch)}</span></td><td>${(v.ok||[]).map(ot).join('<br>')||'—'}</td><td>${v.pref?ot(v.pref):'—'}</td><td>${(v.no||[]).map(ot).join('<br>')||'—'}</td><td>${esc(v.note||'')}</td></tr>`;}).join('')}</table></div>
-    <h3>No answer yet (${miss.length})</h3><p class="muted">${miss.map(s=>esc(s.name)+(s.whatsapp?` <a href="https://wa.me/${esc(waNum(s.whatsapp))}?text=${encodeURIComponent('Please mark your available times for '+c.title+' at eictonline.com/cp')}" target="_blank">WhatsApp</a>`:'')).join(' · ')||'Everyone has answered.'}</p></div>`;
-  if(editable){
-    $('#oAdd').onclick=async()=>{const d=fromInput($('#oAt').value);if(!d) return msg('Pick a date and time.','bad');
-      const o={id:'o'+Date.now().toString(36),at:FB.Timestamp.fromDate(d)};await patch({pollOptions:[...opts,o].sort((x,y)=>ms(x.at)-ms(y.at))},'Added poll option '+fmt(o.at));drawPoll();};
-    $('#pane').querySelectorAll('[data-rm]').forEach(b=>b.onclick=async()=>{if(!confirm('Remove this option? Students who ticked it lose that tick.'))return;await patch({pollOptions:opts.filter(o=>o.id!==b.dataset.rm)},'Removed a poll option');drawPoll();});
-    $('#pSave').onclick=async()=>{const d=fromInput($('#pClose').value);if(!d) return msg('Pick the closing time.','bad');await patch({pollCloseAt:FB.Timestamp.fromDate(d)},'Poll closes '+fmt(d));msg('Saved.','ok');drawPoll();};
-  }
-  $('#pane').querySelectorAll('[data-use]').forEach(b=>b.onclick=async()=>{const [x,y]=b.dataset.use.split(',');const o=id=>opts.find(z=>z.id===id);
-    await patch({sessions:[{id:'S1',at:o(x).at,opt:x},{id:'S2',at:o(y).at,opt:y}]},'Chose sessions '+fmt(o(x).at)+' and '+fmt(o(y).at));autoAssign(false);await savePriv();TAB='sched';drawTabs();msg('Sessions set and students placed. Check them in Sessions, then publish.','ok');});
+/* ---------- open a paper ---------- */
+function closeLive(){if(stopSubs){stopSubs();stopSubs=null;}}
+async function openPaper(id){
+  closeLive();
+  CUR=CPS.find(c=>c.id===id);if(!CUR) return;location.hash=id;drawList();
+  $('#view').innerHTML='<div class="card"><p class="muted">Loading…</p></div>';
+  const [a,g,l]=await Promise.all([FB.getDocs(C('cp',id,'assign')),FB.getDocs(C('cp',id,'grade')),
+    FB.getDocs(FB.query(C('cp',id,'log'),FB.orderBy('at','desc'),FB.limit(60)))]);
+  ASG={};a.forEach(d=>ASG[d.id]=d.data());
+  GRADE={};PRIV={zoom:{},plan:{}};g.forEach(d=>{if(d.id==='_private')PRIV=Object.assign({zoom:{},plan:{}},d.data());else GRADE[d.id]=d.data();});
+  LOG=l.docs.map(d=>d.data());SUBS={};FILT='';FILTU=false;NEWU=new Set();
+  let first=true;
+  stopSubs=FB.onSnapshot(C('cp',id,'subs'),snap=>{
+    snap.docChanges().forEach(ch=>{const v=ch.doc.data();
+      if(ch.type==='removed'){delete SUBS[ch.doc.id];return;}
+      SUBS[ch.doc.id]=v;
+      if(!first){NEWU.add(v.uid);if(!FILTU)FILT='';const s=STU[v.uid];toast('📥 New answer sheet from '+(s?s.name:'a student')+' · Part '+v.part);}});
+    first=false;
+    if(VIEW==='paper'){ if($('#ans')&&$('#ans').contains(document.activeElement)) pendingDraw=true; else drawAnswers(); }
+  },e=>toast('Live answer sheets stopped: '+(e.code||e.message),'bad'));
+  showPaper();
 }
-const fmtShort=t=>fmt(t,{weekday:'short',day:'numeric',month:'short',hour:'numeric',minute:'2-digit'});
-const waNum=w=>{let d=String(w).replace(/\D/g,'');if(d.startsWith('0'))d='94'+d.slice(1);return d;};
+const eligible=c=>Object.values(STU).filter(s=>(c.batches||[]).includes(s.batch)||(c.extra||[]).includes(s.uid)).sort((a,b)=>a.name.localeCompare(b.name));
+const medOf=s=>FIXED[s.batch]||((PRIV.plan||{})[s.uid]||{}).m||'si';
 
-/* ---------- sessions & assignment ---------- */
-function autoAssign(keep){
-  const el=eligible(),S=CUR.sessions||[],load={S1:0,S2:0};
-  if(keep) el.forEach(s=>{const p=PRIV.plan[s.uid];if(p&&p.s)load[p.s]++;});
-  for(const s of el){
-    const cur=PRIV.plan[s.uid]||{};if(keep&&cur.s) continue;
-    const v=VOTES[s.uid],ok=v?(v.ok||[]):null,can=S.filter(x=>x.at&&(!ok||!x.opt||ok.includes(x.opt))).map(x=>x.id);
-    let pick='';
-    if(v&&v.pref&&S.find(x=>x.opt===v.pref&&can.includes(x.id))) pick=S.find(x=>x.opt===v.pref).id;
-    else if(can.length) pick=can.sort((a,b)=>load[a]-load[b])[0];
-    if(pick) load[pick]++;
-    PRIV.plan[s.uid]={s:pick,m:cur.m||medOf(s),flag:!v?'no answer':!pick?'cannot attend either':''};
-  }
+/* ---------- the paper page ---------- */
+function showPaper(){
+  $('#view').onchange=$('#view').oninput=$('#view').onclick=null;
+  VIEW='paper';const c=CUR,t=times(c),[st,k]=status(c),two=twoParts(c),el=eligible(c);
+  const meds=[...new Set(el.map(medOf))];
+  $('#view').innerHTML=`<div class="card">
+    <div class="row" style="justify-content:space-between;align-items:flex-start">
+      <div><span class="muted" style="font-weight:900;letter-spacing:.1em;color:var(--gold)">CP${String(c.n||'?').padStart(2,'0')}${c.afterWeek?' · AFTER WEEK '+c.afterWeek:''}</span>
+        <h2 style="margin:2px 0 6px">${esc(c.title)}</h2><span class="pill ${k}">${st}</span>${c.notice?` <span class="muted">${esc(c.notice)}</span>`:''}</div>
+      <div class="row">
+        <button data-a="edit">✏️ Edit details</button>
+        ${c.stage==='draft'?'<button class="gold" data-a="publish">🚀 Publish to students</button>':''}
+        ${c.stage==='confirmed'?'<button class="small ghost" data-a="hide">Hide from students</button><button class="small ghost" data-a="postpone">Postpone</button>':''}
+        ${['postponed','cancelled'].includes(c.stage)?'<button class="gold" data-a="resume">Resume</button>':'<button class="small ghost" data-a="cancel">Cancel</button>'}
+        <button class="small danger" data-a="delete">🗑 Delete</button>
+      </div></div>
+    <div class="sum">
+      <div><b>Date and time</b>${t?fmt(t.openA,{weekday:'long',month:'long'}):'<span class="warn">Not set</span>'}</div>
+      <div><b>Timetable</b>${t?`${esc(c.secA.title)} ${fmtT(t.openA)}–${fmtT(t.endA)}${two?`<br>${esc(c.secB.title)} ${fmtT(t.openB)}–${fmtT(t.endB)}`:''}<br><span class="muted">Uploads close ${c.graceMin} min after each part</span>`:'—'}</div>
+      <div><b>Zoom</b>${PRIV.zoom.S1?`<a href="${esc(PRIV.zoom.S1)}" target="_blank" rel="noopener">Open Zoom ↗</a>`:'<span class="warn">No link yet</span>'}</div>
+      <div><b>Students</b>${el.length} sitting${meds.length?' · '+meds.map(m=>el.filter(s=>medOf(s)===m).length+' '+MEDN[m]).join(', '):''}</div>
+    </div>
+    ${c.stage==='draft'?'<p class="warn" style="font-weight:800">Students cannot see this yet. Press <b>Publish to students</b> when it is ready.</p>':''}
+  </div>
+  <div class="card" id="ans"></div>
+  <div class="card" id="rank"></div>
+  <div class="card"><details><summary>🧾 History of changes</summary>
+    <table>${LOG.map(l=>`<tr><td style="white-space:nowrap" class="muted">${fmt(l.at)}</td><td>${esc(l.what)}</td></tr>`).join('')||'<tr><td class="muted">Nothing yet.</td></tr>'}</table></details></div>`;
+  drawAnswers();
 }
-function drawSched(){
-  const c=CUR,S=c.sessions||[],el=eligible(),opts=c.pollOptions||[];
-  const tb=x=>{const t=times(x.at);return t?`Part A ${fmtT(t.openA)}–${fmtT(t.endA)} · break · Part B ${fmtT(t.openB)}–${fmtT(t.endB)} · uploads until ${fmtT(t.dueA)} / ${fmtT(t.dueB)}`:'Set the start time';};
-  const n=id=>el.filter(s=>(PRIV.plan[s.uid]||{}).s===id).length;
-  $('#pane').innerHTML=`<div class="card"><h2>The two sessions</h2><p class="muted">Usually on different days. Each student sits exactly one. Times are Sri Lanka time.</p>
-    ${S.map((x,k)=>`<div class="opt" style="grid-template-columns:1fr"><div class="grid">
-      <label class="f">Session ${k?'B':'A'} starts<input type="datetime-local" class="ssAt" data-i="${k}" value="${toInput(x.at)}"></label>
-      <label class="f">Zoom link<input class="ssZoom" data-s="${x.id}" placeholder="https://zoom.us/j/…" value="${esc((PRIV.zoom||{})[x.id]||'')}"></label>
-      ${opts.length?`<label class="f">From poll option<select class="ssOpt" data-i="${k}"><option value="">— custom time —</option>${opts.map(o=>`<option value="${o.id}" ${x.opt===o.id?'selected':''}>${fmtShort(o.at)}</option>`).join('')}</select></label>`:''}</div>
-      <span class="muted">${tb(x)} · <b>${n(x.id)}</b> students</span></div>`).join('')}
-    <div class="row"><button id="ssSave" class="gold">💾 Save sessions</button>
-      <button id="ssAuto">🧮 Place students from their answers</button></div></div>
+$('#view').addEventListener('focusout',()=>setTimeout(()=>{if(pendingDraw&&VIEW==='paper'&&!$('#ans').contains(document.activeElement)){pendingDraw=false;drawAnswers();}},50));
 
-    <div class="card"><h2>Who sits which session</h2>
-    <p class="muted">${el.length} students. Flags show who did not answer or cannot attend either session — decide those yourself.</p>
-    <div class="tblw"><table><tr><th>Student</th><th>Class</th><th>Session</th><th>Medium</th><th>Note</th><th>Published</th></tr>
-    ${el.map(s=>{const p=PRIV.plan[s.uid]||{},a=ASG[s.uid];return `<tr><td>${esc(s.name)}<br><span class="muted">${esc(s.code)}</span></td><td>${esc(s.batch)}${s.track==='solo'?' · 1:1':''}</td>
-      <td><select class="asS" data-u="${s.uid}"><option value="">— none —</option>${S.map((x,k)=>`<option value="${x.id}" ${p.s===x.id?'selected':''}>Session ${k?'B':'A'} · ${x.at?fmtShort(x.at):'no time'}</option>`).join('')}</select></td>
-      <td><select class="asM" data-u="${s.uid}" ${['AL-27','AL-27-SI'].includes(s.batch)?'disabled':''}><option value="si" ${medOf(s)==='si'?'selected':''}>Sinhala</option><option value="en" ${medOf(s)==='en'?'selected':''}>English</option></select></td>
-      <td>${p.flag?`<span class="warn">⚠ ${esc(p.flag)}</span>`:''}</td><td>${a?`<span class="ok">✓ ${a.session===S[0].id?'A':'B'}</span>${a.ack?' · seen':''}${a.session!==p.s?' <span class="warn">changed</span>':''}`:'<span class="muted">—</span>'}</td></tr>`;}).join('')}</table></div>
-    <div class="row" style="margin-top:8px"><button id="asSave">💾 Save placements</button><span class="muted">Students see their session only after you press <b>Publish schedule</b> at the top.</span></div></div>`;
-  const pane=$('#pane');
-  pane.querySelectorAll('.ssOpt').forEach(sel=>sel.onchange=()=>{const o=opts.find(z=>z.id===sel.value);if(o) pane.querySelector(`.ssAt[data-i="${sel.dataset.i}"]`).value=toInput(o.at);});
-  $('#ssSave').onclick=async()=>{
-    const ns=S.map((x,k)=>{const at=fromInput(pane.querySelector(`.ssAt[data-i="${k}"]`).value),sel=pane.querySelector(`.ssOpt[data-i="${k}"]`);return {id:x.id,at:at?FB.Timestamp.fromDate(at):null,opt:sel?sel.value:''};});
-    pane.querySelectorAll('.ssZoom').forEach(i=>{PRIV.zoom[i.dataset.s]=i.value.trim();});
-    if(ns[0].at&&ns[1].at&&dayKey(ns[0].at)===dayKey(ns[1].at)&&!confirm('Both sessions are on the same day. Keep them?')) return;
-    try{await patch({sessions:ns},'Saved sessions');await savePriv();msg('Saved.'+(Object.keys(ASG).length?' Publish the schedule again so students see the change.':''),'ok');drawSched();}catch(e){msg('Could not save: '+(e.code||e.message),'bad');}
-  };
-  $('#ssAuto').onclick=async()=>{if(Object.keys(PRIV.plan).length&&!confirm('Re-place everyone from their poll answers? Manual changes will be replaced.'))return;PRIV.plan={};autoAssign(false);await savePriv();drawSched();msg('Placed. Check the flags.','ok');};
-  $('#asSave').onclick=async()=>{
-    pane.querySelectorAll('.asS').forEach(sel=>{const u=sel.dataset.u,p=PRIV.plan[u]||{};const m=pane.querySelector(`.asM[data-u="${u}"]`);
-      PRIV.plan[u]={...p,s:sel.value,m:m?m.value:p.m||medOf(STU[u]),flag:sel.value?(p.flag==='cannot attend either'?'placed by hand':p.flag||''):(p.flag||'not placed')};});
-    await savePriv();logIt('Saved session placements');msg('Saved placements.','ok');drawSched();
-  };
+/* answer sheets: one card per student, like the weekly papers */
+function rowsFor(){
+  const el=eligible(CUR).filter(s=>ASG[s.uid]||GRADE[s.uid]);
+  const has=s=>!!(SUBS[s.uid+'_A']||SUBS[s.uid+'_B']), done=s=>{const g=GRADE[s.uid]||{};return !!(g.sent||g.absent);};
+  return {all:el,wait:el.filter(s=>has(s)&&!done(s)),sent:el.filter(done),none:el.filter(s=>!has(s)&&!done(s))};
 }
-async function publishSchedule(){
-  const S=CUR.sessions||[],el=eligible();
-  if(!S.every(x=>x.at)) return msg('Set both session start times first (Sessions).','bad');
-  if(!S.every(x=>(PRIV.zoom||{})[x.id])&&!confirm('A session has no Zoom link yet. Publish anyway?')) return;
-  const placed=el.filter(s=>(PRIV.plan[s.uid]||{}).s),missing=el.length-placed.length;
-  if(!placed.length) return msg('Nobody is placed in a session yet (Sessions).','bad');
-  if(!confirm(`Publish the schedule? ${placed.length} students will see their session, Zoom link and times.`+(missing?`\n${missing} student(s) are not placed and will see no session.`:''))) return;
-  msg('Publishing…');
-  try{
-    const ops=[];
-    for(const s of el){const p=PRIV.plan[s.uid]||{},x=S.find(z=>z.id===p.s),old=ASG[s.uid];
-      if(!x){ if(old) ops.push(['del',D('cp',CUR.id,'assign',s.uid)]); continue; }
-      const t=times(x.at),T=v=>FB.Timestamp.fromMillis(v),same=old&&old.session===x.id;
-      const ext=same&&old.ext?old:null;                                   /* keep extensions already granted */
-      ops.push(['set',D('cp',CUR.id,'assign',s.uid),{uid:s.uid,code:s.code,name:s.name,batch:s.batch,medium:p.m||medOf(s),session:x.id,label:x.id===S[0].id?'Session A':'Session B',
-        start:T(t.openA),openA:T(t.openA),endA:T(t.endA),dueA:ext?old.dueA:T(t.dueA),openB:T(t.openB),endB:T(t.endB),dueB:ext?old.dueB:T(t.dueB),
-        zoom:(PRIV.zoom||{})[x.id]||'',ack:same?!!old.ack:false,ackAt:same?(old.ackAt||null):null,ext:!!(ext),feedback:old&&old.feedback||'',publishedAt:FB.serverTimestamp()}]);}
-    /* question papers open with their session */
-    const ps=await FB.getDocs(C('cp',CUR.id,'papers'));
-    ps.forEach(d=>{const v=d.data(),x=S.find(z=>z.id===v.session);if(!x)return;const t=times(x.at);ops.push(['upd',d.ref,{openAt:FB.Timestamp.fromMillis(v.part==='A'?t.openA:t.openB)}]);});
-    for(let i=0;i<ops.length;i+=400){const b=FB.writeBatch(db);ops.slice(i,i+400).forEach(([k,r,v])=>k==='del'?b.delete(r):k==='upd'?b.update(r,v):b.set(r,v));await b.commit();}
-    if(['scheduling','poll','draft'].includes(CUR.stage)) await patch({stage:'confirmed'},'Published the schedule ('+placed.length+' students)');
-    else logIt('Published the schedule again ('+placed.length+' students)');
-    await openCp(CUR.id);TAB='sched';drawTabs();msg('✅ Schedule published. Students see it on their checkpoint page.','ok');
-  }catch(e){msg('Could not publish: '+(e.code||e.message),'bad');}
+function drawAnswers(){
+  const box=$('#ans');if(!box) return;
+  const c=CUR,R=rowsFor(),two=twoParts(c);
+  if(!FILT) FILT=R.wait.length?'wait':R.sent.length?'sent':'none';
+  const list=R[FILT];
+  WAIT[c.id]=R.wait.length;drawList();
+  box.innerHTML=`<div class="row" style="justify-content:space-between"><h2 style="margin:0">✍️ Answer sheets</h2><span class="muted"><span class="live-dot"></span>New sheets appear here by themselves</span></div>
+    <div class="filt" style="margin-top:10px">
+      <button data-f="wait" class="${FILT==='wait'?'on':''}">📥 To mark <span class="count">${R.wait.length}</span></button>
+      <button data-f="sent" class="${FILT==='sent'?'on':''}">✅ Sent <span class="count">${R.sent.length}</span></button>
+      <button data-f="none" class="${FILT==='none'?'on':''}">⏳ No answer yet <span class="count">${R.none.length}</span></button></div>
+    ${c.stage==='draft'&&!R.all.length?'<p class="muted">Publish the paper first. Each student’s answer sheet will appear here when they upload it.</p>':''}
+    ${list.map(s=>card(s,two)).join('')||`<p class="muted">${FILT==='wait'?'Nothing waiting. 🎉':FILT==='sent'?'No marks sent yet.':'Everyone has sent something.'}</p>`}`;
+  drawRank();
 }
+function fileLinks(sub){
+  if(!sub) return '<span class="muted">no file</span>';
+  return sub.links.map((l,i)=>`<a href="${esc(l)}" target="_blank" rel="noopener">📄 ${sub.links.length>1?'File '+(i+1):'Open answer sheet'}</a>`).join(' ')+` <span class="muted">${fmtT(sub.at)}</span>`;
+}
+function card(s,two){
+  const c=CUR,g=GRADE[s.uid]||{},d=DRAFT[s.uid]||{},sa=SUBS[s.uid+'_A'],sb=SUBS[s.uid+'_B'],a=ASG[s.uid]||{};
+  const any=sa||sb,late=a.ext,done=(g.sent||g.absent)&&!d.editing;
+  const ini=s.name.split(/\s+/).map(w=>w[0]).join('').slice(0,2).toUpperCase();
+  const first=esc(s.name.split(' ')[0]);
+  const val=(k,gk)=>esc(d[k]!=null?d[k]:g[gk]!=null?g[gk]:'');
+  const tot=(+(d.a!=null?d.a:g.a)||0)+(two?(+(d.b!=null?d.b:g.b)||0):0);
+  return `<div class="jw ${NEWU.has(s.uid)?'new':''} ${done?'sent':''}" data-u="${s.uid}">
+    <div class="jw-h"><span class="av">${esc(ini)}</span>
+      <span class="jw-n"><b>${esc(s.name)}</b><span>${esc(s.code)} · ${esc(s.batch||'—')} · ${MEDN[medOf(s)]}</span></span>
+      <span class="jw-t ${any?(late?'late':'on'):'none'}">${any?(late?'GIVEN EXTRA TIME':'RECEIVED'):'NO FILE YET'}</span></div>
+    <div class="files"><span><b>${esc(c.secA.title)}:</b> ${fileLinks(sa)}</span>${two?`<span><b>${esc(c.secB.title)}:</b> ${fileLinks(sb)}</span>`:''}</div>
+    ${done?`<div class="jw-done">${g.absent?'<span class="bad-t">Marked absent</span>':`✓ Sent · ${(+g.a||0)+(two?(+g.b||0):0)}/${maxOf(c)}`}
+        ${g.sheet?`· <a href="${esc(g.sheet)}" target="_blank" rel="noopener">marked sheet</a>`:''}${g.note?` · <span class="muted">“${esc(g.note.slice(0,60))}”</span>`:''}
+        <button class="small" data-a="editmk">✏️ Change</button></div>`
+    :`<div class="jw-b">
+      <label class="mk">${esc(c.secA.title)}<input class="mA" type="number" min="0" max="${c.secA.marks}" step="0.5" inputmode="decimal" value="${val('a','a')}"> / ${c.secA.marks}</label>
+      ${two?`<label class="mk">${esc(c.secB.title)}<input class="mB" type="number" min="0" max="${c.secB.marks}" step="0.5" inputmode="decimal" value="${val('b','b')}"> / ${c.secB.marks}</label>`:''}
+      <span class="tot">= <span class="tv">${tot}</span> / ${maxOf(c)}</span>
+      <div class="wide"><input class="mS" placeholder="Marked answer sheet — link (optional)" value="${val('sheet','sheet')}">
+        ${SET.uploadUrl?'<button class="small" data-a="upmk">📎 Upload marked sheet</button><input type="file" class="mF hide" accept="application/pdf,image/*">':''}</div>
+      <div class="wide"><input class="mN" placeholder="A note for ${first} (optional)" value="${val('note','note')}"></div>
+      <div class="wide">
+        <button class="gold" data-a="send">📨 Send to ${first}</button>
+        ${!any?'<button class="small" data-a="more">⏱ Give 15 more minutes</button><button class="small ghost" data-a="absent">Mark absent</button>':''}
+        ${(g.sent||g.absent)?'<button class="small ghost" data-a="cancelEdit">Keep as it was</button><button class="small danger" data-a="takeback">Take back</button>':''}
+      </div></div>`}
+  </div>`;
+}
+/* what is being typed survives a redraw */
+$('#view').addEventListener('input',e=>{const t=e.target,cd=t.closest('.jw');if(!cd) return;const u=cd.dataset.u,d=DRAFT[u]=DRAFT[u]||{};
+  if(t.matches('.mA'))d.a=t.value;if(t.matches('.mB'))d.b=t.value;if(t.matches('.mS'))d.sheet=t.value;if(t.matches('.mN'))d.note=t.value;
+  if(t.matches('.mA,.mB')){const two=twoParts(CUR),a=+(cd.querySelector('.mA').value)||0,b=two?+(cd.querySelector('.mB').value)||0:0;
+    const tv=cd.querySelector('.tv');tv.textContent=a+b;tv.parentNode.classList.remove('count','bump');void tv.offsetWidth;tv.parentNode.classList.add('count','bump');}});
 
-/* ---------- papers ---------- */
-async function drawPapers(){
-  const S=CUR.sessions||[],media=[...new Set(eligible().map(s=>(PRIV.plan[s.uid]||{}).m||medOf(s)))];
-  const ps=await FB.getDocs(C('cp',CUR.id,'papers')),P={};ps.forEach(d=>P[d.id]=d.data());
-  $('#pane').innerHTML=`<div class="card"><h2>Question papers</h2>
-    <p class="muted">Paste a Google Drive link for each paper (share it as <i>Anyone with the link · Viewer</i>). A paper is only handed to students of its own session, and only when that part starts — the link stays hidden in the database until then. Use different but equivalent papers for the two sessions so Session A cannot pass questions to Session B.</p>
-    <div class="tblw"><table><tr><th>Session</th><th>Part</th>${media.map(m=>`<th>${MEDN[m]}</th>`).join('')}<th>Opens</th></tr>
-    ${S.map((x,k)=>['A','B'].map(pt=>{const t=times(x.at);return `<tr><td>Session ${k?'B':'A'}<br><span class="muted">${x.at?fmtShort(x.at):'no time'}</span></td><td>${pt==='A'?esc(CUR.secA.title):esc(CUR.secB.title)}</td>
-      ${media.map(m=>{const id=`${x.id}_${pt}_${m}`;return `<td><input class="pp" data-id="${id}" data-s="${x.id}" data-p="${pt}" data-m="${m}" placeholder="https://drive.google.com/…" value="${esc((P[id]||{}).link||'')}" style="width:100%;min-width:200px"></td>`;}).join('')}
-      <td>${t?fmtT(pt==='A'?t.openA:t.openB):'—'}</td></tr>`;}).join('')).join('')}</table></div>
-    <button class="gold" id="ppSave" style="margin-top:10px">💾 Save papers</button>
-    <p class="muted">${media.length>1?'Both media are needed because the sitting students are in both.':'Only '+MEDN[media[0]||'si']+' is needed for the students placed so far.'}</p></div>`;
-  $('#ppSave').onclick=async()=>{
-    const b=FB.writeBatch(db);let n=0,miss=0;
-    $('#pane').querySelectorAll('.pp').forEach(i=>{const x=S.find(z=>z.id===i.dataset.s),t=times(x&&x.at),v=i.value.trim(),r=D('cp',CUR.id,'papers',i.dataset.id);
-      if(!v){b.delete(r);miss++;return;}
-      if(!/^https?:\/\//.test(v)) return;n++;
-      b.set(r,{session:i.dataset.s,part:i.dataset.p,medium:i.dataset.m,link:v,openAt:FB.Timestamp.fromMillis(t?(i.dataset.p==='A'?t.openA:t.openB):Date.UTC(2099,0,1)),updatedAt:FB.serverTimestamp()});});
-    try{await b.commit();logIt('Saved question papers ('+n+')');msg(`Saved ${n} paper link(s)`+(miss?` · ${miss} still empty`:'')+'.',miss?'warn':'ok');}catch(e){msg('Could not save: '+(e.code||e.message),'bad');}
-  };
-}
-
-/* ---------- exam day ---------- */
-function drawDay(){
-  const S=CUR.sessions||[],el=eligible().filter(s=>ASG[s.uid]);
-  const lk=sub=>sub?sub.links.map((l,i)=>`<a href="${esc(l)}" target="_blank">p${i+1}</a>`).join(' ')+`<br><span class="muted">${fmtT(sub.at)}</span>`:'<span class="muted">—</span>';
-  $('#pane').innerHTML=`<div class="card"><h2>Exam day</h2><p class="muted">Take attendance from Zoom and watch the uploads come in. Recording is not done by this site. Students’ uploads are accepted only between the start of each part and its upload deadline; an extension moves one student’s deadline and is logged.</p>
-    ${S.map((x,k)=>{const t=times(x.at);return `<div class="opt" style="grid-template-columns:1fr"><b>Session ${k?'B':'A'} · ${x.at?fmt(x.at):'no time'}</b><span class="muted">${t?`Part A ${fmtT(t.openA)}–${fmtT(t.endA)} (uploads to ${fmtT(t.dueA)}) · break · Part B ${fmtT(t.openB)}–${fmtT(t.endB)} (uploads to ${fmtT(t.dueB)})`:''} ${(PRIV.zoom||{})[x.id]?`· <a href="${esc(PRIV.zoom[x.id])}" target="_blank">Zoom</a>`:''}</span></div>`;}).join('')}
-    <div class="tblw"><table><tr><th>Student</th><th>Session</th><th>Attendance</th><th>Part A</th><th>Part B</th><th>Deadlines</th></tr>
-    ${el.map(s=>{const a=ASG[s.uid],g=GRADE[s.uid]||{};return `<tr><td>${esc(s.name)}<br><span class="muted">${esc(s.code)} · ${MEDN[a.medium]}</span></td><td>${a.session===S[0].id?'A':'B'}${a.ack?'':' <span class="warn" title="not acknowledged">?</span>'}</td>
-      <td><select class="att" data-u="${s.uid}">${['','present','late','absent'].map(v=>`<option value="${v}" ${(g.att||'')===v?'selected':''}>${v||'—'}</option>`).join('')}</select></td>
-      <td>${lk(SUBS[s.uid+'_A'])}</td><td>${lk(SUBS[s.uid+'_B'])}</td>
-      <td><span class="muted">A ${fmtT(a.dueA)} · B ${fmtT(a.dueB)}</span>${a.ext?' <span class="warn">extended</span>':''}<br><button class="small" data-ext="${s.uid}">⏱ Extend</button></td></tr>`;}).join('')||'<tr><td colspan="6" class="muted">No published schedule yet.</td></tr>'}</table></div>
-    <div class="row" style="margin-top:8px"><button id="attSave" class="gold">💾 Save attendance</button><button id="dayRe">↻ Refresh uploads</button></div></div>`;
-  $('#attSave').onclick=async()=>{const b=FB.writeBatch(db);$('#pane').querySelectorAll('.att').forEach(s=>{GRADE[s.dataset.u]={...(GRADE[s.dataset.u]||{}),att:s.value};b.set(D('cp',CUR.id,'grade',s.dataset.u),{att:s.value},{merge:true});});
-    await b.commit();logIt('Saved attendance');msg('Attendance saved.','ok');};
-  $('#dayRe').onclick=async()=>{await openCp(CUR.id);TAB='day';drawTabs();};
-  $('#pane').querySelectorAll('[data-ext]').forEach(b=>b.onclick=async()=>{
-    const u=b.dataset.ext,a=ASG[u],part=(prompt('Extend which part for '+STU[u].name+'? Type A or B','B')||'').trim().toUpperCase();if(!['A','B'].includes(part)) return;
-    const min=Math.round(+prompt('Extra minutes for Part '+part+' (from its current deadline, or from now if it has passed):','15'));if(!(min>0)) return;
-    const why=prompt('Reason (kept in the log):','')||'';
-    const k='due'+part,base=Math.max(Date.now(),ms(a[k])),nd=FB.Timestamp.fromMillis(base+min*60e3);
-    try{await FB.updateDoc(D('cp',CUR.id,'assign',u),{[k]:nd,ext:true});a[k]=nd;a.ext=true;logIt(`Extended Part ${part} for ${STU[u].name} by ${min} min to ${fmt(nd)}${why?' — '+why:''}`);msg('Extended.','ok');drawDay();}
-    catch(e){msg('Could not extend: '+(e.code||e.message),'bad');}
-  });
-}
-
-/* ---------- marking ---------- */
-function drawMark(){
-  const S=CUR.sessions||[],A=CUR.secA,B=CUR.secB,el=eligible().filter(s=>ASG[s.uid]);
-  const filt=window.__mf||{s:'',m:'',b:''};
-  const rows=el.filter(s=>(!filt.s||ASG[s.uid].session===filt.s)&&(!filt.m||ASG[s.uid].medium===filt.m)&&(!filt.b||s.batch===filt.b));
-  const lk=sub=>sub?sub.links.map((l,i)=>`<a href="${esc(l)}" target="_blank">p${i+1}</a>`).join(' '):'<span class="bad">none</span>';
-  $('#pane').innerHTML=`<div class="card"><h2>Marking</h2>
-    <div class="row" style="margin-bottom:8px"><select id="mfS"><option value="">All sessions</option>${S.map((x,k)=>`<option value="${x.id}" ${filt.s===x.id?'selected':''}>Session ${k?'B':'A'}</option>`).join('')}</select>
-    <select id="mfM"><option value="">Both media</option><option value="si" ${filt.m==='si'?'selected':''}>Sinhala</option><option value="en" ${filt.m==='en'?'selected':''}>English</option></select>
-    <select id="mfB"><option value="">All classes</option>${[...new Set(el.map(s=>s.batch))].map(b=>`<option ${filt.b===b?'selected':''}>${esc(b)}</option>`).join('')}</select>
-    <span class="muted">${rows.filter(s=>(GRADE[s.uid]||{}).final).length} of ${rows.length} finalised</span></div>
-    <div class="tblw"><table><tr><th>Student</th><th>Answers</th><th>${esc(A.title)} /${A.marks}</th><th>${esc(B.title)} /${B.marks}</th><th>Total</th><th>Feedback</th><th>Final</th></tr>
-    ${rows.map(s=>{const g=GRADE[s.uid]||{},tot=(+g.a||0)+(+g.b||0);return `<tr data-u="${s.uid}"><td>${esc(s.name)}<br><span class="muted">${esc(s.code)} · ${ASG[s.uid].session===S[0].id?'A':'B'} · ${MEDN[ASG[s.uid].medium]}${g.att==='absent'?' · <span class="bad">absent</span>':''}</span></td>
-      <td>A ${lk(SUBS[s.uid+'_A'])}<br>B ${lk(SUBS[s.uid+'_B'])}</td>
-      <td><input type="number" class="mA" min="0" max="${A.marks}" step="0.5" value="${g.a??''}"></td><td><input type="number" class="mB" min="0" max="${B.marks}" step="0.5" value="${g.b??''}"></td>
-      <td class="tot"><b>${g.a!=null||g.b!=null?tot:'—'}</b><br><span class="muted">${g.a!=null||g.b!=null?Math.round(1000*tot/(A.marks+B.marks))/10+'%':''}</span></td>
-      <td><textarea class="mF" style="min-height:44px;min-width:180px">${esc(g.fb||'')}</textarea></td><td><input type="checkbox" class="mFin" ${g.final?'checked':''}></td></tr>`;}).join('')||'<tr><td colspan="7" class="muted">Nobody to mark yet.</td></tr>'}</table></div>
-    <div class="row" style="margin-top:8px"><button id="mSave" class="gold">💾 Save marks (draft)</button><button id="mFinAll">Tick all with both marks as final</button></div>
-    <p class="muted">Marks stay private until you publish results. Untick “Final” to keep a student out of the ranking while you check.</p></div>`;
-  const pane=$('#pane');
-  ['#mfS','#mfM','#mfB'].forEach(id=>$(id).onchange=()=>{window.__mf={s:$('#mfS').value,m:$('#mfM').value,b:$('#mfB').value};drawMark();});
-  pane.oninput=e=>{const tr=e.target.closest('tr[data-u]');if(!tr||!e.target.matches('.mA,.mB'))return;const a=+tr.querySelector('.mA').value||0,b=+tr.querySelector('.mB').value||0;
-    tr.querySelector('.tot').innerHTML=`<b>${a+b}</b><br><span class="muted">${Math.round(1000*(a+b)/(A.marks+B.marks))/10}%</span>`;};
-  $('#mFinAll').onclick=()=>pane.querySelectorAll('tr[data-u]').forEach(tr=>{if(tr.querySelector('.mA').value!==''&&tr.querySelector('.mB').value!=='')tr.querySelector('.mFin').checked=true;});
-  $('#mSave').onclick=async()=>{
-    const b=FB.writeBatch(db);let bad='',n=0;
-    pane.querySelectorAll('tr[data-u]').forEach(tr=>{const u=tr.dataset.u,va=tr.querySelector('.mA').value,vb=tr.querySelector('.mB').value;
-      const a=va===''?null:+va,bb=vb===''?null:+vb;
-      if(a!=null&&(a<0||a>A.marks)||bb!=null&&(bb<0||bb>B.marks)){bad=STU[u].name;return;}
-      const fin=tr.querySelector('.mFin').checked;if(fin&&(a==null||bb==null)&&(GRADE[u]||{}).att!=='absent'){bad=STU[u].name+' (final needs both marks)';return;}
-      const old=GRADE[u]||{},v={a,b:bb,fb:tr.querySelector('.mF').value.trim(),final:fin};
-      if(old.final&&CUR.stage==='published'&&(old.a!==a||old.b!==bb)) logIt(`Changed published marks for ${STU[u].name}: ${old.a}+${old.b} → ${a}+${bb}`);
-      GRADE[u]={...old,...v};b.set(D('cp',CUR.id,'grade',u),v,{merge:true});n++;});
-    if(bad) return msg('Check the marks for '+bad+'.','bad');
-    try{await b.commit();logIt('Saved marks ('+n+')');msg('Saved.'+(CUR.stage==='published'?' Publish results again so students see the change.':''),'ok');}catch(e){msg('Could not save: '+(e.code||e.message),'bad');}
-  };
-}
-
-/* ---------- results ---------- */
+/* ---------- ranking: worked out again after every mark sent ---------- */
 function results(){
-  const A=CUR.secA,B=CUR.secB,max=A.marks+B.marks,bd=CUR.badges,cn=CUR.coins,S=CUR.sessions||[];
-  const rows=eligible().filter(s=>ASG[s.uid]&&(GRADE[s.uid]||{}).final).map(s=>{const g=GRADE[s.uid],ab=g.att==='absent';
-    const tot=ab?0:(+g.a||0)+(+g.b||0),pct=Math.round(1000*tot/max)/10;
-    return {s,g,absent:ab,a:ab?null:+g.a,b:ab?null:+g.b,total:tot,pct,badge:ab?'':pct>=bd.gold?'gold':pct>=bd.silver?'silver':pct>=bd.bronze?'bronze':'',
-      sat:!ab&&!!SUBS[s.uid+'_A']&&!!SUBS[s.uid+'_B']};});
+  const c=CUR,max=maxOf(c),bd=c.badges,cn=c.coins,two=twoParts(c);
+  const rows=eligible(c).filter(s=>{const g=GRADE[s.uid];return g&&(g.sent||g.absent);}).map(s=>{const g=GRADE[s.uid],ab=!!g.absent;
+    const tot=ab?0:(+g.a||0)+(two?(+g.b||0):0),pct=max?Math.round(1000*tot/max)/10:0;
+    return {s,g,absent:ab,a:ab?null:+g.a,b:ab||!two?null:+g.b,total:tot,pct,badge:ab?'':pct>=bd.gold?'gold':pct>=bd.silver?'silver':pct>=bd.bronze?'bronze':''};});
   const ranked=rows.filter(r=>!r.absent).sort((x,y)=>y.total-x.total||x.s.name.localeCompare(y.s.name));
-  /* ties share a place: 1, 2, 2, 4 */
-  ranked.forEach((r,i)=>{r.rank=i&&r.total===ranked[i-1].total?ranked[i-1].rank:i+1;});
+  ranked.forEach((r,i)=>{r.rank=i&&r.total===ranked[i-1].total?ranked[i-1].rank:i+1;});   /* ties share a place: 1, 2, 2, 4 */
   rows.forEach(r=>{r.trophy=r.rank===1?'1st':r.rank===2?'2nd':r.rank===3?'3rd':'';
-    r.coins=(r.sat?cn.part:0)+(cn[r.badge]||0)+(r.rank===1?cn.r1:r.rank===2?cn.r2:r.rank===3?cn.r3:0);
-    r.session=ASG[r.s.uid].session===S[0].id?'A':'B';});
+    r.coins=r.absent?0:(+cn.part||0)+(+cn[r.badge]||0)+(r.rank===1?+cn.r1:r.rank===2?+cn.r2:r.rank===3?+cn.r3:0)||0;});
   return {rows,ranked,max,of:ranked.length};
 }
-function drawRes(){
-  const {rows,ranked,max}=results(),el=eligible().filter(s=>ASG[s.uid]),notFinal=el.filter(s=>!(GRADE[s.uid]||{}).final);
-  const sessOver=(CUR.sessions||[]).every(x=>{const t=times(x.at);return t&&Date.now()>t.dueB;});
-  const B={gold:'🥇 Gold',silver:'🥈 Silver',bronze:'🥉 Bronze'};
-  $('#pane').innerHTML=`<div class="card"><h2>Ranking preview</h2>
-    <p class="muted">One ranking across both sessions, both media and every class. Ties share a place. ${CUR.stage==='published'?'<b class="ok">Published</b> '+fmt(CUR.publishedAt)+'.':'Students see nothing until you publish.'}</p>
-    ${!sessOver?'<p class="warn">⚠ A session has not finished yet (including its upload time). Publish only after both are over.</p>':''}
-    ${notFinal.length?`<p class="warn">⚠ ${notFinal.length} student(s) not finalised: ${notFinal.map(s=>esc(s.name)).join(', ')}. They will not be ranked.</p>`:''}
-    <div class="tblw"><table><tr><th>Place</th><th>Student</th><th>Session</th><th>A</th><th>B</th><th>Total /${max}</th><th>%</th><th>Badge</th><th>Trophy</th><th>Coins</th></tr>
-    ${[...ranked,...rows.filter(r=>r.absent)].map(r=>`<tr><td><b>${r.rank||'—'}</b></td><td>${esc(r.s.name)}<br><span class="muted">${esc(r.s.code)} · ${esc(r.s.batch)}</span></td><td>${r.session}</td>
-      <td>${r.absent?'absent':r.a}</td><td>${r.absent?'':r.b}</td><td><b>${r.absent?'—':r.total}</b></td><td>${r.absent?'':r.pct}</td><td>${B[r.badge]||''}</td><td>${r.trophy?'🏆 '+r.trophy:''}</td><td>${r.coins}</td></tr>`).join('')||'<tr><td colspan="10" class="muted">No finalised marks yet (Marking).</td></tr>'}</table></div></div>`;
+async function pushResults(){
+  const c=CUR,{rows,of,max}=results(),ops=[];
+  for(const r of rows){ if(!r.s.code) continue;
+    ops.push([D('marks',r.s.code),{code:r.s.code,name:r.s.name,batch:r.s.batch,cp:{[c.id]:{n:c.n,title:c.title,afterWeek:c.afterWeek||0,a:r.a,b:r.b,total:r.total,max,pct:r.pct,
+      rank:r.rank||null,of,badge:r.badge,trophy:r.trophy,coins:r.coins,absent:r.absent,session:'A',medium:medOf(r.s),sheet:r.g.sheet||'',note:r.g.note||'',at:FB.serverTimestamp()}}}]);}
+  for(let i=0;i<ops.length;i+=400){const b=FB.writeBatch(db);ops.slice(i,i+400).forEach(([ref,v])=>b.set(ref,v,{merge:true}));await b.commit();}
 }
-async function publishResults(){
-  const {rows,of}=results();
-  if(!rows.length) return msg('No finalised marks yet (Marking).','bad');
-  const sessOver=(CUR.sessions||[]).every(x=>{const t=times(x.at);return t&&Date.now()>t.dueB;});
-  if(!sessOver&&!confirm('A session has not finished yet. Publish anyway?')) return;
-  if(!confirm(`Publish results for ${rows.length} students? They appear in My Marks and the Hall of Fame, and the checkpoint coins are added.`)) return;
-  msg('Publishing…');
-  try{
-    const ops=[];
-    for(const r of rows){
-      const res={n:CUR.n,title:CUR.title,afterWeek:CUR.afterWeek||0,a:r.a,b:r.b,total:r.total,max:CUR.secA.marks+CUR.secB.marks,pct:r.pct,rank:r.rank||null,of,
-        badge:r.badge,trophy:r.trophy,coins:r.coins,absent:r.absent,session:r.session,medium:ASG[r.s.uid].medium,at:FB.serverTimestamp()};
-      ops.push([D('marks',r.s.code),{code:r.s.code,name:r.s.name,batch:r.s.batch,cp:{[CUR.id]:res}},{merge:true}]);
-      ops.push([D('cp',CUR.id,'assign',r.s.uid),{feedback:(r.g.fb||'')},{merge:true}]);
-    }
-    for(let i=0;i<ops.length;i+=400){const b=FB.writeBatch(db);ops.slice(i,i+400).forEach(([ref,v,o])=>b.set(ref,v,o));await b.commit();}
-    await patch({stage:'published',publishedAt:FB.serverTimestamp()},'Published results ('+rows.length+' students)');
-    CUR.publishedAt=FB.Timestamp.now();drawStage();TAB='res';drawTabs();msg('🏆 Results published.','ok');
-  }catch(e){msg('Could not publish: '+(e.code||e.message),'bad');}
-}
-async function unpublish(){
-  if(!confirm('Take the results down? They disappear from My Marks and the Hall of Fame, and the checkpoint coins are removed until you publish again.')) return;
-  try{
-    const b=FB.writeBatch(db);results().rows.forEach(r=>{if(r.s.code) b.set(D('marks',r.s.code),{cp:{[CUR.id]:FB.deleteField()}},{merge:true});});
-    await b.commit();await patch({stage:'marking'},'Unpublished results');drawStage();drawTabs();msg('Results taken down.','ok');
-  }catch(e){msg('Could not unpublish: '+(e.code||e.message),'bad');}
+function drawRank(){
+  const box=$('#rank');if(!box) return;const {rows,ranked,max}=results(),two=twoParts(CUR);
+  box.innerHTML=`<h2>🏆 Ranking <span class="muted" style="font-weight:600">· updates by itself each time you send marks</span></h2>
+    <div class="tblw"><table><tr><th>Place</th><th>Student</th><th>${esc(CUR.secA.title)}</th>${two?`<th>${esc(CUR.secB.title)}</th>`:''}<th>Total /${max}</th><th>%</th><th>Badge</th><th>Coins</th></tr>
+    ${[...ranked,...rows.filter(r=>r.absent)].map(r=>`<tr><td><b style="font-size:16px">${r.rank===1?'🥇':r.rank===2?'🥈':r.rank===3?'🥉':r.rank||'—'}</b></td><td>${esc(r.s.name)}<br><span class="muted">${esc(r.s.code)} · ${esc(r.s.batch)}</span></td>
+      <td>${r.absent?'absent':r.a}</td>${two?`<td>${r.absent?'':r.b}</td>`:''}<td><b>${r.absent?'—':r.total}</b></td><td>${r.absent?'':r.pct}</td><td>${BADGE[r.badge]||''}</td><td>+${r.coins}</td></tr>`).join('')
+      ||`<tr><td colspan="${two?8:7}" class="muted">Send the first marks and the ranking starts here.</td></tr>`}</table></div>
+    <p class="muted">One ranking for everyone who sat it — both media and every class. Equal marks share a place. Students see their place in the checkpoint page, My Marks and the Hall of Fame.</p>`;
 }
 
-/* ---------- log ---------- */
-function drawLog(){
-  $('#pane').innerHTML=`<div class="card"><h2>Log</h2><p class="muted">Every privileged change to this checkpoint, newest first.</p>
-    <table>${LOG.map(l=>`<tr><td style="white-space:nowrap">${fmt(l.at)}</td><td>${esc(l.what)}</td></tr>`).join('')||'<tr><td class="muted">Nothing yet.</td></tr>'}</table></div>`;
+/* ---------- actions on the paper page ---------- */
+$('#view').addEventListener('click',e=>{
+  const f=e.target.closest('[data-f]');if(f){FILT=f.dataset.f;FILTU=true;drawAnswers();return;}
+  const b=e.target.closest('button[data-a]');if(!b) return;const k=b.dataset.a,cd=b.closest('.jw'),u=cd&&cd.dataset.u;
+  const A={
+    edit:()=>showForm(),
+    publish:()=>act(b,async()=>{await publishNow();},'🚀 Published. Students can see it now.'),
+    hide:()=>act(b,async()=>{if(!confirm('Hide this paper from students? Nothing is deleted.'))return false;await setStage('draft','Hidden from students');}),
+    postpone:()=>act(b,async()=>{const why=prompt('Postpone this paper? The question papers and uploads close at once.\nReason (students see it):','');if(why===null)return false;await setStage('postponed','Postponed'+(why?': '+why:''),why);}),
+    cancel:()=>act(b,async()=>{const why=prompt('Cancel this paper?\nReason (students see it):','');if(why===null)return false;await setStage('cancelled','Cancelled'+(why?': '+why:''),why);}),
+    resume:()=>act(b,async()=>{await setStage('confirmed','Resumed','');}),
+    delete:()=>act(b,async()=>{await deletePaper();}),
+    editmk:()=>{DRAFT[u]={...(DRAFT[u]||{}),editing:true};drawAnswers();},
+    cancelEdit:()=>{delete DRAFT[u];drawAnswers();},
+    send:()=>act(b,async()=>{await sendMarks(u,cd);}),
+    absent:()=>act(b,async()=>{if(!confirm('Mark '+STU[u].name+' absent? They get no place and no coins for this paper.'))return false;
+      GRADE[u]={...(GRADE[u]||{}),absent:true,sent:false,a:null,b:null,at:FB.serverTimestamp()};
+      await FB.setDoc(D('cp',CUR.id,'grade',u),{absent:true,sent:false,a:null,b:null,at:FB.serverTimestamp()},{merge:true});
+      await pushResults();delete DRAFT[u];logIt('Marked '+STU[u].name+' absent');drawAnswers();},'Marked absent.'),
+    takeback:()=>act(b,async()=>{if(!confirm('Take back what you sent to '+STU[u].name+'? It disappears from their marks until you send again.'))return false;
+      await FB.setDoc(D('cp',CUR.id,'grade',u),{sent:false,absent:false},{merge:true});GRADE[u]={...GRADE[u],sent:false,absent:false};
+      if(STU[u].code) await FB.setDoc(D('marks',STU[u].code),{cp:{[CUR.id]:FB.deleteField()}},{merge:true});
+      await pushResults();delete DRAFT[u];logIt('Took back the result of '+STU[u].name);drawAnswers();},'Taken back.'),
+    more:()=>act(b,async()=>{await extend(u);}),
+    upmk:()=>cd.querySelector('.mF').click(),
+  };
+  if(A[k]) A[k]();
+});
+/* the marked sheet you pick goes to your Drive and its link into the card */
+$('#view').addEventListener('change',e=>{const i=e.target;if(!i.matches('.mF')||!i.files[0]) return;
+  const cd=i.closest('.jw'),u=cd.dataset.u,f=i.files[0],b=cd.querySelector('[data-a="upmk"]');i.value='';
+  act(b,async()=>{const url=await upload(f,{kind:'marked',code:STU[u].code,name:STU[u].name});
+    const s=cd.querySelector('.mS');s.value=url;(DRAFT[u]=DRAFT[u]||{}).sheet=url;},'📎 Marked sheet uploaded.');});
+async function sendMarks(u,cd){
+  const c=CUR,two=twoParts(c),s=STU[u];
+  const ia=cd.querySelector('.mA'),ib=cd.querySelector('.mB');
+  const a=ia.value.trim()===''?stop('Enter the '+c.secA.title+' mark.',ia):+ia.value;
+  if(!(a>=0&&a<=c.secA.marks)) stop(c.secA.title+' must be between 0 and '+c.secA.marks+'.',ia);
+  let b=null;if(two){b=ib.value.trim()===''?stop('Enter the '+c.secB.title+' mark.',ib):+ib.value;if(!(b>=0&&b<=c.secB.marks)) stop(c.secB.title+' must be between 0 and '+c.secB.marks+'.',ib);}
+  const sheet=cd.querySelector('.mS').value.trim(),note=cd.querySelector('.mN').value.trim();
+  if(sheet&&!/^https?:\/\//i.test(sheet)) stop('The marked sheet must be a link (https://…).',cd.querySelector('.mS'));
+  const old=GRADE[u]||{};
+  const g={a,b,sheet,note,sent:true,absent:false,at:FB.serverTimestamp()};
+  await FB.setDoc(D('cp',c.id,'grade',u),g,{merge:true});
+  GRADE[u]={...old,...g};delete DRAFT[u];NEWU.delete(u);
+  await pushResults();
+  logIt((old.sent?'Changed':'Sent')+` marks for ${s.name}: ${a}${two?' + '+b:''}`);
+  const r=results().rows.find(x=>x.s.uid===u);
+  sentPop(s.name,`${r.total}/${maxOf(c)} sent · place ${r.rank} of ${results().of}${r.badge?' · '+BADGE[r.badge]:''}`);
+  drawAnswers();
+}
+async function extend(u){
+  const a=ASG[u];if(!a) stop('This student has no exam time — publish the paper first.');
+  const n=Date.now(),part=twoParts(CUR)&&n>=ms(a.openB)?'B':'A',k='due'+part;
+  const nd=FB.Timestamp.fromMillis(Math.max(n,ms(a[k]))+15*60e3);
+  await FB.updateDoc(D('cp',CUR.id,'assign',u),{[k]:nd,ext:true});a[k]=nd;a.ext=true;
+  logIt(`Gave ${STU[u].name} 15 more minutes for Part ${part} (until ${fmtT(nd)})`);
+  toast(`⏱ ${STU[u].name} can upload Part ${part} until ${fmtT(nd)}`,'ok');drawAnswers();
+}
+async function setStage(stage,what,notice){
+  const f={stage,updatedAt:FB.serverTimestamp()};if(notice!==undefined) f.notice=notice;
+  await FB.updateDoc(D('cp',CUR.id),f);Object.assign(CUR,{stage},notice!==undefined?{notice}:{});
+  logIt(what);showPaper();
+}
+async function deletePaper(){
+  if(!confirm('Delete “'+CUR.title+'” completely? Its answer links, marks and ranking are removed from every student. This cannot be undone.')) return false;
+  if(prompt('Type DELETE to confirm.','')!=='DELETE') return false;
+  const id=CUR.id;closeLive();
+  for(const u in GRADE){const s=STU[u];if(s&&s.code&&(GRADE[u].sent||GRADE[u].absent)) await FB.setDoc(D('marks',s.code),{cp:{[id]:FB.deleteField()}},{merge:true});}
+  for(const sc of ['assign','papers','subs','grade','log','votes']){const q=await FB.getDocs(C('cp',id,sc));
+    for(let i=0;i<q.docs.length;i+=400){const b=FB.writeBatch(db);q.docs.slice(i,i+400).forEach(d=>b.delete(d.ref));await b.commit();}}
+  await FB.deleteDoc(D('cp',id));
+  CUR=null;location.hash='';$('#view').innerHTML='';await loadList();toast('Deleted.','ok');
 }
 
+/* ---------- publishing: each student gets their times and Zoom link ---------- */
+async function syncAssign(c){
+  const t=times(c),el=eligible(c),T=v=>FB.Timestamp.fromMillis(v),ops=[],keep=new Set(el.map(s=>s.uid));
+  const old=await FB.getDocs(C('cp',c.id,'assign'));const OLD={};old.forEach(d=>OLD[d.id]=d.data());
+  for(const s of el){const o=OLD[s.uid],same=o&&ms(o.start)===t.openA,ext=same&&o.ext;
+    ops.push(['set',D('cp',c.id,'assign',s.uid),{uid:s.uid,code:s.code,name:s.name,batch:s.batch,medium:medOf(s),session:'S1',label:'Your exam',
+      start:T(t.openA),openA:T(t.openA),endA:T(t.endA),dueA:ext?o.dueA:T(t.dueA),openB:T(t.openB),endB:T(t.endB),dueB:ext?o.dueB:T(t.dueB),
+      zoom:PRIV.zoom.S1||'',ack:same?!!o.ack:false,ackAt:same?(o.ackAt||null):null,ext:!!ext,feedback:'',publishedAt:FB.serverTimestamp()}]);}
+  for(const u in OLD) if(!keep.has(u)) ops.push(['del',D('cp',c.id,'assign',u)]);
+  for(let i=0;i<ops.length;i+=400){const b=FB.writeBatch(db);ops.slice(i,i+400).forEach(([k,r,v])=>k==='del'?b.delete(r):b.set(r,v));await b.commit();}
+  ASG={};const a=await FB.getDocs(C('cp',c.id,'assign'));a.forEach(d=>ASG[d.id]=d.data());
+}
+async function publishNow(){
+  const c=CUR,t=times(c),el=eligible(c);
+  if(!t) stop('Set the date and time first (Edit details).');
+  if(!el.length) stop('Choose who sits it first (Edit details).');
+  const ps=await FB.getDocs(C('cp',c.id,'papers'));
+  const need=[...new Set(el.map(medOf))].flatMap(m=>(twoParts(c)?['A','B']:['A']).map(p=>'S1_'+p+'_'+m)),have=new Set(ps.docs.map(d=>d.id));
+  const miss=need.filter(x=>!have.has(x));
+  if(miss.length&&!confirm('Some question papers are missing: '+miss.map(x=>'Part '+x[3]+' '+MEDN[x.slice(5)]).join(', ')+'.\nYou can add them later. Publish anyway?')) return false;
+  if(!PRIV.zoom.S1&&!confirm('There is no Zoom link yet. Publish anyway?')) return false;
+  if(!confirm(`Publish “${c.title}” to ${el.length} students?\nThey will see the date, time and Zoom link straight away.`)) return false;
+  await syncAssign(c);
+  await FB.updateDoc(D('cp',c.id),{stage:'confirmed',notice:'',updatedAt:FB.serverTimestamp(),publishedAt:FB.serverTimestamp()});
+  c.stage='confirmed';c.notice='';logIt('Published to '+el.length+' students');showPaper();
+}
+
+/* ---------- add / edit form ---------- */
+let EXTRA=new Set(),MED={},FORMB=new Set();
+function blank(){
+  const n=Math.max(0,...CPS.map(c=>c.n||0))+1,wk=WEEKS[Math.min(n,5)-1]||'';
+  return {n,title:n>=5?'Final Assessment':'Checkpoint Paper '+String(n).padStart(2,'0'),afterWeek:wk,coverage:n===1?'Weeks 01–08: Number Systems and Logic Gates':wk?'Weeks 01–'+String(wk).padStart(2,'0'):'',
+    instructions:'Write your answers on paper. Keep your camera on during the Zoom session. When each part ends, scan every page in order with CamScanner, save it as one PDF and upload it on this page before the upload time closes.',
+    materials:'Pens and pencils. No calculators, phones or notes.',batches:['AL-27','AL-27-SI'],extra:[],at:null,
+    secA:{title:'Part A: MCQ',min:120,marks:100},secB:{title:'Part B: Structured',min:180,marks:100,on:true},breakMin:30,graceMin:30,
+    badges:{gold:90,silver:75,bronze:60},coins:{part:20,gold:100,silver:60,bronze:30,r1:100,r2:60,r3:40},stage:'draft'};
+}
+async function showForm(){
+  closeLive();VIEW='form';
+  const c=CUR?{...CUR,secA:{...CUR.secA},secB:CUR.secB?{...CUR.secB}:{title:'Part B',min:180,marks:100,on:false},badges:{...CUR.badges},coins:{...CUR.coins}}:blank();
+  if(c.secB.on===undefined) c.secB.on=true;
+  FORMB=new Set(c.batches||[]);EXTRA=new Set(c.extra||[]);MED={};for(const u in (PRIV.plan||{})) if(PRIV.plan[u].m) MED[u]=PRIV.plan[u].m;
+  let P={};if(CUR){const ps=await FB.getDocs(C('cp',CUR.id,'papers'));ps.forEach(d=>P[d.id]=d.data().link||'');}
+  const wkOpts=[...new Set([...WEEKS,+c.afterWeek||0].filter(Boolean))].sort((a,b)=>a-b);
+  $('#view').innerHTML=`<div class="card"><h2>${CUR?'✏️ Edit':'➕ New'} checkpoint paper</h2>
+    <h3><span class="step">1</span>The paper</h3>
+    <div class="grid">
+      <label class="f">Paper name<input id="fTitle" value="${esc(c.title)}"></label>
+      <label class="f">On the study plan after<select id="fWeek"><option value="0">— not on the study plan —</option>${wkOpts.map(w=>`<option value="${w}" ${+c.afterWeek===w?'selected':''}>Week ${w}</option>`).join('')}</select></label>
+      <label class="f">Lessons it covers<input id="fCov" value="${esc(c.coverage||'')}" placeholder="e.g. Weeks 01–08: Number Systems"></label>
+    </div>
+
+    <h3><span class="step">2</span>Date and time <span class="muted">(Sri Lanka time)</span></h3>
+    <div class="grid">
+      <label class="f">Starts at<input id="fAt" type="datetime-local" value="${toInput(c.at||startOf(c))}"></label>
+      <label class="f">First part — name<input id="fAt1" value="${esc(c.secA.title)}"></label>
+      <label class="f">Minutes<input id="fAm" type="number" min="10" value="${c.secA.min}"></label>
+      <label class="f">Marks<input id="fAk" type="number" min="1" value="${c.secA.marks}"></label>
+    </div>
+    <label class="pick ${c.secB.on?'on':''}" style="margin:10px 0;max-width:420px"><input type="checkbox" id="fTwo" ${c.secB.on?'checked':''}><span class="box"></span><span class="t">This paper has a second part<small>e.g. Part B structured after a break</small></span></label>
+    <div class="grid" id="fBrow" ${c.secB.on?'':'style="display:none"'}>
+      <label class="f">Break (minutes)<input id="fBrk" type="number" min="0" value="${c.breakMin}"></label>
+      <label class="f">Second part — name<input id="fBt" value="${esc(c.secB.title)}"></label>
+      <label class="f">Minutes<input id="fBm" type="number" min="10" value="${c.secB.min}"></label>
+      <label class="f">Marks<input id="fBk" type="number" min="1" value="${c.secB.marks}"></label>
+    </div>
+    <div class="grid" style="margin-top:10px"><label class="f">Time to scan and upload after each part (minutes)<input id="fGr" type="number" min="5" value="${c.graceMin}"></label></div>
+    <div class="tl" id="fTl"></div>
+
+    <h3><span class="step">3</span>Zoom link</h3>
+    <input id="fZoom" style="width:100%" placeholder="https://us02web.zoom.us/j/…" value="${esc(PRIV.zoom.S1||'')}">
+
+    <h3><span class="step">4</span>Question papers <span class="muted">(Google Drive links · Anyone with the link · Viewer)</span></h3>
+    <p class="muted" style="margin-top:-4px">Students can open their paper only when that part starts — the link stays hidden until then.</p>
+    <div class="grid" id="fPapers"></div>
+
+    <h3><span class="step">5</span>Who sits it <span class="muted">· <span class="count" id="fCount">0</span> students</span></h3>
+    <div class="picks">${BATCHES.map(([id,l])=>{const n=Object.values(STU).filter(s=>s.batch===id).length;
+      return `<label class="pick big ${FORMB.has(id)?'on':''}"><input type="checkbox" class="fB" value="${id}" ${FORMB.has(id)?'checked':''}><span class="box"></span><span class="t">${l}<small>${n} students · whole class</small></span></label>`;}).join('')}</div>
+    <h3 style="font-size:14.5px">Individual students <span class="muted">(one-to-one, or anyone outside the classes ticked above)</span></h3>
+    <div class="row" style="margin-bottom:8px"><input id="fFind" placeholder="🔍 Search name or number" style="flex:1;min-width:200px">
+      <button class="small" id="fSolo" type="button">Tick all one-to-one students</button><button class="small ghost" id="fNone" type="button">Untick all</button></div>
+    <div class="picks" id="fInd" style="max-height:300px;overflow:auto"></div>
+    <div id="fMed"></div>
+
+    <details style="margin-top:14px"><summary>More options — rules for students, badges and coins</summary>
+      <label class="f" style="margin-top:8px">Instructions for students<textarea id="fIns">${esc(c.instructions||'')}</textarea></label>
+      <label class="f" style="margin-top:8px">Allowed materials<input id="fMat" value="${esc(c.materials||'')}"></label>
+      <div class="grid" style="margin-top:8px">
+        <label class="f">🥇 Gold from %<input id="bgG" type="number" value="${c.badges.gold}"></label><label class="f">🥈 Silver from %<input id="bgS" type="number" value="${c.badges.silver}"></label><label class="f">🥉 Bronze from %<input id="bgB" type="number" value="${c.badges.bronze}"></label>
+        <label class="f">Coins for sitting it<input id="cnP" type="number" min="0" value="${c.coins.part}"></label>
+        <label class="f">Coins · Gold<input id="cnG" type="number" min="0" value="${c.coins.gold}"></label><label class="f">Coins · Silver<input id="cnS" type="number" min="0" value="${c.coins.silver}"></label><label class="f">Coins · Bronze<input id="cnB" type="number" min="0" value="${c.coins.bronze}"></label>
+        <label class="f">Coins · 1st place<input id="cn1" type="number" min="0" value="${c.coins.r1}"></label><label class="f">Coins · 2nd place<input id="cn2" type="number" min="0" value="${c.coins.r2}"></label><label class="f">Coins · 3rd place<input id="cn3" type="number" min="0" value="${c.coins.r3}"></label>
+      </div></details>
+
+    <div class="foot">
+      <button class="ghost" id="fBack" type="button">Cancel</button>
+      ${CUR&&CUR.stage!=='draft'?'<button class="gold" id="fSave" type="button">💾 Save changes</button>'
+        :'<button id="fDraft" type="button">💾 Save as draft</button><button class="gold" id="fPub" type="button">🚀 Save and publish to students</button>'}
+    </div></div>`;
+  const PAPERS=P;
+  const sel=()=>Object.values(STU).filter(s=>FORMB.has(s.batch)||EXTRA.has(s.uid));
+  const meds=()=>{const m=new Set(sel().map(s=>FIXED[s.batch]||MED[s.uid]||'si'));return m.size?['si','en'].filter(x=>m.has(x)):['si','en'];};
+  const drawPapers=()=>{const two=$('#fTwo').checked,cur={};$$('#fPapers input').forEach(i=>cur[i.dataset.id]=i.value);
+    $('#fPapers').innerHTML=(two?['A','B']:['A']).flatMap(p=>meds().map(m=>{const id=`S1_${p}_${m}`,v=cur[id]!=null?cur[id]:PAPERS[id]||'';
+      return `<label class="f">${esc(p==='A'?$('#fAt1').value:$('#fBt').value)} · ${MEDN[m]}<input data-id="${id}" placeholder="https://drive.google.com/…" value="${esc(v)}"></label>`;})).join('');};
+  const drawInd=()=>{const q=($('#fFind').value||'').toLowerCase();
+    const list=Object.values(STU).filter(s=>!FORMB.has(s.batch)).sort((a,b)=>(EXTRA.has(b.uid)-EXTRA.has(a.uid))||a.name.localeCompare(b.name));
+    $('#fInd').innerHTML=list.filter(s=>!q||(s.name+' '+s.code).toLowerCase().includes(q)).map(s=>`<label class="pick ${EXTRA.has(s.uid)?'on':''}"><input type="checkbox" class="fX" value="${s.uid}" ${EXTRA.has(s.uid)?'checked':''}><span class="box"></span>
+      <span class="t">${esc(s.name)}<small>${esc(s.code||'no number')} · ${esc(s.batch||'no class')}${s.track==='solo'?' · one-to-one':''}</small></span></label>`).join('')||'<p class="muted">Nobody else.</p>';};
+  const drawMed=()=>{const free=sel().filter(s=>!FIXED[s.batch]);
+    $('#fMed').innerHTML=free.length?`<h3 style="font-size:14.5px">Paper language for these students</h3><div class="picks">${free.map(s=>{const m=MED[s.uid]||'si';
+      return `<div class="pick" style="cursor:default"><span class="t">${esc(s.name)}<small>${esc(s.batch||'no class')}</small></span><span class="seg"><button type="button" data-m="si" data-u="${s.uid}" class="${m==='si'?'on':''}">Sinhala</button><button type="button" data-m="en" data-u="${s.uid}" class="${m==='en'?'on':''}">English</button></span></div>`;}).join('')}</div>`:'';};
+  const count=()=>{const e=$('#fCount');e.textContent=sel().length;e.classList.remove('bump');void e.offsetWidth;e.classList.add('bump');};
+  const tl=()=>{const at=fromInput($('#fAt').value),two=$('#fTwo').checked,n=id=>Math.max(0,+$(id).value||0);
+    if(!at){$('#fTl').innerHTML='<span class="muted">Pick the date and start time to see the timetable.</span>';return;}
+    const t=times({at,secA:{min:n('#fAm')},secB:{min:n('#fBm'),on:two},breakMin:n('#fBrk'),graceMin:n('#fGr')});
+    $('#fTl').innerHTML=`📅 <b>${fmt(at,{weekday:'long',month:'long'})}</b><br>${esc($('#fAt1').value)} ${fmtT(t.openA)}–${fmtT(t.endA)} · upload until ${fmtT(t.dueA)}`+
+      (two?`<br>Break ${fmtT(t.endA)}–${fmtT(t.openB)}<br>${esc($('#fBt').value)} ${fmtT(t.openB)}–${fmtT(t.endB)} · upload until ${fmtT(t.dueB)}`:'');};
+  drawPapers();drawInd();drawMed();count();tl();
+  const v=$('#view');
+  v.onchange=e=>{const t=e.target;
+    if(t.matches('.fB,.fX,#fTwo')) t.closest('.pick').classList.toggle('on',t.checked);
+    if(t.matches('.fB')){t.checked?FORMB.add(t.value):FORMB.delete(t.value);drawInd();drawMed();drawPapers();count();}
+    if(t.matches('.fX')){t.checked?EXTRA.add(t.value):EXTRA.delete(t.value);drawMed();drawPapers();count();}
+    if(t.matches('#fTwo')){$('#fBrow').style.display=t.checked?'':'none';drawPapers();tl();}};
+  v.oninput=e=>{if(e.target.matches('#fAt,#fAm,#fBm,#fBrk,#fGr,#fAt1,#fBt')) tl();if(e.target.matches('#fAt1,#fBt')) drawPapers();if(e.target.matches('#fFind')) drawInd();};
+  v.onclick=e=>{const m=e.target.closest('[data-m]');if(m){MED[m.dataset.u]=m.dataset.m;drawMed();drawPapers();}};
+  $('#fSolo').onclick=()=>{let n=0;Object.values(STU).forEach(s=>{if(s.track==='solo'&&!FORMB.has(s.batch)){EXTRA.add(s.uid);n++;}});drawInd();drawMed();drawPapers();count();toast(n?'✓ Ticked '+n+' one-to-one students':'No one-to-one students found',n?'ok':'');};
+  $('#fNone').onclick=()=>{EXTRA.clear();drawInd();drawMed();drawPapers();count();};
+  $('#fBack').onclick=()=>{v.onchange=v.oninput=v.onclick=null;if(CUR) openPaper(CUR.id);else $('#view').innerHTML='';};
+  if($('#fSave')) $('#fSave').onclick=e=>act(e.currentTarget,()=>saveForm(false),'💾 Saved. Students see the changes now.');
+  if($('#fDraft')) $('#fDraft').onclick=e=>act(e.currentTarget,()=>saveForm(false),'💾 Saved as a draft.');
+  if($('#fPub')) $('#fPub').onclick=e=>act(e.currentTarget,()=>saveForm(true),'🚀 Published. Students can see it now.');
+}
+async function saveForm(publish){
+  const v=id=>$(id).value.trim(),n=id=>Math.max(0,Math.round(+$(id).value||0)),two=$('#fTwo').checked;
+  const title=v('#fTitle')||stop('Give the paper a name.',$('#fTitle'));
+  const at=fromInput($('#fAt').value);
+  if((publish||CUR&&CUR.stage!=='draft')&&!at) stop('Pick the date and start time.',$('#fAt'));
+  if(n('#fAm')<10) stop('The first part needs at least 10 minutes.',$('#fAm'));
+  if(!n('#fAk')) stop('How many marks is the first part out of?',$('#fAk'));
+  if(two&&n('#fBm')<10) stop('The second part needs at least 10 minutes.',$('#fBm'));
+  if(two&&!n('#fBk')) stop('How many marks is the second part out of?',$('#fBk'));
+  const zoom=v('#fZoom');if(zoom&&!/^https?:\/\//i.test(zoom)) stop('The Zoom link must start with https://',$('#fZoom'));
+  const badges={gold:n('#bgG'),silver:n('#bgS'),bronze:n('#bgB')};
+  if(!(badges.gold>badges.silver&&badges.silver>badges.bronze)) stop('Badge levels must go Gold > Silver > Bronze (More options).');
+  const papers={};for(const i of $$('#fPapers input')){const x=i.value.trim();if(x&&!/^https?:\/\//i.test(x)) stop('A question paper link must start with https://',i);papers[i.dataset.id]=x;}
+  const doc={title,afterWeek:+$('#fWeek').value||0,coverage:v('#fCov'),at:at?FB.Timestamp.fromMillis(at):null,
+    secA:{title:v('#fAt1')||'Part A',min:n('#fAm'),marks:n('#fAk')},secB:{title:v('#fBt')||'Part B',min:n('#fBm')||10,marks:n('#fBk')||1,on:two},
+    breakMin:n('#fBrk'),graceMin:Math.max(5,n('#fGr')),batches:[...FORMB],extra:[...EXTRA].filter(u=>STU[u]&&!FORMB.has(STU[u].batch)),
+    instructions:v('#fIns'),materials:v('#fMat'),badges,coins:{part:n('#cnP'),gold:n('#cnG'),silver:n('#cnS'),bronze:n('#cnB'),r1:n('#cn1'),r2:n('#cn2'),r3:n('#cn3')},
+    sessions:[{id:'S1',at:at?FB.Timestamp.fromMillis(at):null,opt:''}],updatedAt:FB.serverTimestamp()};
+  const isNew=!CUR,id=isNew?'cp'+Date.now().toString(36):CUR.id,c={...(CUR||blank()),...doc,id};
+  const el=eligible(c);
+  if(publish&&!el.length) stop('Tick at least one class or student (step 5).');
+  if(publish&&!zoom&&!confirm('There is no Zoom link yet. Publish anyway?')) return false;
+  if(publish&&!confirm(`Publish “${title}” to ${el.length} students?\nThey will see the date, time and Zoom link straight away.`)) return false;
+  if(!isNew&&CUR.stage!=='draft'&&ms(startOf(CUR))&&at!==ms(startOf(CUR))&&Object.keys(ASG).length&&!confirm('The start time changed. Students will see the new time straight away. Continue?')) return false;
+  if(isNew){doc.n=c.n;doc.stage='draft';doc.createdAt=FB.serverTimestamp();}
+  if(publish){doc.stage='confirmed';doc.notice='';doc.publishedAt=FB.serverTimestamp();}
+  await FB.setDoc(D('cp',id),doc,{merge:true});
+  CUR={...c,stage:doc.stage||c.stage};
+  PRIV={...PRIV,zoom:{...PRIV.zoom,S1:zoom},plan:Object.fromEntries(el.filter(s=>!FIXED[s.batch]).map(s=>[s.uid,{s:'S1',m:MED[s.uid]||'si'}]))};
+  await FB.setDoc(D('cp',id,'grade','_private'),PRIV);
+  const t=times(CUR),b=FB.writeBatch(db);
+  for(const pid in papers){const r=D('cp',id,'papers',pid),p=pid[3];
+    if(!papers[pid]) b.delete(r);
+    else b.set(r,{session:'S1',part:p,medium:pid.slice(5),link:papers[pid],openAt:FB.Timestamp.fromMillis(t?(p==='A'?t.openA:t.openB):Date.UTC(2099,0,1)),updatedAt:FB.serverTimestamp()});}
+  if(!two) for(const m of ['si','en']) b.delete(D('cp',id,'papers','S1_B_'+m));
+  await b.commit();
+  if(CUR.stage!=='draft'&&t) await syncAssign(CUR);
+  if(Object.values(GRADE).some(g=>g.sent||g.absent)) await pushResults();   /* new name or badge levels reach the students too */
+  logIt(isNew?'Added the paper':publish?'Published to '+el.length+' students':'Saved changes');
+  $('#view').onchange=$('#view').oninput=$('#view').onclick=null;
+  await loadList();await openPaper(id);
+}
+
+/* ---------- Drive upload ---------- */
+async function showDrive(){
+  closeLive();VIEW='drive';CUR=null;$('#view').onchange=$('#view').oninput=$('#view').onclick=null;location.hash='drive';drawList();
+  let code='';try{code=await (await fetch('drive-upload.gs.txt',{cache:'no-store'})).text();}catch(e){code='(Could not load the script — open cp/drive-upload.gs.txt in the repository.)';}
+  $('#view').innerHTML=`<div class="card"><h2>📤 Drive upload</h2>
+    <p>Students press <b>Upload my answer sheet</b>, choose the CamScanner PDF (or photos), and it lands in <b>your Google Drive</b> and in your answer-sheet list here — no links to copy. Your marked sheets upload the same way.</p>
+    <div class="sum"><div><b>Status</b>${SET.uploadUrl?'<span class="ok">● Connected</span>':'<span class="warn">Not set up yet — students paste Drive links instead</span>'}</div>
+      <div><b>Folder in your Drive</b>EICT Checkpoint Answers</div></div>
+    <h3>Set it up once (about 5 minutes)</h3>
+    <ol class="how">
+      <li>Open <a href="https://script.google.com/home/projects/create" target="_blank" rel="noopener">script.google.com → New project</a> with the Google account whose Drive should keep the answer sheets.</li>
+      <li>Delete what is in the editor, press <b>Copy the script</b> below and paste it in. Press 💾 Save.</li>
+      <li><b>Deploy → New deployment</b> → ⚙ <b>Web app</b>. Execute as: <b>Me</b>. Who has access: <b>Anyone</b>. Press <b>Deploy</b>.</li>
+      <li><b>Authorize access</b> → your account → <i>Advanced</i> → <i>Go to … (unsafe)</i> → <b>Allow</b>. (It is your own script — Google shows this for every new one.)</li>
+      <li>Copy the <b>Web app URL</b> (ends in <code>/exec</code>), paste it below, press <b>Save</b> and then <b>Test</b>.</li>
+    </ol>
+    <div class="row"><button class="cyan" id="dCopy">📋 Copy the script</button></div>
+    <details><summary>See the script</summary><pre class="code">${esc(code)}</pre></details>
+    <h3>Web app URL</h3>
+    <div class="row"><input id="dUrl" style="flex:1;min-width:260px" placeholder="https://script.google.com/macros/s/…/exec" value="${esc(SET.uploadUrl||'')}">
+      <button class="gold" id="dSave">💾 Save</button><button id="dTest">🔌 Test</button></div>
+    <p class="muted" id="dOut"></p>
+    <p class="muted">Changed the script later? Deploy → Manage deployments → ✏️ → Version: New version → Deploy. The URL stays the same.</p></div>`;
+  $('#dCopy').onclick=e=>act(e.currentTarget,async()=>{try{await navigator.clipboard.writeText(code);}catch(x){const t=document.createElement('textarea');t.value=code;document.body.appendChild(t);t.select();document.execCommand('copy');t.remove();}},'📋 Copied. Paste it into script.google.com');
+  $('#dSave').onclick=e=>act(e.currentTarget,async()=>{const u=$('#dUrl').value.trim();
+    if(u&&!/^https:\/\/script\.google\.com\/macros\/s\/[\w-]+\/exec$/.test(u)) stop('That is not a web app URL. It looks like https://script.google.com/macros/s/…/exec',$('#dUrl'));
+    await FB.setDoc(D('cp','_settings'),{uploadUrl:u,updatedAt:FB.serverTimestamp()},{merge:true});SET.uploadUrl=u;drawList();},'💾 Saved.');
+  $('#dTest').onclick=e=>act(e.currentTarget,async()=>{const u=$('#dUrl').value.trim()||stop('Paste the web app URL first.',$('#dUrl'));
+    let j;try{j=await (await fetch(u)).json();}catch(x){stop('No answer from that URL. Check “Who has access: Anyone” and that you copied the /exec link.');}
+    if(!j||j.app!=='eict-cp-upload') stop('That URL answered, but it is not the EICT upload script.');
+    $('#dOut').innerHTML='<span class="ok">✓ Working.</span> Answer sheets go to <a href="'+esc(j.folder)+'" target="_blank" rel="noopener">this folder in your Drive ↗</a>';},'🔌 The upload is working.');
+}
+/* a file into your Drive through the upload script; returns its link */
+async function upload(file,meta){
+  if(!SET.uploadUrl) stop('Set up the Drive upload first.');
+  if(file.size>20*1048576) stop('That file is over 20 MB.');
+  const data=await new Promise((ok,no)=>{const r=new FileReader();r.onload=()=>ok(String(r.result).split(',')[1]);r.onerror=no;r.readAsDataURL(file);});
+  const token=await auth.currentUser.getIdToken();
+  const res=await fetch(SET.uploadUrl,{method:'POST',body:JSON.stringify({token,cp:CUR.id,mime:file.type||'application/pdf',data,...meta})});
+  const j=await res.json();
+  if(!j.ok) stop('Upload refused: '+j.error);
+  return j.url;
+}
+
+window.addEventListener('hashchange',()=>{const h=location.hash.slice(1);if(h==='drive'&&VIEW!=='drive') showDrive();else if(h&&h!=='drive'&&(!CUR||CUR.id!==h)&&CPS.find(c=>c.id===h)) openPaper(h);});
 boot();
 </script>
 </body>
