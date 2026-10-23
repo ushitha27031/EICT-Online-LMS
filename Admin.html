@@ -772,7 +772,7 @@ roadmap:{ n:'Study plan', r:()=>`
   <div class="card"><h2>Weekly study plan</h2>
     ${planSel()}
     <p class="hint">Each week is a mission in the students' study world. Add the materials they should read,
-      any recorded videos, the exercises to tick off, and the paper for that weekend.
+      any recorded videos and the paper for that weekend. Each week also gets a five-question Power-Up from the MCQ bank by itself.
       Paste <b>Google Drive links</b> — set each file to <i>Anyone with the link</i> first.
       Everything saves as you type.</p>
     <div id="rmList">Loading…</div>
@@ -2175,7 +2175,7 @@ function drawRoadmap(){
       <b style="font-family:var(--m);color:var(--gold)">W${String(i+1).padStart(2,'0')}</b>
       &nbsp;${esc(w.title||'Untitled week')}
       <span style="font-family:var(--m);font-size:12px;color:var(--dim)">
-        ${w.from?' · '+dRange(w.from,w.to):''} · ${(w.tasks||[]).length} exercise${(w.tasks||[]).length===1?'':'s'}${w.paper&&w.paper.url?' · paper':''}</span>
+        ${w.from?' · '+dRange(w.from,w.to):''} · ⚡ ${esc(puLesson(w))}${w.paper&&w.paper.url?' · paper':''}</span>
     </summary>
     <div style="margin-top:14px">
       <div class="grid2">
@@ -2194,9 +2194,7 @@ function drawRoadmap(){
         <textarea data-rmlist="${i}.videos" rows="2">${
           esc((w.videos||[]).map(x=>(x.label||'')+' | '+(x.url||'')).join('\n'))}</textarea></div>
 
-      <div class="fld"><label>Exercises — one per line, students tick these off</label>
-        <textarea data-rmtasks="${i}" rows="4" placeholder="Draw the truth table for NAND">${
-          esc((w.tasks||[]).join('\n'))}</textarea></div>
+      <div class="hint">⚡ <b>Power-Up</b>: five MCQs from the bank on <b>${esc(puLesson(w))}</b> appear in this week by themselves, in each student's medium. The lesson comes from the week's unit.</div>
 
       <div class="grid2">
         <div class="fld"><label>Weekend paper — title</label>
@@ -2220,6 +2218,7 @@ function rmSet(path,val){
   for(let i=1;i<parts.length-1;i++){ o[parts[i]]=o[parts[i]]||{}; o=o[parts[i]]; }
   o[parts[parts.length-1]]=val;
 }
+const puLesson=w=>{const P=window.EICT_PU;if(!P) return 'its lesson';const u=P.unitOf(w);return u?P.UNITNAMES[u-1]:'the whole syllabus (revision)';};
 function buildYear(from){
   const start=new Date((from||planInfo().start)+'T00:00:00Z'); let n=0; const ws=[];
   UNITNAMES.forEach((u,ui)=>{
@@ -2323,24 +2322,27 @@ async function loadProgress(){
     box.innerHTML='<div class="hint">Reading every student\u2026</div>';
     await loadStudents();
     if(RM===null) await loadRoadmap();
-    const totalTasks=(RM.weeks||[]).reduce((a,w)=>a+((w.tasks||[]).length),0);
+    const today=new Date(Date.now()+5.5*3600e3).toISOString().slice(0,10);
+    const totalTasks=(RM.weeks||[]).filter(w=>!w.from||w.from<=today).length;   /* weeks whose Power-Up is open */
     const byCode=new Map();
     STU.filter(x=>x.code).forEach(x=>{ const prev=byCode.get(x.code);
       if(!prev || String(x.at||'')>String(prev.at||'')) byCode.set(x.code,x); });
     const rows=[];
     for(const st of [...byCode.values()]){
-      let marks={}, bonus=0, done=0, spent=0;
+      let marks={}, bonus=0, ticks=0, spent=0, pu={}, cpc=0;
       try{ const d=await fb.getDoc(fb.doc(fb.db,'marks',st.code));
-           if(d.exists()){ marks=d.data().weeks||{}; bonus=+d.data().bonus||0; } }catch(e){}
+           if(d.exists()){ marks=d.data().weeks||{}; bonus=+d.data().bonus||0;
+             Object.values(d.data().cp||{}).forEach(x=>cpc+=Math.max(0,+x.coins||0)); } }catch(e){}
       try{ const j=await fb.getDoc(fb.doc(fb.db,'journey',st.code));
-           if(j.exists()){ done=(j.data().done||[]).length; spent=+j.data().spent||0; } }catch(e){}
+           if(j.exists()){ ticks=(j.data().done||[]).length; spent=+j.data().spent||0; pu=j.data().pu||{}; } }catch(e){}
+      const P=window.EICT_PU, done=P?Object.values(pu).filter(P.finished).length:0;
       const papers=Object.values(marks);
       const avg=papers.length?Math.round(papers.reduce((a,x)=>a+(+x.mark||0),0)/papers.length):null;
-      let earned=done*5+bonus;
+      let earned=ticks*5+bonus+cpc+(P?P.coins(pu).total:0);
       papers.forEach(x=>{ earned+=coinsForMark(+x.mark||0); if(x.onTime) earned+=25; });
       rows.push({ st, code:st.code, name:st.name||st.email||'', papers:papers.length, avg,
         grade:gradeLetter(avg), late:papers.filter(x=>!x.onTime).length,
-        done, totalTasks, pct: totalTasks?Math.round(done/totalTasks*100):0,
+        done, totalTasks, pct: totalTasks?Math.min(100,Math.round(done/totalTasks*100)):0,
         coins:earned-spent, earned, spent, bonus,
         rank:[...RANKS_A].reverse().find(r=>earned>=r[0])[1] });
     }
@@ -2379,7 +2381,7 @@ function drawProgress(){
       <td><b style="font-family:var(--d);font-size:20px;color:${gc(r.grade)}">${r.grade}</b></td>
       <td><div style="height:7px;border-radius:4px;background:var(--hair);overflow:hidden;max-width:130px">
             <i style="display:block;height:100%;width:${r.pct}%;background:var(--signal)"></i></div>
-          <span style="font-family:var(--m);font-size:11px;color:var(--dim)">${r.done}/${r.totalTasks} \u00b7 ${r.pct}%</span></td>
+          <span style="font-family:var(--m);font-size:11px;color:var(--dim)">\u26A1 ${r.done}/${r.totalTasks} Power-Ups \u00b7 ${r.pct}%</span></td>
       <td><span style="font-size:14px">${esc(r.rank)}</span></td>
       <td><b style="font-family:var(--d);font-size:18px;color:var(--gold)">${r.coins}</b>
         ${r.spent?`<br><span style="font-family:var(--m);font-size:11px;color:var(--dim)"
@@ -3505,6 +3507,7 @@ $('#pub')?.addEventListener('click',async()=>{
 
 addEventListener('beforeunload',e=>{ if(dirty){ e.preventDefault(); e.returnValue=''; } });
 </script>
+<script src="powerup.js"></script>
 <script src="press.js" defer></script>
 </body>
 </html>
