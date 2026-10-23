@@ -301,6 +301,42 @@ table.tt td.zero{color:var(--dimmer)}
 .empty{color:var(--dim);font-family:var(--m);font-size:13px;padding:26px 0;text-align:center}
 @media(max-width:560px){.xpwrap{order:9;max-width:none;width:100%}.grade{width:46px;height:46px;font-size:21px}}
 @media(prefers-reduced-motion:reduce){*{animation-duration:.001ms!important;transition-duration:.001ms!important}}
+/* weekly Power-Up: five quick questions in each week */
+.pu-card{border:1px solid rgba(56,225,255,.45);border-radius:14px;padding:15px;background:linear-gradient(160deg,rgba(56,225,255,.08),rgba(255,201,60,.05))}
+.pu-card.lock{border-color:rgba(255,255,255,.15);color:var(--dim)}
+.pu-intro b{display:block;font-family:var(--d);font-size:17px;margin-bottom:3px}
+.pu-intro span{color:var(--dim);font-size:14px}
+.pu-chips{display:flex;gap:6px;flex-wrap:wrap;margin:12px 0}
+.pu-chips span{font-family:var(--m);font-size:11.5px;padding:4px 9px;border-radius:99px;background:rgba(255,201,60,.12);color:#FFC93C}
+.pu-hint{font-size:13.5px;color:#FFC93C;margin:0 0 12px}
+.pu-top{display:flex;justify-content:space-between;align-items:center;font-family:var(--m);font-size:12px;color:var(--dim);margin-bottom:10px}
+.pu-dots{display:flex;gap:5px}.pu-dots i{width:11px;height:11px;border-radius:50%;background:rgba(255,255,255,.14);transition:background .3s}
+.pu-dots i.c{background:#38E1FF;box-shadow:0 0 8px #38E1FF}.pu-dots i.y{background:#7CF29B}.pu-dots i.n{background:#FF4D6D}
+.pu-q{white-space:pre-line;font-size:15.5px;line-height:1.55}
+.pu-ctx{white-space:pre-line;font-size:14px;color:var(--dim);border-left:3px solid rgba(56,225,255,.5);padding:2px 0 2px 10px;margin-bottom:10px}
+.pu-card img{display:block;max-width:100%;border-radius:10px;margin:10px 0;background:#fff}
+.pu-card pre{white-space:pre-wrap;font-family:var(--m);font-size:12.5px;background:rgba(0,0,0,.3);border-radius:10px;padding:10px;margin:10px 0;overflow:auto}
+.pu-opts{display:grid;gap:8px;margin-top:12px}
+.pu-o{display:flex;gap:10px;align-items:flex-start;text-align:left;width:100%;font:inherit;color:inherit;background:rgba(255,255,255,.04);border:1.5px solid rgba(255,255,255,.14);
+  border-radius:12px;padding:11px 12px;cursor:pointer;transition:transform .12s,border-color .2s,background .2s;white-space:pre-line}
+.pu-o:hover:not(:disabled){border-color:#38E1FF}.pu-o:active:not(:disabled){transform:scale(.97)}.pu-o:disabled{cursor:default}
+.pu-o i{font-style:normal;font-family:var(--m);flex:none;width:24px;height:24px;border-radius:50%;display:grid;place-items:center;background:rgba(255,255,255,.1);font-size:12px}
+.pu-o.y{border-color:#7CF29B;background:rgba(124,242,155,.13);animation:puPop .45s}.pu-o.y i{background:#7CF29B;color:#052}
+.pu-o.n{border-color:#FF4D6D;background:rgba(255,77,109,.13);animation:puShake .4s}.pu-o.n i{background:#FF4D6D;color:#fff}
+.pu-o.off{opacity:.45}
+.pu-fb{margin-top:12px;padding:11px 13px;border-radius:12px;font-weight:700;animation:puIn .35s}
+.pu-fb.y{background:rgba(124,242,155,.1);color:#7CF29B}.pu-fb.n{background:rgba(255,77,109,.1);color:#FF8DA1}
+.pu-fb .why{color:var(--dim);font-weight:400;margin-top:6px;font-size:14px;white-space:pre-line}
+.pu-act{display:flex;gap:9px;flex-wrap:wrap;margin-top:13px}
+.pu-done{display:flex;gap:16px;align-items:center;flex-wrap:wrap}
+.pu-score{font-family:var(--d);font-size:46px;color:#FFC93C;line-height:1;animation:puPop .6s}
+.pu-rev{margin-top:12px;display:grid;gap:6px}
+.pu-rev details{border:1px solid rgba(255,255,255,.1);border-radius:10px;padding:8px 11px}
+.pu-rev summary{cursor:pointer;font-size:14px}
+.pu-rev .why{color:var(--dim);font-size:13.5px;margin-top:6px;white-space:pre-line}
+.pu-spin{display:inline-block;width:15px;height:15px;border-radius:50%;border:3px solid rgba(255,255,255,.25);border-top-color:#38E1FF;animation:puSpin .7s linear infinite;vertical-align:-3px;margin-right:6px}
+@keyframes puPop{40%{transform:scale(1.04)}}@keyframes puShake{25%,75%{transform:translateX(-5px)}50%{transform:translateX(5px)}}
+@keyframes puIn{from{opacity:0;transform:translateY(6px)}}@keyframes puSpin{to{transform:rotate(360deg)}}
 </style>
 </head>
 <body>
@@ -441,6 +477,7 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
   }catch(e){ console.warn('offline',e.message); return null; }
 })().then(window.__fbDone);
 </script>
+<script src="powerup.js"></script>
 <script>
 /* ==========================================================
    Weeks come from the dashboard (site/roadmap).
@@ -483,7 +520,7 @@ const SHOP=[
 const $=(s,r=document)=>r.querySelector(s), $$=(s,r=document)=>[...r.querySelectorAll(s)];
 const esc=s=>String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 let FB=null, CODE='', ROAD={weeks:[]}, DONE=new Set(), OWNED=new Set(), MARKS={}, CPM={}, CPL=[], SPENT=0, tab='map';
-let SENT={}, BONUS=0, firstMarks=true, settled=false;
+let SENT={}, PU={}, BONUS=0, firstMarks=true, settled=false;
 
 let starsOn=()=>{};
 (function(){
@@ -547,7 +584,8 @@ let starsOn=()=>{};
 
 const coinsFor=m=>m>=90?100:m>=80?75:m>=75?60:m>=65?48:m>=50?36:m>=35?24:12;
 function totals(){
-  let c=DONE.size*5;
+  let c=DONE.size*5;                          /* exercises ticked before the Power-Up replaced them */
+  if(window.EICT_PU) c+=EICT_PU.coins(PU).total;
   for(const k in MARKS){ const r=MARKS[k]; c+=coinsFor(+r.mark||0); if(r.onTime) c+=25; }
   c+=BONUS;                                   /* coins sir has added by hand */
   for(const k in CPM) c+=Math.max(0,+CPM[k].coins||0);   /* checkpoint rewards, one entry per checkpoint */
@@ -624,7 +662,7 @@ async function loadAll(){
          CPL.push({id:d.id,...v}); }); CPL.sort((a,b)=>(a.n||0)-(b.n||0)); }catch(e){}
   try{ const j=await FB.getDoc(FB.doc(FB.db,'journey',CODE));
        if(j.exists()){ DONE=new Set(j.data().done||[]); OWNED=new Set(j.data().owned||[]);
-                       SPENT=+j.data().spent||0; SENT=j.data().sent||{}; } }catch(e){}
+                       SPENT=+j.data().spent||0; SENT=j.data().sent||{}; PU=j.data().pu||{}; } }catch(e){}
   try{ FB.onSnapshot(FB.doc(FB.db,'marks',CODE),s=>{
          const d=s.exists()?s.data():{};
          const before=BONUS, hadMarks=Object.keys(MARKS).length;
@@ -707,10 +745,12 @@ $('#jForgot').onclick=async()=>{
 $('#outBtn').onclick=async()=>{ try{ await FB.signOut(FB.auth); }catch(e){} location.reload(); };
 
 let sv=null;
-function save(){ if(!FB||!CODE) return; clearTimeout(sv);
-  sv=setTimeout(()=>FB.setDoc(FB.doc(FB.db,'journey',CODE),
-    {done:[...DONE],owned:[...OWNED],spent:SPENT,sent:SENT,uid:UID,
-     at:new Date().toISOString()},{merge:true}).catch(()=>{}),600); }
+/* now: straight away (a Power-Up answer must not be lost to a quick reload) */
+function save(now){ if(!FB||!CODE) return; clearTimeout(sv);
+  const go=()=>FB.setDoc(FB.doc(FB.db,'journey',CODE),
+    {done:[...DONE],owned:[...OWNED],spent:SPENT,sent:SENT,pu:PU,uid:UID,
+     at:new Date().toISOString()},{merge:true}).catch(()=>{});
+  if(now) go(); else sv=setTimeout(go,600); }
 function toast(t){const e=$('#toast');e.textContent=t;e.classList.add('on');
   setTimeout(()=>e.classList.remove('on'),2300);}
 
@@ -824,8 +864,6 @@ function paintMap(){
   if(!ws.length){ box.innerHTML='<div class="empty">No missions posted yet. Sir is still setting them up.</div>'; return; }
   const cur=weekNow();
   box.innerHTML='<div class="lv">'+ws.map((w,i)=>{
-    const tot=(w.tasks||[]).length;
-    const dn=(w.tasks||[]).filter((_,ti)=>DONE.has('w'+i+'t'+ti)).length;
     const m=MARKS[i], stars=m?(+m.mark>=75?3:+m.mark>=50?2:1):0;
     const st=m?'done':(i===cur?'now':(i<cur?'':'lock'));
     return '<button class="node '+st+'" data-w="'+i+'">'+
@@ -833,7 +871,7 @@ function paintMap(){
       '<span class="num">'+String(i+1).padStart(2,'0')+'</span>'+
       '<b>'+esc(w.title||('Week '+(i+1)))+'</b>'+
       '<span>'+esc(w.unit||'')+'</span>'+
-      '<span>'+dn+'/'+tot+' done'+(w.from?' \u00B7 '+dshort(w.from):'')+'</span>'+
+      '<span>'+puLabel(i,w)+(w.from?' \u00B7 '+dshort(w.from):'')+'</span>'+
       (dueAt(w)&&!m?'<span style="color:'+(Date.now()>dueAt(w)?'#FF4D6D':'#FFC93C')+'">'+
         (Date.now()>dueAt(w)?'past due':'due '+dueText(w))+'</span>':'')+
       '<span class="stars">'+[0,1,2].map(n=>'<i class="'+(n<stars?'on':'')+'"></i>').join('')+'</span>'+
@@ -1837,11 +1875,7 @@ function openWeek(i){
     (w.brief?'<p style="color:var(--dim);margin:14px 0 0">'+esc(w.brief)+'</p>':'')+
     L(w.materials,'Study materials','\u25A4')+
     L(w.videos,'Recorded lessons','\u25B6')+
-    ((w.tasks||[]).length?'<div class="sec"><h4>Exercises</h4>'+
-      w.tasks.map((t,ti)=>{const k='w'+i+'t'+ti,on=DONE.has(k);
-        return '<div class="task '+(on?'on':'')+'" data-k="'+k+'">'+
-          '<span class="bx"><svg viewBox="0 0 24 24"><path d="M4 12l5 5L20 6"/></svg></span>'+
-          '<span>'+esc(t)+'</span></div>';}).join('')+'</div>':'')+
+    '<div class="sec" id="puSec"></div>'+
     (w.paper&&w.paper.url?'<div class="sec"><h4>Weekend paper</h4><div class="pbox">'+
       '<b>'+esc(w.paper.title||'This week\u2019s paper')+'</b>'+
       '<div class="due">Write it on Saturday or Sunday'+
@@ -1865,6 +1899,95 @@ function openWeek(i){
         '</div>':'')+
       '</div></div>':'');
   $('#ov').classList.add('on'); document.body.style.overflow='hidden';
+  PUW=i; PZ=null; PUFB=null; PUSTART=-1; drawPU();
+}
+
+/* ---------- weekly Power-Up (powerup.js picks the questions and counts the coins) ---------- */
+const MED=document.querySelector('meta[data-sin]')?'si':'en';
+let PUW=-1, PUQ=null, PZ=null, PUFB=null, PUSTART=-1, puReady=false;
+const slDay=()=>new Date(Date.now()+5.5*3600e3).toISOString().slice(0,10);
+const puOpen=w=>!w||!w.from||w.from<=slDay();
+function puLabel(i,w){
+  if(!window.EICT_PU) return '';
+  const r=PU[i];
+  if(EICT_PU.finished(r)) return '<b style="color:#FFC93C">⚡ '+r.ok.filter(Boolean).length+'/5</b>';
+  if(r&&r.a&&r.a.length) return '<b style="color:#38E1FF">⚡ '+r.a.length+'/5 answered</b>';
+  return puOpen(w)?'<b style="color:#38E1FF">⚡ Power-Up ready</b>':'⚡ soon';
+}
+function puQ(q,k,picked,okList,practice){
+  const U=EICT_PU, done=picked!=null, good=done&&U.right(q,picked);
+  return '<div class="pu-top"><span>'+(practice?'PRACTICE · ':'')+'QUESTION '+(k+1)+' OF 5</span><span class="pu-dots">'+
+      [0,1,2,3,4].map(n=>'<i class="'+(okList[n]===true?'y':okList[n]===false?'n':n===k?'c':'')+'"></i>').join('')+'</span></div>'+
+    (q.ctx?'<div class="pu-ctx">'+esc(q.ctx.text||'')+(q.ctx.code?'<pre>'+esc(q.ctx.code)+'</pre>':'')+(q.ctx.img?'<img src="'+esc(q.ctx.img)+'" alt="">':'')+'</div>':'')+
+    '<div class="pu-q">'+esc(q.text)+'</div>'+(q.img?'<img src="'+esc(q.img)+'" alt="Figure for this question">':'')+(q.code?'<pre>'+esc(q.code)+'</pre>':'')+
+    '<div class="pu-opts">'+q.opts.map((o,j)=>'<button class="pu-o'+(done?(U.right(q,j)?' y':j===picked?' n':' off'):'')+'" data-pu="'+j+'"'+(done?' disabled':'')+'>'+
+      '<i>'+(j+1)+'</i><span>'+esc(o)+'</span></button>').join('')+'</div>'+
+    (done?'<div class="pu-fb '+(good?'y':'n')+'">'+(good?'✓ Correct!'+(practice?'':' +5 coins'):'✗ Not this time — the answer is ('+q.ans+')')+
+      (q.why?'<div class="why">'+esc(q.why)+'</div>':'')+'</div>'+
+      '<div class="pu-act"><button class="btn b2" data-punext="1">'+(k===4?'See my score →':'Next question →')+'</button></div>':'');
+}
+function puReview(qs,rec){
+  return '<div class="pu-rev">'+qs.map((q,k)=>{const ok=rec.ok[k];
+    return '<details><summary>'+(ok?'✅':'❌')+' '+(k+1)+'. '+esc(String(q.text).split('\n')[0].slice(0,90))+'</summary>'+
+      '<div class="why">Your answer: ('+(rec.a[k]+1)+') · Correct: ('+q.ans+')'+(q.why?'<br>'+esc(q.why):'')+'</div></details>';}).join('')+'</div>';
+}
+async function drawPU(scroll){
+  const box=$('#puSec'), U=window.EICT_PU; if(!box||PUW<0) return;
+  if(!U){ box.innerHTML=''; return; }
+  const i=PUW, w=ROAD.weeks[i]||{}, r=PU[i], head='<h4>⚡ Power-Up · 5 quick questions</h4>';
+  if(!puOpen(w)&&!r){ box.innerHTML=head+'<div class="pu-card lock">🔒 Opens on <b>'+esc(dshort(w.from))+
+    '</b>. Come back then for five quick questions and up to 40 coins.</div>'; return; }
+  if(!puReady){
+    box.innerHTML=head+'<div class="pu-card"><span class="pu-spin"></span>Loading this week’s questions…</div>';
+    try{ await U.load(MED); puReady=true; }
+    catch(e){ box.innerHTML=head+'<div class="pu-card">Could not load the questions. Check your internet, then open the week again.</div>'; return; }
+    if(PUW!==i) return;
+  }
+  let qs=r&&r.q?r.q.map(id=>U.byId(MED,id)):null;
+  if(!qs||qs.some(x=>!x)) qs=U.pick(ROAD.weeks,i,MED);
+  PUQ=qs;
+  if(qs.length<5){ box.innerHTML=head+'<div class="pu-card lock">No questions for this lesson yet.</div>'; return; }
+  const u=U.unitOf(w), lesson=u?U.UNITNAMES[u-1]:'The whole syllabus — revision';
+  const practice=!!(PZ&&PZ.i===i), rec=practice?PZ:r;
+  let html;
+  if(PUFB!=null&&rec&&rec.a.length>PUFB) html=puQ(qs[PUFB],PUFB,rec.a[PUFB],rec.ok,practice);
+  else if(practice&&PZ.a.length>=5){
+    const c=PZ.ok.filter(Boolean).length;
+    html='<div class="pu-done"><div class="pu-score">'+c+'/5</div><div><b>Practice run</b><br><span style="color:var(--dim)">No coins — your real score stays as it was.</span></div></div>'+
+      puReview(qs,PZ)+'<div class="pu-act"><button class="btn b1" data-pupractice="1">🔁 Practice again</button><button class="btn" data-puend="1">Back to my score</button></div>';
+  }
+  else if(!practice&&U.finished(r)){
+    const c=r.ok.filter(Boolean).length, cc=U.coins(PU).per[i]||{};
+    html='<div class="pu-done"><div class="pu-score">'+c+'/5</div><div><b>'+(c===5?'🌟 Perfect!':c>=3?'Nice work!':'Keep going — read the answers below.')+'</b><br>'+
+      '<span style="color:#FFC93C;font-family:var(--m);font-size:13px">+'+cc.base+' coins'+(cc.perfect?' · +15 perfect':'')+
+      (cc.streak?' · 🔥 '+cc.run+'-week streak +'+cc.streak:'')+'</span></div></div>'+
+      puReview(qs,r)+'<div class="pu-act"><button class="btn b1" data-pupractice="1">🔁 Practice again (no coins)</button></div>';
+  }
+  else if(!rec&&PUSTART!==i){
+    const prev=U.finished(PU[i-1]);
+    html='<div class="pu-intro"><b>'+esc(lesson)+'</b><span>Five questions from past papers and the EICT bank, in '+(MED==='si'?'Sinhala':'English')+'.</span></div>'+
+      '<div class="pu-chips"><span>+5 each right answer</span><span>+15 for 5/5</span><span>🔥 streak bonus up to +50</span></div>'+
+      (prev?'<p class="pu-hint">🔥 You finished last week’s Power-Up — finish this one for a streak bonus!</p>':'')+
+      '<button class="btn b2" data-pustart="1">⚡ Start Power-Up</button>'+
+      '<div style="color:var(--dim);font-size:12.5px;margin-top:8px">Only your first answer counts, so think before you tap.</div>';
+  }
+  else { const k=rec?rec.a.length:0; html=puQ(qs[k],k,null,rec?rec.ok:[],practice); }
+  box.innerHTML=head+'<div class="pu-card">'+html+'</div>';
+  if(scroll) box.scrollIntoView({behavior:'smooth',block:'start'});
+}
+function puAnswer(j){
+  const i=PUW, qs=PUQ; if(i<0||!qs) return;
+  if(PZ&&PZ.i===i){ const k=PZ.a.length; if(k>=5) return;
+    PZ.a.push(j); PZ.ok.push(EICT_PU.right(qs[k],j)); PUFB=k; drawPU(); return; }
+  const r=PU[i]||(PU[i]={q:qs.map(q=>q.id),a:[],ok:[],med:MED,at:''});
+  const k=r.a.length; if(k>=5) return;
+  const ok=EICT_PU.right(qs[k],j);
+  r.a.push(j); r.ok.push(ok); r.at=new Date().toISOString();
+  PUFB=k; save(true); paint(); drawPU();
+  if(ok) coinBurst(5,'right answer');
+  if(r.a.length>=5){ const cc=EICT_PU.coins(PU).per[i]||{};
+    if(cc.perfect) setTimeout(()=>coinBurst(15,'perfect Power-Up!'),ok?1300:150);
+    if(cc.streak) setTimeout(()=>coinBurst(cc.streak,'🔥 '+cc.run+'-week streak'),2700); }
 }
 
 document.addEventListener('click',e=>{
@@ -1878,11 +2001,11 @@ document.addEventListener('click',e=>{
   const sd=e.target.closest('[data-send]'); if(sd) return sendSheet(+sd.dataset.send);
   if(e.target.id==='dlSend') return doSend(+e.target.dataset.i);
   const n=e.target.closest('[data-w]'); if(n) return openWeek(+n.dataset.w);
-  const t=e.target.closest('[data-k]');
-  if(t){ const k=t.dataset.k;
-    if(DONE.has(k)) DONE.delete(k); else DONE.add(k);
-    t.classList.toggle('on',DONE.has(k)); save(); paint();
-    if(DONE.has(k)) coinBurst(5,'exercise done'); return; }
+  const po=e.target.closest('[data-pu]'); if(po){ puAnswer(+po.dataset.pu); return; }
+  if(e.target.closest('[data-pustart]')){ PUSTART=PUW; drawPU(); return; }
+  if(e.target.closest('[data-punext]')){ PUFB=null; drawPU(true); return; }
+  if(e.target.closest('[data-pupractice]')){ PZ={i:PUW,a:[],ok:[]}; PUFB=null; drawPU(true); return; }
+  if(e.target.closest('[data-puend]')){ PZ=null; PUFB=null; drawPU(true); return; }
   const bu=e.target.closest('[data-buy]');
   if(bu){ const it=SHOP.find(x=>x.id===bu.dataset.buy); const t2=totals();
     if(!it||t2.coins<it.cost) return;
