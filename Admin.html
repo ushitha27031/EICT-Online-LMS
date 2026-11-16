@@ -2307,8 +2307,7 @@ async function showMarks(){
 }
 /* ---------- progress and coins ---------- */
 let PG=[], pgBy='code', pgBusy=false;
-const RANKS_A=[[0,'Recruit'],[150,'Cadet'],[400,'Scout'],[800,'Ranger'],[1400,'Specialist'],
-               [2200,'Veteran'],[3200,'Elite'],[4500,'Commander'],[6000,'Legend']];
+const RANKS_A=[[0,'Recruit'],[700,'Scout'],[2000,'Ranger'],[4000,'Elite'],[6000,'Commander'],[8000,'Legend']];   /* same as the study plan */
 const coinsForMark=m=>m>=90?100:m>=80?75:m>=75?60:m>=65?48:m>=50?36:m>=35?24:12;
 const gradeLetter=a=>a===null?'\u2013':a>74?'A':a>64?'B':a>49?'C':a>34?'S':'W';
 
