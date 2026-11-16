@@ -483,8 +483,10 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
    Marks come from marks/{code} — a student cannot write there.
    Ticks and purchases live in journey/{code}.
    ========================================================== */
-const RANKS=[[0,'Recruit'],[150,'Cadet'],[400,'Scout'],[800,'Ranger'],[1400,'Specialist'],
-             [2200,'Veteran'],[3200,'Elite'],[4500,'Commander'],[6000,'Legend']];
+/* six ranks. A whole year at full marks (every weekly paper 90%+ and on time, every
+   Power-Up 5/5 with the streak, top of every checkpoint) is about 8,900 coins, so
+   Legend at 8,000 asks for close to that; a good student finishes around Commander. */
+const RANKS=[[0,'Recruit'],[700,'Scout'],[2000,'Ranger'],[4000,'Elite'],[6000,'Commander'],[8000,'Legend']];
 const SIMBASE='https://ushitha27031.github.io/eict_online/simulators/';
 const SHOP=[
  {id:'bin',   cost:150,  ic:'\u2B21', u:'Data Representation', n:'Base Converter',
