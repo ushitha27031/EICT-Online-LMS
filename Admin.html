@@ -790,7 +790,8 @@ progress:{ n:'Progress & coins', r:()=>`
     <p class="hint">Papers marked, average, grade, how much of the study plan they have worked through,
       coins and rank. <b>Coins left</b> is what they still hold — if they have unlocked a tool in the Armoury
       the line below shows what they earned and what they spent. Rank always counts what they
-      <i>earned</i>, so spending never demotes anyone.</p>
+      <i>earned</i>, so spending never demotes anyone. <b>📄 Report</b> downloads one student's coins as a PDF:
+      every paper, Power-Up, checkpoint and gift that added coins, and every Armoury unlock that spent them.</p>
     <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:16px">
       <button class="b b3" id="pgRefresh">Refresh</button>
       <button class="b b3" id="pgSort">Sort by average</button>
@@ -2371,7 +2372,7 @@ function drawProgress(){
   box.innerHTML=`<div class="tbl-box"><table class="ed"><thead><tr>
       <th style="width:15%">Student</th><th style="width:9%">Papers</th><th style="width:9%">Average</th>
       <th style="width:7%">Grade</th><th style="width:16%">Study plan</th>
-      <th style="width:12%">Rank</th><th style="width:11%">Coins left</th><th>Give or set</th></tr></thead><tbody>
+      <th style="width:12%">Rank</th><th style="width:11%">Coins left</th><th>Give or set · report</th></tr></thead><tbody>
     ${rows.map(r=>`<tr>
       <td><b style="font-family:var(--m);font-size:12.5px;color:var(--gold)">${esc(r.code)}</b><br>
         <span style="font-size:14px">${esc(r.name)}</span></td>
@@ -2390,12 +2391,14 @@ function drawProgress(){
         <input class="pg-n" data-code="${esc(r.code)}" type="number" placeholder="50" style="width:76px">
         <button class="b b2 pg-give" data-code="${esc(r.code)}" style="padding:8px 12px">Give</button>
         <button class="b b3 pg-set" data-code="${esc(r.code)}" style="padding:8px 12px">Set</button>
+        <button class="b b3 pg-rep" data-code="${esc(r.code)}" style="padding:8px 12px" title="Download where ${esc(r.name)}'s coins came from and went, as a PDF">\uD83D\uDCC4 Report</button>
       </div></td></tr>`).join('')}
   </tbody></table></div>`;
   box.querySelectorAll('.pg-give').forEach(b=>b.onclick=()=>giveCoins(b.dataset.code,
     box.querySelector('.pg-n[data-code="'+b.dataset.code+'"]')));
   box.querySelectorAll('.pg-set').forEach(b=>b.onclick=()=>setCoins(b.dataset.code,
     box.querySelector('.pg-n[data-code="'+b.dataset.code+'"]')));
+  box.querySelectorAll('.pg-rep').forEach(b=>b.onclick=()=>coinReport(b.dataset.code,b));
 }
 
 const pgSay=(t,bad)=>{ const m=$('#pgMsg'); if(m) m.innerHTML=
@@ -2411,7 +2414,8 @@ async function giveCoins(code,input){
   pgSay('Sending\u2026');
   try{
     const before=r.bonus;
-    await fb.setDoc(fb.doc(fb.db,'marks',code),{bonus:before+n,updated:fb.serverTimestamp()},{merge:true});
+    await fb.setDoc(fb.doc(fb.db,'marks',code),{bonus:before+n,updated:fb.serverTimestamp(),
+      bonusLog:fb.arrayUnion({n,at:new Date().toISOString(),how:'give'})},{merge:true});
     const back=await fb.getDoc(fb.doc(fb.db,'marks',code));
     const now=(back.exists()&&+back.data().bonus)||0;
     if(now!==before+n){ pgSay('It did not save. Run Check my setup.',true); return; }
@@ -2430,12 +2434,123 @@ async function setCoins(code,input){
   const fb=await window.FB_READY;
   if(!fb||!fb.auth.currentUser){ pgSay('Sign in first.',true); return; }
   try{
-    await fb.setDoc(fb.doc(fb.db,'marks',code),{bonus:newBonus,updated:fb.serverTimestamp()},{merge:true});
+    await fb.setDoc(fb.doc(fb.db,'marks',code),{bonus:newBonus,updated:fb.serverTimestamp(),
+      bonusLog:fb.arrayUnion({n:newBonus-r.bonus,at:new Date().toISOString(),how:'set to '+want})},{merge:true});
     const diff=want-r.coins;
     r.bonus=newBonus; r.coins=want; input.value=''; drawProgress();
     pgSay(r.name+' is now on '+want+' coins.');
     coinPop(diff,r.name);
   }catch(e){ if(!guard('coins',e)) pgSay('Could not save: '+(e.code||e.message),true); }
+}
+
+/* ---------- one student's coins, line by line, as a PDF ----------
+   The same sums as the study plan's coin counter: weekly papers, Power-Ups,
+   checkpoints, old exercise ticks and coins given by hand, less the Armoury. */
+const SHOP_A={bin:['Base Converter',150],gate:['Logic Bench',300],bool:['Expression Solver',600],net:['Subnet Calculator',450],
+  sched:['Process Scheduler',800],web:['Page Builder',900],hand:['Hand Magic',1200],emo:['Emotion Reader',1500],twos:['Signed Number Bench',250],
+  store:['Storage & Speed',350],sql:['SQL Bench',1000],trace:['Code Tracer',1300],sdlc:['SDLC Sequencer',1600],skin:['Callsign Colours',2400]};   /* as in Journey.html */
+async function coinReport(code,btn){
+  const r=PG.find(x=>x.code===code); if(!r) return;
+  const fb=await window.FB_READY; if(!fb||!fb.auth.currentUser) return pgSay('Sign in first.',true);
+  const label=btn.innerHTML; btn.disabled=true; btn.textContent='Making…';
+  try{
+    const get=async p=>{ try{ const d=await fb.getDoc(fb.doc(fb.db,...p)); return d.exists()?d.data():{}; }catch(e){ return {}; } };
+    const sin=(r.st.batch||'')==='AL-27-SI';
+    const [M,J,RD]=await Promise.all([get(['marks',code]),get(['journey',code]),get(['site',sin?'roadmapSin':'roadmap'])]);
+    let weeks=[]; try{ weeks=JSON.parse(RD.json||'{}').weeks||[]; }catch(e){}
+    const P=window.EICT_PU;
+    /* jsPDF's built-in font has no Sinhala: keep what it can print */
+    const safe=v=>String(v==null?'':v).replace(/[‘’]/g,"'").replace(/[“”]/g,'"').replace(/[^\x20-\x7E -ÿ–—•]/g,'').replace(/\s+/g,' ').trim();
+    const wk=i=>{ const t=safe((weeks[i]||{}).title); return 'W'+String(+i+1).padStart(2,'0')+(t?' · '+t:''); };
+    const day=iso=>{ if(!iso) return ''; const d=new Date(iso.toMillis?iso.toMillis():iso); return isNaN(d)?'':localISO(d); };
+    const groups=[];
+    /* weekly papers */
+    const papers=Object.keys(M.weeks||{}).sort((a,b)=>a-b).map(k=>{ const x=M.weeks[k],m=+x.mark||0,c=coinsForMark(m);
+      return [day(x.at),wk(k)+' — weekend paper',m+'%'+(x.onTime?' + on time (+25)':' (late)'),c+(x.onTime?25:0)]; });
+    groups.push(['Weekly papers','coins for the mark, plus 25 when sent on time',papers]);
+    /* Power-Ups */
+    const pu=J.pu||{}, per=P?P.coins(pu).per:{};
+    groups.push(['Weekly Power-Ups','5 a right answer, 15 for 5/5, streak bonus for back-to-back weeks',
+      Object.keys(per).sort((a,b)=>a-b).map(k=>{ const c=per[k],x=pu[k]||{};
+        return [day(x.at),wk(k)+' — Power-Up',c.right+'/5'+(P.finished(x)?'':' (not finished)')+(c.perfect?' · perfect +15':'')+(c.streak?' · '+c.run+'-week streak +'+c.streak:''),c.base+c.perfect+c.streak]; })]);
+    /* checkpoints */
+    groups.push(['Checkpoint papers','sitting it, badge and place',Object.keys(M.cp||{}).map(k=>{ const x=M.cp[k];
+      return [day(x.at),'CP'+String(x.n||'').padStart(2,'0')+' · '+safe(x.title),x.absent?'absent':x.total+'/'+x.max+' · '+x.pct+'%'+(x.rank?' · place '+x.rank+' of '+x.of:'')+(x.badge?' · '+x.badge:''),Math.max(0,+x.coins||0)]; })
+      .sort((a,b)=>a[0].localeCompare(b[0]))]);
+    /* old exercise ticks */
+    const ticks=(J.done||[]).length;
+    if(ticks) groups.push(['Exercises (before the Power-Up)','ticked in the old study plan, 5 each',[['',ticks+' exercises ticked','',ticks*5]]]);
+    /* by hand */
+    const log=(M.bonusLog||[]).slice().sort((a,b)=>String(a.at).localeCompare(String(b.at))), bonus=+M.bonus||0;
+    const hand=log.map(x=>[day(x.at),x.n>=0?'Given by sir':'Taken by sir',x.how&&x.how!=='give'?safe(x.how):'',+x.n||0]);
+    const rest=bonus-log.reduce((a,x)=>a+(+x.n||0),0);
+    if(rest) hand.unshift(['','Given by sir before this report kept dates','',rest]);
+    if(hand.length) groups.push(['Given by hand','from the Give and Set buttons in Progress & coins',hand]);
+    /* the Armoury */
+    const owned=(J.owned||[]).map(id=>[SHOP_A[id]?SHOP_A[id][0]:id,SHOP_A[id]?SHOP_A[id][1]:0]), spent=+J.spent||0;
+    const out=owned.map(([n,c])=>['','Unlocked '+n,'Armoury',-c]);
+    const other=spent-owned.reduce((a,x)=>a+x[1],0);
+    if(other) out.push(['','Other Armoury spending','prices changed or item removed',-other]);
+    const earned=groups.reduce((a,g)=>a+g[2].reduce((b,x)=>b+x[3],0),0), balance=earned-spent;
+    const rk=[...RANKS_A].reverse().find(x=>earned>=x[0]), nx=RANKS_A.find(x=>earned<x[0]);
+
+    const shortDate=iso=>{ const [Y,Mo,D]=iso.split('-'); return +D+' '+['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'][+Mo-1]+' '+Y; };
+    const jsPDF=await loadJsPDF();
+    const doc=new jsPDF({unit:'mm',format:'a4'}), W=210, L=18, R=W-18;
+    const ink=[12,19,48], dim=[90,98,130], gold=[176,120,0], green=[20,130,70], red=[200,30,50];
+    const logo=await logoPng(), today=localISO(new Date());
+    if(logo) doc.addImage(logo,'PNG',L,14,22,22);
+    doc.setFont('helvetica','bold'); doc.setFontSize(20); doc.setTextColor(...ink); doc.text('EICT',L+(logo?28:0),23);
+    doc.setFont('helvetica','normal'); doc.setFontSize(10); doc.setTextColor(...dim); doc.text('Study plan coins report',L+(logo?28:0),29);
+    doc.setFont('helvetica','bold'); doc.setFontSize(14); doc.setTextColor(...gold); doc.text('COINS',R,22,{align:'right'});
+    doc.setFont('helvetica','normal'); doc.setFontSize(9.5); doc.setTextColor(...dim); doc.text('As of '+ordinalDate(today),R,28,{align:'right'});
+    doc.setDrawColor(220,224,236); doc.line(L,40,R,40);
+    doc.setFont('helvetica','bold'); doc.setFontSize(14); doc.setTextColor(...ink); doc.text(safe(r.name)||code,L,49);
+    doc.setFont('helvetica','normal'); doc.setFontSize(10); doc.setTextColor(...dim);
+    doc.text('Student ID: '+code+(r.st.batch?'   ·   '+r.st.batch:''),L,55);
+    /* the summary */
+    let y=63; const box=(x,lab,val,col)=>{ doc.setFillColor(245,247,255); doc.roundedRect(x,y,41,19,2,2,'F');
+      doc.setFontSize(8.5); doc.setTextColor(...dim); doc.text(lab,x+4,y+6);
+      doc.setFont('helvetica','bold'); doc.setFontSize(15); doc.setTextColor(...col); doc.text(String(val),x+4,y+15); doc.setFont('helvetica','normal'); };
+    box(L,'EARNED',earned,green); box(L+43.5,'SPENT',spent,red); box(L+87,'BALANCE',balance,ink); box(L+130.5,'RANK',rk[1],gold);
+    y+=25; doc.setFontSize(9.5); doc.setTextColor(...dim);
+    doc.text(nx?(nx[0]-earned)+' more coins earned to reach '+nx[1]+'. Rank counts coins earned, so spending never lowers it.':'Highest rank reached.',L,y);
+    if(balance!==r.coins) { y+=5; doc.setTextColor(...red); doc.text('Note: the Progress list shows '+r.coins+' coins. Press Refresh there if a change was just made.',L,y); }
+    y+=9;
+    const head=(t,sub)=>{ if(y>248){ doc.addPage(); y=20; }   /* never a heading alone at the foot of a page */
+      doc.setFont('helvetica','bold'); doc.setFontSize(11.5); doc.setTextColor(...ink); doc.text(t,L,y);
+      doc.setFont('helvetica','normal'); doc.setFontSize(8.5); doc.setTextColor(...dim); doc.text(sub,L,y+4.5); y+=10;
+      doc.setFillColor(245,247,255); doc.rect(L,y-4.5,R-L,7,'F');
+      doc.setFont('helvetica','bold'); doc.setFontSize(8.5); doc.setTextColor(...dim);
+      doc.text('DATE',L+2,y); doc.text('WHAT',L+24,y); doc.text('DETAIL',L+98,y); doc.text('COINS',R-2,y,{align:'right'}); y+=6.5;
+      doc.setFont('helvetica','normal'); };
+    const line=(x)=>{ doc.setFont('helvetica','normal'); doc.setFontSize(9.5);
+      const what=doc.splitTextToSize(x[1],70), det=doc.splitTextToSize(x[2]||'',58), h=Math.max(what.length,det.length)*4.3;
+      if(y+h>280){ doc.addPage(); y=20; }
+      doc.setFontSize(9.5); doc.setTextColor(...dim); doc.text(x[0]?shortDate(x[0]):'—',L+2,y);
+      doc.setTextColor(...ink); doc.text(what,L+24,y); doc.setTextColor(...dim); doc.text(det,L+98,y);
+      doc.setFont('helvetica','bold'); doc.setTextColor(...(x[3]<0?red:green)); doc.text((x[3]>0?'+':'')+x[3],R-2,y,{align:'right'}); doc.setFont('helvetica','normal');
+      y+=h; doc.setDrawColor(236,238,246); doc.line(L,y-2.6,R,y-2.6); y+=1.6; };
+    const sub=(t,v)=>{ doc.setFont('helvetica','bold'); doc.setFontSize(10); doc.setTextColor(...ink); doc.text(t,R-30,y+1,{align:'right'});
+      doc.setTextColor(...(v<0?red:green)); doc.text((v>0?'+':'')+v,R-2,y+1,{align:'right'}); doc.setFont('helvetica','normal'); y+=10; };
+    doc.setFont('helvetica','bold'); doc.setFontSize(12.5); doc.setTextColor(...green); doc.text('WHERE THE COINS CAME FROM',L,y); y+=8;
+    for(const [t,s2,rows] of groups){ if(!rows.length) continue; head(t,s2); rows.forEach(line); sub('Subtotal',rows.reduce((a,x)=>a+x[3],0)); }
+    if(!groups.some(g=>g[2].length)){ doc.setFontSize(10); doc.setTextColor(...dim); doc.text('No coins earned yet.',L,y); y+=10; }
+    if(y>250){ doc.addPage(); y=20; }
+    y+=2; doc.setFont('helvetica','bold'); doc.setFontSize(12.5); doc.setTextColor(...red); doc.text('WHERE THE COINS WENT',L,y); y+=8;
+    if(out.length){ head('The Armoury','tools and extras the student unlocked'); out.forEach(line); sub('Subtotal',-spent); }
+    else { doc.setFont('helvetica','normal'); doc.setFontSize(10); doc.setTextColor(...dim); doc.text('Nothing spent yet.',L,y); y+=10; }
+    if(y>262){ doc.addPage(); y=20; }
+    y+=2; doc.setDrawColor(...ink); doc.setLineWidth(.5); doc.line(L+90,y-4,R,y-4); doc.setLineWidth(.2);
+    doc.setFont('helvetica','bold'); doc.setFontSize(11); doc.setTextColor(...ink);
+    [['Earned',earned],['Spent',-spent],['Balance',balance]].forEach(([t,v],i)=>{ doc.text(t,L+95,y+2+i*6.5); doc.text(String(v),R-2,y+2+i*6.5,{align:'right'}); });
+    const pages=doc.getNumberOfPages();
+    for(let i=1;i<=pages;i++){ doc.setPage(i); doc.setFont('helvetica','normal'); doc.setFontSize(8); doc.setTextColor(...dim);
+      doc.text('EICT · '+code+' · coins report · page '+i+' of '+pages,W/2,290,{align:'center'}); }
+    doc.save('EICT-coins-'+code+'-'+today+'.pdf');
+    pgSay('Report for '+r.name+' downloaded.');
+  }catch(e){ pgSay('Could not make the report: '+(e.code||e.message),true); }
+  btn.disabled=false; btn.innerHTML=label;
 }
 
 function coinPop(n,who){
