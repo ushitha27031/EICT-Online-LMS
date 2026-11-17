@@ -2,7 +2,9 @@
    EICT · Weekly Power-Up
    Five quick MCQs for every study-plan week, picked by the computer
    from the MCQ bank for that week's lesson, in the student's medium.
-   Nothing to set up per week: the lesson comes from the week's unit.
+   The lesson is the one sir chose for the week in Admin (week.pu), or
+   else is read from the week's unit and title, in English or Sinhala.
+   Sir's fixes to the bank (bankfix.js) are laid over it first.
 
    Coins (worked out here, so the study plan and Admin agree):
      +5   each right answer on the first go
@@ -23,31 +25,62 @@
   const PER=5;
 
   /* ---------- the bank, loaded once and only when a week is opened ---------- */
-  const got={},POOL={};
-  function addScript(f){return new Promise((ok,no)=>{const s=document.createElement('script');s.src=BASE+f;s.onload=ok;s.onerror=()=>no(new Error(f));document.head.appendChild(s);});}
-  function load(med){
-    if(!got[med]) got[med]=Promise.all(FILES[med].map(addScript)).then(()=>{POOL[med]=build(med);return POOL[med];})
-      .catch(e=>{got[med]=null;throw e;});
+  const got={},POOL={},EVERY={},files={};
+  function addScript(f){
+    if(!files[f]) files[f]=new Promise((ok,no)=>{const s=document.createElement('script');s.src=BASE+f;s.onload=ok;s.onerror=()=>{delete files[f];no(new Error(f));};document.head.appendChild(s);});
+    return files[f];                                   /* a file both media use is loaded once */
+  }
+  /* fixes: a function that loads sir's fixes to the bank (and lays them over it), or nothing */
+  function load(med,fixes){
+    if(!got[med]) got[med]=Promise.all(FILES[med].map(addScript))
+      .then(()=>fixes?Promise.resolve(fixes()).catch(()=>null):null)
+      .then(()=>rebuild(med)).catch(e=>{got[med]=null;throw e;});
     return got[med];
   }
-  const good=q=>q&&!q.chk&&Array.isArray(q.opts)&&q.opts.length>=2&&q.ans>=1&&q.ans<=q.opts.length&&q.u>=1&&q.u<=13;
-  function build(med){
-    const out=[],P=(window.EICT_PP||{})[med]||[],G=med==='si'?window.EICT_MCQ_SI:window.EICT_MCQ,seen=new Set();
-    P.forEach(q=>{if(good(q)&&!seen.has(q.id)){seen.add(q.id);out.push(q);}});
+  const good=q=>q&&!q.chk&&!q.removed&&Array.isArray(q.opts)&&q.opts.length>=2&&q.ans>=1&&q.ans<=q.opts.length&&q.u>=1&&q.u<=13;
+  /* POOL: what can be picked. EVERY: every question, removed ones too, so a
+     Power-Up already started keeps its own five */
+  function rebuild(med){
+    const pick=[],every={},P=(window.EICT_PP||{})[med]||[],G=med==='si'?window.EICT_MCQ_SI:window.EICT_MCQ;
+    const add=q=>{if(every[q.id]) return;every[q.id]=q;if(good(q)) pick.push(q);};
+    P.forEach(add);
     if(G&&G.levels) Object.keys(G.levels).forEach(lv=>(G.levels[lv].questions||[]).forEach((q,i)=>{
-      if(good(q)) out.push(Object.assign({},q,{id:'g-'+med+'-'+lv+'-'+i}));}));
-    return out;
+      if(!q.id) q.id='g-'+med+'-'+lv+'-'+i;add(q);}));
+    /* the files load in whatever order the network brings them, so sort: every
+       phone and Admin must shuffle the same list to pick the same five */
+    pick.sort((x,y)=>x.id<y.id?-1:x.id>y.id?1:0);
+    POOL[med]=pick;EVERY[med]=every;return pick;
   }
 
-  /* ---------- which questions a week gets ---------- */
+  /* ---------- which lesson a week is ---------- */
+  /* words that name each lesson, in English and Sinhala, tried in this order:
+     "basic concepts" first, then the specific lessons, so "ICT in Business" is
+     not read as lesson 1 nor "Information and Communication …" as networking */
+  const WORDS=[
+    [1,['basic concept','concepts of ict','concept of ict','information and communication','මූලික සංකල්ප','තොරතුරු හා සන්නිවේදන']],
+    [8,['database','dbms','sql','normali','e-r diagram','er diagram','දත්ත සමුදා','දත්ත ගබඩා']],
+    [9,['programming','python','algorithm','pseudo','flow chart','flowchart','ක්‍රමලේඛ','පයිතන්','ඇල්ගොරිතම']],
+    [10,['web','html','css','php','javascript','වෙබ්']],
+    [11,['internet of things','iot','embedded','arduino','වස්තුන්ගේ අන්තර්ජාල','සියල්ලෙහි අන්තර්ජාල']],
+    [12,['business','e-commerce','ecommerce','ව්‍යාපාර']],
+    [13,['new trend','emerging','artificial intelligence','නව ප්‍රවණතා','නව නැඹුරු']],
+    [7,['system analysis','systems analysis','analysis & design','analysis and design','sdlc','පද්ධති විශ්ලේෂණ']],
+    [6,['communication','network','දත්ත සන්නිවේදන','ජාලකරණ','පරිගණක ජාල']],
+    [5,['operating system','මෙහෙයුම් පද්ධති']],
+    [4,['logic gate','logic','boolean','digital circuit','gates','තාර්කික','බූලියානු','අංකිත පරිපථ','සංඛ්‍යාංක පරිපථ']],
+    [3,['data representation','number system','representation','දත්ත නිරූපණ','සංඛ්‍යා පද්ධති']],
+    [2,['evolution of computer','evaluation of computer','introduction to computer','history of computer','computer system','evolution','පරිගණකයේ විකාශ','පරිගණක ඉතිහාස','පරිගණකය හැඳින්වීම','පරිගණක පද්ධති']]];
+  /* 1–13: a lesson · 0: the whole syllabus (revision) · null: not known — sir chooses it in Admin */
   function unitOf(w){
-    if(!w) return 0;
-    const u=String(w.unit||'').trim().toLowerCase(),t=String(w.title||'').toLowerCase();
-    let i=UNITNAMES.findIndex(n=>n.toLowerCase()===u);
-    if(i<0) i=UNITNAMES.findIndex(n=>u&&(u.includes(n.toLowerCase())||n.toLowerCase().includes(u)));
-    if(i<0) i=UNITNAMES.findIndex(n=>t.startsWith(n.toLowerCase()));
-    if(i<0){const m=/unit\s*0?(\d{1,2})/i.exec(u+' '+t);if(m) i=+m[1]-1;}
-    return i>=0&&i<13?i+1:0;                         /* 0: revision — the whole syllabus */
+    if(!w) return null;
+    if(w.pu!==undefined&&w.pu!==null&&w.pu!=='') return +w.pu>=0&&+w.pu<=13?+w.pu:null;
+    const u=String(w.unit||'').trim().toLowerCase(),t=String(w.title||'').toLowerCase(),both=u+' | '+t;
+    const i=UNITNAMES.findIndex(n=>n.toLowerCase()===u);
+    if(i>=0&&i<13) return i+1;
+    for(const [n,ws] of WORDS) if(ws.some(x=>both.includes(x))) return n;
+    if(/revision|past paper|papers|පුනරීක්ෂණ/.test(both)) return 0;
+    const m=/unit\s*0?(\d{1,2})/i.exec(both);if(m&&+m[1]>=1&&+m[1]<=13) return +m[1];
+    return null;
   }
   function hash(s){let h=2166136261;for(let i=0;i<s.length;i++){h^=s.charCodeAt(i);h=Math.imul(h,16777619);}return h>>>0;}
   function shuffled(a,seed){let x=hash(seed)||1;const r=()=>{x^=x<<13;x>>>=0;x^=x>>17;x^=x<<5;x>>>=0;return x/4294967296;};
@@ -55,13 +88,14 @@
   /* parts of the same lesson (week 1 and 2 of Networking …) get different questions */
   function pick(weeks,i,med){
     const all=POOL[med]||[],u=unitOf(weeks[i]);
+    if(u===null) return [];
     let off=0;for(let j=0;j<i;j++) if(unitOf(weeks[j])===u) off++;
     const from=u?all.filter(q=>q.u===u):all, order=shuffled(from,'pu|'+med+'|'+u+(u?'':'|'+i)), out=[];
     for(let k=0;k<order.length&&out.length<PER;k++){const q=order[(off*PER+k)%order.length];if(!out.includes(q)) out.push(q);}
     if(out.length<PER) for(const q of shuffled(all,'pu-fill|'+med+'|'+i)){if(out.length>=PER) break;if(!out.includes(q)) out.push(q);}
     return out;
   }
-  const byId=(med,id)=>(POOL[med]||[]).find(q=>q.id===id);
+  const byId=(med,id)=>(EVERY[med]||{})[id];
   const right=(q,j)=>j===q.ans-1||!!(q.alt&&q.alt.includes(j+1));
 
   /* ---------- coins ---------- */
@@ -76,5 +110,5 @@
     return {total,per};
   }
 
-  window.EICT_PU={PER,UNITNAMES,load,unitOf,pick,byId,right,coins,finished};
+  window.EICT_PU={PER,UNITNAMES,load,rebuild,unitOf,pick,byId,right,coins,finished};
 })();

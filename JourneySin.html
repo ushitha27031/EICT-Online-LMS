@@ -477,6 +477,7 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
   }catch(e){ console.warn('offline',e.message); return null; }
 })().then(window.__fbDone);
 </script>
+<script src="bankfix.js"></script>
 <script src="powerup.js"></script>
 <script>
 /* ==========================================================
@@ -1848,16 +1849,23 @@ async function doSend(i){
   const w=ROAD.weeks[i]||{};
   const at=dueAt(w.paper);
   const late = at!==null ? Date.now()>at : false;
-  SENT[i]={link:r.link, at:new Date().toISOString(), late};
-  save();
-  if(FB&&UID){
-    try{ await FB.setDoc(FB.doc(FB.db,'submissions',UID+'__JW'+i),{
-      uid:UID, code:CODE, name:NAME, whatsapp:PROFILE.whatsapp||'', batch:PROFILE.batch||'',
+  /* it only counts as sent once sir's list has it: a sheet that never left
+     this phone must not show "Sent" */
+  if(!FB||!UID) return toast('Not connected \u2014 check your internet, reload and send again');
+  const btn=$('#dlSend'); if(btn){ btn.disabled=true; btn.textContent='Sending\u2026'; }
+  const sub={ uid:UID, code:CODE, name:NAME, whatsapp:PROFILE.whatsapp||'', batch:PROFILE.batch||'',
       track:'journeySin', paper:'JW'+i, week:i,
-      title:(w.title||('Week '+(i+1)))+' \u2014 weekend paper',
-      link:r.link, fileId:r.id||'', late, at:new Date().toISOString(), marked:false });
-    }catch(e){ return toast('Could not send: '+(e.code||e.message)); }
+      title:'W'+String(i+1).padStart(2,'0')+' \u00B7 '+(w.title||('Week '+(i+1)))+' \u2014 weekend paper',
+      link:r.link, fileId:r.id||'', late, at:new Date().toISOString(), marked:false };
+  let err=null;
+  for(let k=0;k<3;k++){
+    try{ await FB.setDoc(FB.doc(FB.db,'submissions',UID+'__JW'+i),sub); err=null; break; }
+    catch(e){ err=e; if(/permission/i.test(e.code||'')) break; await new Promise(z=>setTimeout(z,1200*(k+1))); }
   }
+  if(btn){ btn.disabled=false; btn.textContent='Send to sir'; }
+  if(err) return toast('Not sent: '+(/permission/i.test(err.code||'')?'sign out, sign in again and retry':'check your internet and try again'));
+  SENT[i]={link:r.link, at:sub.at, late};
+  save(true);
   $('#ov').classList.remove('on'); document.body.style.overflow='';
   toast(late?'Sent \u2014 marked late':'Sent to sir');
   paint();
@@ -1914,6 +1922,7 @@ function puLabel(i,w){
   const r=PU[i];
   if(EICT_PU.finished(r)) return '<b style="color:#FFC93C">⚡ '+r.ok.filter(Boolean).length+'/5</b>';
   if(r&&r.a&&r.a.length) return '<b style="color:#38E1FF">⚡ '+r.a.length+'/5 answered</b>';
+  if(EICT_PU.unitOf(w)===null) return '';
   return puOpen(w)?'<b style="color:#38E1FF">⚡ Power-Up ready</b>':'⚡ soon';
 }
 function puQ(q,k,picked,okList,practice){
@@ -1941,15 +1950,16 @@ async function drawPU(scroll){
     '</b>. Come back then for five quick questions and up to 40 coins.</div>'; return; }
   if(!puReady){
     box.innerHTML=head+'<div class="pu-card"><span class="pu-spin"></span>Loading this week’s questions…</div>';
-    try{ await U.load(MED); puReady=true; }
+    try{ await U.load(MED,()=>window.EICT_FIX&&FB?EICT_FIX.load(FB,FB.db):null); puReady=true; }
     catch(e){ box.innerHTML=head+'<div class="pu-card">Could not load the questions. Check your internet, then open the week again.</div>'; return; }
     if(PUW!==i) return;
   }
   let qs=r&&r.q?r.q.map(id=>U.byId(MED,id)):null;
   if(!qs||qs.some(x=>!x)) qs=U.pick(ROAD.weeks,i,MED);
   PUQ=qs;
-  if(qs.length<5){ box.innerHTML=head+'<div class="pu-card lock">No questions for this lesson yet.</div>'; return; }
+  if(qs.length<5&&!(r&&r.q)){ box.innerHTML=head+'<div class="pu-card lock">No questions for this lesson yet.</div>'; return; }
   const u=U.unitOf(w), lesson=u?U.UNITNAMES[u-1]:'The whole syllabus — revision';
+  if(u===null&&!r){ box.innerHTML=head+'<div class="pu-card lock">Sir is still choosing the lesson for this week’s Power-Up. Check back soon.</div>'; return; }
   const practice=!!(PZ&&PZ.i===i), rec=practice?PZ:r;
   let html;
   if(PUFB!=null&&rec&&rec.a.length>PUFB) html=puQ(qs[PUFB],PUFB,rec.a[PUFB],rec.ok,practice);

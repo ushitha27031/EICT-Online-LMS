@@ -1283,15 +1283,16 @@ function paintLive(){
   };
   tick(); liveTimer=setInterval(tick,1000);
 }
-let LIVEREC=null;
+let LIVEREC=null, RECPRIV=false;
 async function paintRecordings(where){
   const box=$(where||'#recPanel'); if(!box) return;
   box.innerHTML=`<p class="eyebrow" style="margin-bottom:14px">Recordings of past classes</p>
     <div class="empty" style="padding:20px 0">Loading…</div>`;
   if(LIVEREC===null && FB && me){
-    try{ const d=await FB.getDoc(FB.doc(FB.db,'liveRecordings',BATCH()));
-         LIVEREC=(d.exists()?d.data().list:[])||[]; }
-    catch(err){ LIVEREC=[]; }
+    /* recordings are private until sir switches them on: then the read is allowed */
+    try{ const d=await FB.getDoc(FB.doc(FB.db,'recordings',BATCH()));
+         LIVEREC=(d.exists()?d.data().list:[])||[]; RECPRIV=false; }
+    catch(err){ LIVEREC=[]; RECPRIV=/permission/i.test(err.code||err.message||''); }
   }
   const list=(LIVEREC||[]).slice().reverse();
   box.innerHTML=`<p class="eyebrow" style="margin-bottom:14px">Recordings of past classes</p>
@@ -1300,7 +1301,7 @@ async function paintRecordings(where){
         <span><span class="ep-t">${esc(r.title||'Live session')}</span>
           <span class="ep-m">${esc(r.date||'')}${r.mins?' · '+esc(r.mins)+' min':''}</span></span>
         <span class="ep-p"><svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg></span></button>`).join('')
-      : `<p style="color:var(--dim);margin:0">No recordings posted yet. They appear here after each class.</p>`}`;
+      : `<p style="color:var(--dim);margin:0">${RECPRIV?'🔒 Class recordings are not available right now.':'No recordings posted yet. They appear here after each class.'}</p>`}`;
 }
 
 function paintMaterials(){
