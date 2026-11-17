@@ -204,10 +204,12 @@ async function start() {
    sees the launched ones of their class, then one locked island for the
    next. SC holds each finished quiz's marks for the stars on its island. */
 const FAR = Date.UTC(2099, 0, 1);
+/* a quiz is for the classes sir ticked and any student sir picked by name */
+const forMe = w => (w.batches || []).includes(ME.batch) || (w.extra || []).includes(U.uid);
 async function loadWeeks(keep) {
   const snap = await FB.getDocs(FB.collection(db, 'questWeeks'));
   WK = snap.docs.map(d => ({id: d.id, ...d.data()}))
-    .filter(w => OWN || ((w.batches || []).includes(ME.batch) && ms(w.openAt) <= now()))
+    .filter(w => OWN || (forMe(w) && ms(w.openAt) <= now()))
     .sort((a, b) => (ms(a.openAt) >= FAR) - (ms(b.openAt) >= FAR) || ms(a.openAt) - ms(b.openAt) || String(a.id).localeCompare(b.id));
   if (!OWN) await Promise.all(WK.map(async w => {
     try { const a = await FB.getDoc(attRef(w.id)); if (a.exists()) ATT[w.id] = a.data(); } catch (e) {}
@@ -615,7 +617,7 @@ setInterval(async () => {
   if (!U || OWN || document.hidden || (S.quiz && !S.quiz.finished) || S.mode !== 'map') return;
   try {
     const snap = await FB.getDocs(FB.collection(db, 'questWeeks'));
-    const live = snap.docs.filter(d => (d.data().batches || []).includes(ME.batch) && ms(d.data().openAt) <= now()).length;
+    const live = snap.docs.filter(d => forMe(d.data()) && ms(d.data().openAt) <= now()).length;
     if (live > WK.length) {
       await loadWeeks();
       L.toast('✨ A new island just opened! Tap it to play!');
