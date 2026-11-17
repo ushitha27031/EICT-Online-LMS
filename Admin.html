@@ -849,6 +849,12 @@ today:{ n:'Today', icon:'▦', r:()=>`
 portal:{ n:'Class portal', r:()=>`
   <div class="card"><h2>Live class</h2>
     ${bSel()}
+    <div style="border:1px solid var(--hair);border-radius:12px;padding:12px 14px;margin:0 0 16px">
+      <label class="sw" style="font-size:15px"><input type="checkbox" id="recOnSw" ${cget('recOn')?'checked':''}> <b>Offer the Recorded class</b></label>
+      <div style="font-size:13.5px;margin-top:6px;color:${cget('recOn')?'var(--live)':'var(--gold)'}">${cget('recOn')
+        ?'On: students can choose Live class, One to one or Recorded class.'
+        :'Off: students see only <b>Live class</b> and <b>One to one</b> — when they join and on their class page. Anyone already on the Recorded class is asked to pick one of those two.'}
+        Press <b>Publish class portal</b> below to apply it.</div></div>
     <p class="hint">These reach every student's portal the moment you press <b>Publish class portal</b> — no refresh needed on their side.
       The Zoom link is shown to everyone; only the printed tutes wait for payment.</p>
     <div class="grid2">${CF('Heading','live.title')}${CF('Day','live.day')}${CF('Time','live.time')}${CF('Medium','live.medium')}</div>
@@ -3161,17 +3167,17 @@ function drawSubs(){
 
 /* ---------- live class recordings ---------- */
 let REC=null;
-/* recordings live in recordings/{class}, private until switched on (show).
-   The ones from before sat inside liveRecordings/{class} next to the papers,
-   where every student could read them: they are moved across, private. */
-let RECSHOW=false, recMoved=false;
+/* recordings live in recordings/{class}, shown to the class unless switched
+   off (show:false). The ones from before sat inside liveRecordings/{class}
+   next to the papers: they are moved across, still shown. */
+let RECSHOW=true, recMoved=false;
 async function moveOldRecordings(fb){
   if(recMoved) return; recMoved=true;
   for(const b of allBatches().map(x=>x.id)){
     try{ const o=await fb.getDoc(fb.doc(fb.db,'liveRecordings',b)); const old=(o.exists()&&o.data().list)||[];
       if(!old.length) continue;
       const n=await fb.getDoc(fb.doc(fb.db,'recordings',b)); const cur=(n.exists()&&n.data().list)||[];
-      await fb.setDoc(fb.doc(fb.db,'recordings',b),{list:cur.length?cur:old,show:n.exists()?!!n.data().show:false,updated:fb.serverTimestamp()},{merge:true});
+      await fb.setDoc(fb.doc(fb.db,'recordings',b),{list:cur.length?cur:old,show:n.exists()?n.data().show!==false:true,updated:fb.serverTimestamp()},{merge:true});
       await fb.setDoc(fb.doc(fb.db,'liveRecordings',b),{list:[]},{merge:true});
     }catch(e){ recMoved=false; if(/permission/i.test(e.code||'')) guard('class recordings (recordings/{class})',e); return; }
   }
@@ -3183,7 +3189,7 @@ async function loadRecordings(){
   await moveOldRecordings(fb);
   if(REC===null){
     try{ const d=await fb.getDoc(fb.doc(fb.db,'recordings',EDIT_BATCH));
-         REC=(d.exists()?d.data().list:[])||[]; RECSHOW=d.exists()&&!!d.data().show; }catch(e){ REC=[]; RECSHOW=false; }
+         REC=(d.exists()?d.data().list:[])||[]; RECSHOW=!d.exists()||d.data().show!==false; }catch(e){ REC=[]; RECSHOW=true; }
   }
   drawRecSwitch();
   drawRecordings();
@@ -3195,7 +3201,7 @@ function drawRecSwitch(){
       <b>Students can see these recordings</b></label>
     <div style="font-size:13.5px;margin-top:6px;color:${RECSHOW?'var(--live)':'var(--gold)'}">${RECSHOW
       ?'👁 Visible: signed-in students of this class can watch them on their class page.'
-      :'🔒 Private: no student can see or play them (not even samples in the website advisor) until you switch this on.'}</div>`;
+      :'🔒 Hidden: no student can see or play them (not even samples in the website advisor) until you switch this on.'}</div>`;
 }
 document.addEventListener('change',async e=>{
   if(e.target.id!=='recShow') return;
@@ -3628,6 +3634,7 @@ document.addEventListener('input',e=>{
     return; }
   if(e.target.dataset.lp!==undefined && e.target.dataset.f){ LPAP[+e.target.dataset.lp][e.target.dataset.f]=e.target.value; return; }
   if(e.target.dataset.rt!==undefined && e.target.dataset.f){ CO.solo.slots[+e.target.dataset.rt][e.target.dataset.f]=e.target.value; markCourse(); return; }
+  if(e.target.id==='recOnSw'){ cset('recOn',e.target.checked); markCourse(); draw(); return; }
   if(e.target.dataset.c){
     cset(e.target.dataset.c, e.target.value);
     if(e.target.dataset.c==='notify.ntfyTopic') showNtfyUrl();

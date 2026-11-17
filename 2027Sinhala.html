@@ -995,7 +995,18 @@ function paintShell(){
   const sb=$('#soloBullets');
   if(sb) sb.innerHTML=((COURSE.solo&&COURSE.solo.points)||[]).map(b=>`<li>${esc(b)}</li>`).join('');
 }
+/* the recorded series can be switched off in Admin → Class portal (recOn):
+   then students are offered only the Live class and One to one */
+const recOn=()=>!!(COURSE&&COURSE.recOn);
+function recDoors(){ const on=recOn();
+  document.querySelectorAll('.door.rec,#trkSwitch [data-trk="rec"]').forEach(x=>x.classList.toggle('hide',!on));
+  let n=0; document.querySelectorAll('.door').forEach(d=>{ const k=d.querySelector('.door-k'); if(k&&!d.classList.contains('hide')) k.textContent='Option '+(++n); });
+  const o=document.querySelector('#su-track option[value="rec"]');
+  if(o){ o.hidden=!on; o.disabled=!on; if(!on&&$('#su-track').value==='rec') $('#su-track').value='live'; } }
+recDoors();
 function show(v){
+  if(v==='rec'&&!recOn()) v='choose';
+  recDoors();
   curView=v;
   const sw=$('#trkSwitch');
   sw.classList.toggle('hide', v==='choose');
@@ -1307,7 +1318,10 @@ async function paintRecordings(where){
     /* recordings are private until sir switches them on: then the read is allowed */
     try{ const d=await FB.getDoc(FB.doc(FB.db,'recordings',BATCH()));
          LIVEREC=(d.exists()?d.data().list:[])||[]; RECPRIV=false; }
-    catch(err){ LIVEREC=[]; RECPRIV=/permission/i.test(err.code||err.message||''); }
+    catch(err){ LIVEREC=[]; RECPRIV=/permission/i.test(err.code||err.message||'');
+      /* not moved yet by Admin: the old list, where it still is */
+      try{ const o=await FB.getDoc(FB.doc(FB.db,'liveRecordings',BATCH())); const old=(o.exists()&&o.data().list)||[];
+           if(old.length){ LIVEREC=old; RECPRIV=false; } }catch(_){} }
   }
   const list=(LIVEREC||[]).slice().reverse();
   box.innerHTML=`<p class="eyebrow" style="margin-bottom:14px">Recordings of past classes</p>
