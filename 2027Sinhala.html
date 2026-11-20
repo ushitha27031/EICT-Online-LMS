@@ -243,8 +243,9 @@ h2.t{font-family:var(--d);font-weight:700;font-size:clamp(25px,4vw,40px);line-he
 .ep:hover{background:var(--hair);border-color:var(--wire)}
 .ep-n{font-family:var(--d);font-weight:700;font-size:19px;color:var(--dimmer);text-align:center}
 .ep.done .ep-n{color:var(--live-ink)}
+.ep-n small{display:block;font-family:var(--m);font-size:10px;font-weight:600;letter-spacing:.14em;text-transform:uppercase;margin-top:1px}
 .ep-t{font-weight:600;font-size:15px;line-height:1.35}
-.ep-m{font-family:var(--m);font-size:11px;letter-spacing:.1em;color:var(--dimmer);margin-top:3px}
+.ep-m{display:block;font-family:var(--m);font-size:11px;letter-spacing:.1em;color:var(--dimmer);margin-top:3px}
 .ep-p{width:38px;height:38px;border-radius:50%;display:grid;place-items:center;flex:none;
   background:color-mix(in srgb,var(--signal) 16%,transparent);border:1px solid color-mix(in srgb,var(--signal) 45%,transparent)}
 .ep-p svg{width:14px;height:14px;fill:var(--signal);margin-left:2px}
@@ -1310,6 +1311,11 @@ function paintLive(){
   tick(); liveTimer=setInterval(tick,1000);
 }
 let LIVEREC=null, RECPRIV=false;
+/* a recording's date as day and month, so students can find a class: "01 NOV" and "Sun, 1 November 2026" */
+const REC_MON=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+const recParts=v=>{const m=/^(\d{4})-(\d{2})-(\d{2})/.exec(String(v||''));return m?new Date(Date.UTC(+m[1],+m[2]-1,+m[3])):null;};
+const recDay=v=>{const d=recParts(v);return d?String(d.getUTCDate()).padStart(2,'0')+'<small>'+REC_MON[d.getUTCMonth()]+'</small>':'·';};
+const recDate=v=>{const d=recParts(v);return d?d.toLocaleDateString('en-GB',{timeZone:'UTC',weekday:'short',day:'numeric',month:'long',year:'numeric'}):String(v||'');};
 async function paintRecordings(where){
   const box=$(where||'#recPanel'); if(!box) return;
   box.innerHTML=`<p class="eyebrow" style="margin-bottom:14px">Recordings of past classes</p>
@@ -1326,9 +1332,9 @@ async function paintRecordings(where){
   const list=(LIVEREC||[]).slice().reverse();
   box.innerHTML=`<p class="eyebrow" style="margin-bottom:14px">Recordings of past classes</p>
     ${list.length ? list.map((r,i)=>`<button class="ep" data-live="${(LIVEREC.length-1)-i}">
-        <span class="ep-n">${esc(String(r.date||'').slice(8,10)||'·')}</span>
+        <span class="ep-n">${recDay(r.date)}</span>
         <span><span class="ep-t">${esc(r.title||'Live session')}</span>
-          <span class="ep-m">${esc(r.date||'')}${r.mins?' · '+esc(r.mins)+' min':''}</span></span>
+          <span class="ep-m">${esc(recDate(r.date))}${r.mins?' · '+esc(r.mins)+' min':''}</span></span>
         <span class="ep-p"><svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg></span></button>`).join('')
       : `<p style="color:var(--dim);margin:0">${RECPRIV?'🔒 Class recordings are not available right now.':'No recordings posted yet. They appear here after each class.'}</p>`}`;
 }
