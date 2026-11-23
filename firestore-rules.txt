@@ -441,13 +441,14 @@ service cloud.firestore {
         allow list, write: if owner();
       }
 
-      // Answer sheets: the student's own Drive links for Part A or Part B,
-      // accepted from the moment that part opens until its upload deadline.
+      // Answer sheets: the student's own Drive links for Part A, Part B and
+      // C (the essay, sent separately in Part B's time), accepted from the
+      // moment that part opens until its upload deadline.
       match /subs/{sid} {
         allow get: if owner() || (request.auth != null
-                   && (sid == request.auth.uid + '_A' || sid == request.auth.uid + '_B'));
+                   && (sid == request.auth.uid + '_A' || sid == request.auth.uid + '_B' || sid == request.auth.uid + '_C'));
         allow create, update: if request.auth != null && live()
-                              && request.resource.data.part in ['A', 'B']
+                              && request.resource.data.part in ['A', 'B', 'C']
                               && sid == request.auth.uid + '_' + request.resource.data.part
                               && request.resource.data.keys().hasOnly(['uid','code','part','session','links','at'])
                               && request.resource.data.uid == request.auth.uid
