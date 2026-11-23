@@ -157,6 +157,22 @@ a{color:inherit;text-decoration:none}
 .node.cpn{display:block;text-decoration:none;color:inherit;border-color:rgba(255,201,60,.6);background:linear-gradient(165deg,rgba(255,201,60,.16),rgba(56,225,255,.07) 60%,var(--deep));box-shadow:0 0 0 1px rgba(56,225,255,.12) inset}
 .node.cpn .num{color:var(--gold);border-color:var(--gold);font-size:11px;letter-spacing:.04em}
 .node.cpn.go{box-shadow:0 0 0 1px rgba(255,201,60,.35) inset,0 0 26px -8px rgba(255,201,60,.6)}
+/* the next checkpoint, pinned above the map with the student's own countdown */
+.cpb{position:relative;display:block;overflow:hidden;text-decoration:none;color:inherit;margin:0 0 18px;padding:18px 20px;border-radius:20px;
+  border:1.5px solid rgba(255,201,60,.65);background:radial-gradient(120% 140% at 0% 0%,rgba(255,201,60,.22),transparent 55%),radial-gradient(120% 140% at 100% 100%,rgba(56,225,255,.18),transparent 55%),#0b1233;
+  box-shadow:0 18px 50px -22px rgba(255,201,60,.55)}
+.cpb::after{content:'';position:absolute;inset:-60% -10%;background:linear-gradient(110deg,transparent 40%,rgba(255,255,255,.10) 50%,transparent 60%);animation:cpbShine 4.5s ease-in-out infinite;pointer-events:none}
+@keyframes cpbShine{0%,55%{transform:translateX(-60%)}100%{transform:translateX(60%)}}
+.cpb .k{font-family:var(--m);font-size:11px;letter-spacing:.22em;color:#FFC93C;text-transform:uppercase}
+.cpb h3{font-family:var(--d);font-size:clamp(19px,4.6vw,26px);margin:4px 0 2px}
+.cpb .when{color:#EAF0FF;font-size:14.5px}
+.cpb .clock{display:flex;gap:8px;margin-top:12px;flex-wrap:wrap}
+.cpb .clock div{min-width:62px;text-align:center;background:rgba(0,0,0,.28);border:1px solid rgba(255,255,255,.12);border-radius:12px;padding:6px 8px}
+.cpb .clock b{display:block;font-family:var(--d);font-size:26px;color:#FFC93C;line-height:1.1}.cpb .clock span{font-family:var(--m);font-size:10px;letter-spacing:.12em;color:#93A0C8}
+.cpb .go{display:inline-flex;gap:6px;align-items:center;margin-top:12px;font-family:var(--d);font-weight:700;color:#04202B;background:linear-gradient(135deg,#38E1FF,#2a8cff);padding:9px 14px;border-radius:11px}
+.cpb.live{border-color:#ff6b6b;animation:cpbPulse 1.6s ease-in-out infinite}
+@keyframes cpbPulse{50%{box-shadow:0 0 0 6px rgba(255,107,107,.18),0 18px 50px -22px rgba(255,107,107,.7)}}
+.cpb .dot{display:inline-block;width:9px;height:9px;border-radius:50%;background:#ff6b6b;margin-right:6px;animation:cpbPulse 1.2s infinite}
 .hseg{display:flex;gap:6px;flex-wrap:wrap;margin:0 0 14px}.hseg button{font-family:var(--d);font-weight:700;font-size:13px;padding:8px 14px;border-radius:10px;border:1px solid var(--edge);background:transparent;color:var(--dim);cursor:pointer}.hseg button.on{border-color:var(--gold);color:var(--gold);background:rgba(255,201,60,.08)}
 .node.lock .num{color:var(--dimmer)}
 @keyframes ping{70%{box-shadow:0 0 0 12px rgba(56,225,255,0)}100%{box-shadow:0 0 0 0 rgba(56,225,255,0)}}
@@ -661,7 +677,9 @@ async function loadAll(){
   /* checkpoint papers open for this student (their class, or picked individually) */
   try{ const q=await FB.getDocs(FB.collection(FB.db,'cp')); CPL=[];
        q.forEach(d=>{ const v=d.data(); if(v.stage!=='draft'&&((v.batches||[]).includes(MYBATCH)||(v.extra||[]).includes(UID)))
-         CPL.push({id:d.id,...v}); }); CPL.sort((a,b)=>(a.n||0)-(b.n||0)); }catch(e){}
+         CPL.push({id:d.id,...v}); }); CPL.sort((a,b)=>(a.n||0)-(b.n||0));
+       /* each student's own sitting: their date and times */
+       CPA={}; await Promise.all(CPL.map(async c=>{ try{ const a=await FB.getDoc(FB.doc(FB.db,'cp',c.id,'assign',UID)); if(a.exists()) CPA[c.id]=a.data(); }catch(e){} })); }catch(e){}
   try{ const j=await FB.getDoc(FB.doc(FB.db,'journey',CODE));
        if(j.exists()){ DONE=new Set(j.data().done||[]); OWNED=new Set(j.data().owned||[]);
                        SPENT=+j.data().spent||0; SENT=j.data().sent||{}; PU=j.data().pu||{}; } }catch(e){}
@@ -865,7 +883,7 @@ function paintMap(){
   const box=$('#vMap'), ws=ROAD.weeks||[];
   if(!ws.length){ box.innerHTML='<div class="empty">No missions posted yet. Sir is still setting them up.</div>'; return; }
   const cur=weekNow();
-  box.innerHTML='<div class="lv">'+ws.map((w,i)=>{
+  box.innerHTML=cpBanner()+'<div class="lv">'+ws.map((w,i)=>{
     const m=MARKS[i], stars=m?(+m.mark>=75?3:+m.mark>=50?2:1):0;
     const st=m?'done':(i===cur?'now':(i<cur?'':'lock'));
     return '<button class="node '+st+'" data-w="'+i+'">'+
@@ -878,8 +896,52 @@ function paintMap(){
         (Date.now()>dueAt(w)?'past due':'due '+dueText(w))+'</span>':'')+
       '<span class="stars">'+[0,1,2].map(n=>'<i class="'+(n<stars?'on':'')+'"></i>').join('')+'</span>'+
     '</button>'+cpCards(i+1);}).join('')+cpCards(-1)+'</div>';
+  cpStart();
 }
 const CP_TX={poll:'Vote for a time',scheduling:'Schedule coming',confirmed:'Scheduled',marking:'Being marked',published:'Results out',archived:'Completed',postponed:'Postponed',cancelled:'Cancelled'};
+/* ---------- the next checkpoint: pinned above the map, counting down to this student's own sitting ---------- */
+let CPA={}, cpbT=null;
+const cpEnd=a=>a&&(a.dueB||a.dueA);
+function cpNext(){
+  const t=Date.now(),open=CPL.filter(c=>!CPM[c.id]&&!['cancelled','archived'].includes(c.stage));
+  const dated=open.filter(c=>CPA[c.id]&&cms(cpEnd(CPA[c.id]))>=t).sort((x,y)=>cms(CPA[x.id].openA)-cms(CPA[y.id].openA));
+  return dated[0]||open.find(c=>!CPA[c.id])||null;
+}
+const cms=v=>v&&v.toMillis?v.toMillis():v&&v.seconds!=null?v.seconds*1e3:+new Date(v)||0;
+const cpWhen=v=>new Date(cms(v)).toLocaleString('en-GB',{timeZone:'Asia/Colombo',weekday:'long',day:'numeric',month:'long',hour:'numeric',minute:'2-digit'});
+function cpBanner(){
+  const c=cpNext(); if(!c) return '';
+  const a=CPA[c.id], t=Date.now(), n='Checkpoint '+String(c.n||'').padStart(2,'0');
+  if(c.stage==='postponed') return '<a class="cpb" href="cp/index.html#'+esc(c.id)+'"><div class="k">'+n+'</div><h3>'+esc(c.title||'')+'</h3><div class="when">Postponed'+(c.notice?' — '+esc(c.notice):'')+'. Sir will give you a new date.</div></a>';
+  if(!a) return '<a class="cpb" href="cp/index.html#'+esc(c.id)+'"><div class="k">🏁 '+n+' is coming</div><h3>'+esc(c.title||'')+'</h3>'+
+    '<div class="when">'+esc(c.coverage||'')+'</div><div class="when" style="color:#93A0C8;margin-top:6px">Your date is coming soon — sir will place you in a sitting.</div></a>';
+  const live=t>=cms(a.openA);
+  return '<a class="cpb'+(live?' live':'')+'" href="cp/index.html#'+esc(c.id)+'">'+
+    '<div class="k">'+(live?'<span class="dot"></span>Live now · ':'🏁 Your next checkpoint · ')+n+'</div>'+
+    '<h3>'+esc(c.title||'')+'</h3><div class="when">📅 <b>'+esc(cpWhen(a.openA))+'</b>'+(c.coverage?' · '+esc(c.coverage):'')+'</div>'+
+    (live?'<div class="when" style="margin-top:8px">The paper is on now — upload each part before its time runs out.</div>'
+      :'<div class="clock" id="cpbClock"></div>')+
+    '<span class="go">'+(live?'▶ Open my exam':'See my timetable →')+'</span></a>';
+}
+function cpTick(){
+  const el=$('#cpbClock'), c=cpNext(), a=c&&CPA[c.id];
+  if(!el||!a){ clearInterval(cpbT); cpbT=null; return; }
+  let s=Math.max(0,Math.round((cms(a.openA)-Date.now())/1000));
+  if(!s){ clearInterval(cpbT); cpbT=null; paintMap(); return; }
+  const d=Math.floor(s/86400); s%=86400; const h=Math.floor(s/3600), m=Math.floor(s%3600/60), x=s%60;
+  el.innerHTML=[[d,d===1?'DAY':'DAYS'],[h,'HOURS'],[m,'MIN'],[x,'SEC']].map(([v,l])=>'<div><b>'+String(v).padStart(2,'0')+'</b><span>'+l+'</span></div>').join('');
+}
+function cpStart(){ if(cpbT) clearInterval(cpbT); cpbT=null; if($('#cpbClock')){ cpTick(); cpbT=setInterval(cpTick,1000); } }
+/* the card's last line: this student's own date, how far away it is, or what is happening */
+function cpLine(c){
+  const a=CPA[c.id], t=Date.now();
+  if(['postponed','cancelled'].includes(c.stage)||!a) return a?CP_TX[c.stage]||'':(c.stage==='confirmed'?'Date coming soon':CP_TX[c.stage]||'');
+  if(t>cms(cpEnd(a))) return 'Exam over · waiting for marks';
+  if(t>=cms(a.openA)) return '● Live now';
+  /* calendar days in Sri Lanka, so Thursday is "3 days" away on Monday at any hour */
+  const sl=v=>Math.floor((v+5.5*3600e3)/864e5), d=sl(cms(a.openA))-sl(t);
+  return new Date(cms(a.openA)).toLocaleDateString('en-GB',{timeZone:'Asia/Colombo',weekday:'short',day:'numeric',month:'short'})+' · '+(d<=0?'today':d===1?'tomorrow':d+' days left');
+}
 function cpCards(after){
   const n=(ROAD.weeks||[]).length;
   return CPL.filter(c=>after<0?!(c.afterWeek>=1&&c.afterWeek<=n):c.afterWeek===after).map(c=>{
@@ -890,7 +952,7 @@ function cpCards(after){
       '<span class="num">CP'+String(c.n||'').padStart(2,'0')+'</span>'+
       '<b>'+esc(c.title||'Checkpoint paper')+'</b>'+
       '<span>'+esc(c.coverage||'Checkpoint paper')+'</span>'+
-      '<span style="color:'+(go?'#FFC93C':r?'#7CF29B':'#93A0C8')+'">'+(r?(r.absent?'Absent':(r.rank?'Rank #'+r.rank+' of '+r.of:'Results out')+(r.trophy?' \u00B7 \uD83C\uDFC6':'')):(CP_TX[c.stage]||''))+'</span>'+
+      '<span style="color:'+(go?'#FFC93C':r?'#7CF29B':'#93A0C8')+'">'+(r?(r.absent?'Absent':(r.rank?'Rank #'+r.rank+' of '+r.of:'Results out')+(r.trophy?' \u00B7 \uD83C\uDFC6':'')):cpLine(c))+'</span>'+
     '</a>';}).join('');
 }
 

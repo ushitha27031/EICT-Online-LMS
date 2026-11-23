@@ -82,6 +82,34 @@ textarea,input{font:inherit;background:#0a1029;color:var(--paper);border:1px sol
 @keyframes pulse{0%{box-shadow:0 0 0 0 rgba(124,242,155,.8)}100%{box-shadow:0 0 0 18px rgba(124,242,155,0)}}
 @keyframes draw{to{stroke-dashoffset:0}}
 details summary{cursor:pointer;color:var(--dim);font-weight:700;margin-top:10px}
+.sendlist{display:grid;gap:6px;margin-top:8px}.sendlist div{display:flex;gap:10px;align-items:baseline;flex-wrap:wrap;background:#0a1029;border:1px solid var(--wire);border-radius:11px;padding:9px 12px}
+.slot{border:1px solid var(--wire);border-radius:13px;padding:12px;margin:10px 0;background:#0b1338}
+.slot-h{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:6px}.slot-h b{font:700 15.5px var(--d)}.slot-i{font-size:22px}
+.upbtns{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:8px 0 2px}.upbtns .btn{padding:14px 10px;font-size:15px}
+/* the camera scanner */
+.scan{position:fixed;inset:0;z-index:50;background:#02040d;display:grid;grid-template-rows:auto 1fr auto auto;color:#fff}
+.scan-top{display:flex;justify-content:space-between;align-items:center;padding:12px 16px;gap:10px}
+.scan-top .x{background:#ffffff1a;border:0;color:#fff;font-size:18px;width:40px;height:40px;border-radius:50%;cursor:pointer}
+.scan-view{position:relative;overflow:hidden;background:#000}
+.scan-view video{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+.scan.native .scan-view video{display:none}
+.scan-frame{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);height:86%;aspect-ratio:1/1.414;max-width:90%;border-radius:10px;box-shadow:0 0 0 9999px rgba(0,0,0,.45)}
+.scan-frame i{position:absolute;width:28px;height:28px;border:4px solid var(--gold)}
+.scan-frame i:nth-child(1){left:-2px;top:-2px;border-right:0;border-bottom:0;border-radius:10px 0 0 0}.scan-frame i:nth-child(2){right:-2px;top:-2px;border-left:0;border-bottom:0;border-radius:0 10px 0 0}
+.scan-frame i:nth-child(3){left:-2px;bottom:-2px;border-right:0;border-top:0;border-radius:0 0 0 10px}.scan-frame i:nth-child(4){right:-2px;bottom:-2px;border-left:0;border-top:0;border-radius:0 0 10px 0}
+.scan.native .scan-frame{display:none}
+.scan-hint{position:absolute;left:0;right:0;bottom:10px;text-align:center;margin:0;font-weight:700;text-shadow:0 1px 6px #000;padding:0 16px}
+.scan.native .scan-hint{top:40%;bottom:auto;font-size:17px}
+.scan-flash{position:absolute;inset:0;background:#fff;opacity:0;pointer-events:none}.scan-flash.go{animation:flash .45s ease-out}
+@keyframes flash{0%{opacity:.85}100%{opacity:0}}
+.scan-strip{display:flex;gap:8px;overflow-x:auto;padding:10px 12px;min-height:96px;background:#060a1c}
+.scan-strip .pg{position:relative;flex:none;width:62px;height:86px;border-radius:7px;overflow:hidden;border:2px solid #ffffff33;animation:rise .3s both}
+.scan-strip img{width:100%;height:100%;object-fit:cover;background:#fff}.scan-strip span{position:absolute;left:4px;bottom:2px;font:700 12px var(--d);text-shadow:0 0 4px #000}
+.scan-strip button{position:absolute;right:2px;top:2px;width:22px;height:22px;border-radius:50%;border:0;background:#000a;color:#fff;font-size:12px;cursor:pointer}
+.scan-bar{display:grid;grid-template-columns:1fr auto 1fr;align-items:center;gap:10px;padding:12px 16px calc(14px + env(safe-area-inset-bottom))}
+.scan-bar .btn{justify-self:end}.scan-sw{font-size:13px;font-weight:700;display:flex;gap:6px;align-items:center}.scan-sw input{width:18px;height:18px}
+.shutter{width:72px;height:72px;border-radius:50%;border:5px solid #fff;background:var(--gold);cursor:pointer;box-shadow:0 0 0 4px #ffffff33;transition:transform .1s}
+.shutter:active{transform:scale(.9)}
 @media(max-width:560px){.link{grid-template-columns:auto 1fr auto auto}.link .dn{display:none}.big{font-size:26px}}
 @media(prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
 </style>
@@ -198,7 +226,7 @@ function myStage(c,a,r){
   const t=now();
   if(t<ms(a.openA)) return ['Coming up','c'];
   if(t<=ms(twoParts(c)?a.dueB:a.dueA)) return ['● Live now','live'];
-  return [S.A?'Sent · waiting for marks':'Exam over','o'];
+  return [S.A||S.B||S.C?'Sent · waiting for marks':'Exam over','o'];
 }
 function drawList(){
   if(!CPS.length){$('#app').innerHTML='<div class="card"><div class="k">Checkpoint papers</div><h2>Nothing yet</h2><p class="muted">A checkpoint paper appears here when sir opens one for your class — usually after weeks 8, 16, 24 and 32 of the study plan.</p></div>';return;}
@@ -212,7 +240,7 @@ async function openCp(id){
   if(location.hash.slice(1)!==id) history.replaceState(null,'','#'+id);
   $('#app').onclick=null;$('#app').innerHTML='<p class="muted">Loading…</p>';
   const g=p=>FB.getDoc(p).then(d=>d.exists()?d.data():null).catch(()=>null);
-  [A,S.A,S.B]=await Promise.all([g(D('cp',id,'assign',U.uid)),g(D('cp',id,'subs',U.uid+'_A')),g(D('cp',id,'subs',U.uid+'_B'))]);
+  [A,S.A,S.B,S.C]=await Promise.all([g(D('cp',id,'assign',U.uid)),g(D('cp',id,'subs',U.uid+'_A')),g(D('cp',id,'subs',U.uid+'_B')),g(D('cp',id,'subs',U.uid+'_C'))]);
   R=null;if(ME.code){const m=await g(D('marks',ME.code));R=m&&m.cp&&m.cp[id]||null;}
   draw();clearInterval(tick);tick=setInterval(()=>{if(!document.hidden&&!document.activeElement.matches('input,textarea'))drawLive();},1000);
 }
@@ -234,12 +262,18 @@ function draw(){
   else $('#body').innerHTML='<div class="card"><p class="muted">Your exam time will appear here soon. If the date has already been announced, please contact sir.</p></div>';
 }
 
-/* the exam itself */
+/* the exam itself: Part A sends one upload, Part B one or two (structured, essay) */
 const PARTS=()=>[['A',CUR.secA,'openA','endA','dueA'],...(twoParts(CUR)?[['B',CUR.secB,'openB','endB','dueB']]:[])];
-const LINKS={A:null,B:null};
+const UPL={A:'MCQ answer sheet',B:'Structured questions (on the question paper)',C:'Essay (on separate sheets)'};
+const upl=k=>(CUR.upl&&CUR.upl[k])||UPL[k];
+const essayOn=()=>twoParts(CUR)&&CUR.essay!==false;
+const slotsOf=p=>p==='A'?['A']:essayOn()?['B','C']:['B'];
+const partOf=k=>k==='A'?'A':'B';
+const ICON={A:'📝',B:'📄',C:'✍️'};
+const LINKS={A:null,B:null,C:null};
 function drawExam(){
   const c=CUR,a=A,two=twoParts(c);
-  $('#body').innerHTML=`<div class="card"><div class="k">Your exam</div>
+  $('#body').innerHTML=`<div class="card"><div class="k">Your exam${a.label&&a.label!=='Your exam'?' · '+esc(a.label):''}</div>
       <h3 style="margin-top:4px">📅 ${fmt(a.start)}</h3>
       <div class="tl">${PARTS().map(([p,s,o,e])=>`<b>${esc(s.title)}</b><span>${fmtT(a[o])} – ${fmtT(a[e])}</span><span class="muted">${dur(s.min)}</span>${p==='A'&&two&&c.breakMin?`<b>Break</b><span>${fmtT(a.endA)} – ${fmtT(a.openB)}</span><span class="muted">${c.breakMin} min</span>`:''}`).join('')}</div>
       <p class="muted">Sri Lanka time · ${MEDN[a.medium]||''} medium paper · you have ${c.graceMin} minutes after each part to scan and upload your answers.</p>
@@ -247,40 +281,50 @@ function drawExam(){
       <div style="display:flex;gap:10px;flex-wrap:wrap">${a.zoom?`<a class="btn b1" href="${esc(a.zoom)}" target="_blank" rel="noopener">🎥 Join Zoom</a>`:'<span class="muted">The Zoom link will appear here.</span>'}
         ${a.ack?'<span class="pill o" style="align-self:center">✓ You confirmed this time</span>':'<button class="btn b2" id="ack">✓ I will be there</button>'}</div>
       ${a.ack?'':'<p class="muted">Cannot make it? Tell sir now.</p>'}</div>
+    <div class="card"><div class="k">What you send</div>
+      <div class="sendlist">${PARTS().flatMap(([p,s])=>slotsOf(p).map(k=>`<div><span>${ICON[k]}</span><b>${esc(upl(k))}</b><span class="muted">after ${esc(s.title)}</span></div>`)).join('')}</div>
+      <p class="muted" style="margin:8px 0 0">Press <b>📷 Scan with camera</b> and photograph each page — it becomes one PDF and goes straight to sir. A CamScanner PDF works too.</p></div>
     <div class="card"><div class="k">Rules</div>
       <p style="white-space:pre-line;margin:6px 0">${esc(c.instructions||'')}</p>${c.materials?`<p><b>Allowed:</b> ${esc(c.materials)}</p>`:''}
       <p class="muted">Keep your camera on during the Zoom session so sir can supervise. If you need an accommodation, tell sir before the exam.</p></div>
     ${PARTS().map(([p,s],i)=>`<div class="part" id="part${p}"><div class="k">Step ${i+2} · ${esc(s.title)}</div><div id="pb${p}"></div></div>`).join('')}`;
   if($('#ack')) $('#ack').onclick=e=>act(e.currentTarget,async()=>{await FB.updateDoc(D('cp',c.id,'assign',U.uid),{ack:true,ackAt:FB.serverTimestamp()});A.ack=true;drawExam();},'✓ See you there');
-  PARTS().forEach(([p])=>{LINKS[p]=(S[p]&&S[p].links||[]).slice();if(!LINKS[p].length)LINKS[p]=[''];drawPart(p);});
+  ['A','B','C'].forEach(k=>{LINKS[k]=(S[k]&&S[k].links||[]).slice();if(!LINKS[k].length)LINKS[k]=[''];});
+  PARTS().forEach(([p])=>drawPart(p));
   drawLive();
 }
 function partState(p){const a=A,t=now(),[o,e,d]=p==='A'?['openA','endA','dueA']:['openB','endB','dueB'];
   if(['postponed','cancelled'].includes(CUR.stage)) return 'closed';
   return t<ms(a[o])?'soon':t<ms(a[e])?'writing':t<=ms(a[d])?'upload':'closed';}
-const lastState={A:'',B:''},BUSY={A:false,B:false},FRESH={A:false,B:false};
+const lastState={A:'',B:''},BUSY={A:false,B:false,C:false},FRESH={A:false,B:false,C:false};
 function drawPart(p){
   if(!$('#pb'+p)) return;
-  const a=A,st=partState(p),[o,e,d]=p==='A'?['openA','endA','dueA']:['openB','endB','dueB'],sub=S[p];lastState[p]=st;
+  const a=A,st=partState(p),[o,e,d]=p==='A'?['openA','endA','dueA']:['openB','endB','dueB'];lastState[p]=st;
   $('#part'+p).classList.toggle('live',st==='writing'||st==='upload');
-  const canEdit=st==='writing'||st==='upload',title=esc(p==='A'?CUR.secA.title:CUR.secB.title);
-  const got=sub?`<div class="got ${FRESH[p]?'fresh':''}"><svg viewBox="0 0 48 48"><path d="M13 25l8 8 16-17"/></svg>
-      <div><b class="okc">Sir has your ${title} answers</b><div class="muted">Sent ${fmt(sub.at,{weekday:undefined})} · ${sub.links.length} file${sub.links.length>1?'s':''}</div></div></div>
-    <div class="files">${sub.links.map((l,i)=>`<div class="file"><span>📄</span><span class="nm">File ${i+1}</span><a href="${esc(l)}" target="_blank" rel="noopener">Open ↗</a>${canEdit&&sub.links.length>1?`<button class="x" data-del="${p},${i}" title="Remove this file">✕</button>`:''}</div>`).join('')}</div>`:'';
-  FRESH[p]=false;
   $('#pb'+p).innerHTML=`<div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;justify-content:space-between;margin-top:6px">
       <span>${st==='soon'?`Opens <b>${fmt(a[o])}</b>`:st==='writing'?`<b class="okc">Writing now</b> · ends ${fmtT(a[e])}`:st==='upload'?`<b style="color:var(--gold)">Scan and upload now</b> · closes ${fmtT(a[d])}`:`Closed ${fmt(a[d],{weekday:undefined})}`}</span>
       <span class="muted" data-left="${p}"></span></div>
-    <div style="margin:10px 0"><button class="btn b1" data-paper="${p}" ${st==='soon'?'disabled':''}>📄 ${st==='soon'?'Paper opens at '+fmtT(a[o]):'Open the question paper'}</button></div>
-    <h3>Your answer sheet</h3>
-    ${got}${!sub&&st==='closed'?'<p class="err">Nothing was sent for this part.</p>':''}
-    ${canEdit?(UPURL?`<div id="ul${p}"></div>
-        <button class="btn b2 bigup" data-pick="${p}">${sub?'➕ Add another file':'📷 Upload my answer sheet'}</button>
-        <input type="file" class="hide" id="fi${p}" accept="application/pdf,image/*" multiple>
-        <p class="muted">CamScanner → scan every page in order → <b>Share → PDF</b> → save → choose it here. Photos work too. It goes straight to sir.</p>
-        <details><summary>Upload not working? Send a Google Drive link instead</summary>${linkEditor(p,sub)}</details>`
-      :`<p class="muted">Scan every page in order with CamScanner → save as <b>one PDF</b> → Google Drive → Share → <b>Anyone with the link</b> → Copy link → paste below.</p>${linkEditor(p,sub)}`)
-    :''}`;
+    ${CUR.printed?`<p class="note" style="margin:10px 0">📄 Write on the <b>printed paper</b> sir gave you${p==='A'?' — mark your answers on the MCQ answer sheet':''}.</p>`
+      :`<div style="margin:10px 0"><button class="btn b1" data-paper="${p}" ${st==='soon'?'disabled':''}>📄 ${st==='soon'?'Paper opens at '+fmtT(a[o]):'Open the question paper'}</button></div>`}
+    ${slotsOf(p).map(k=>`<div class="slot" id="sl${k}"></div>`).join('')}`;
+  slotsOf(p).forEach(drawSlot);
+}
+function drawSlot(k){
+  const box=$('#sl'+k);if(!box) return;
+  const st=partState(partOf(k)),sub=S[k],canEdit=st==='writing'||st==='upload',label=esc(upl(k));
+  const got=sub?`<div class="got ${FRESH[k]?'fresh':''}"><svg viewBox="0 0 48 48"><path d="M13 25l8 8 16-17"/></svg>
+      <div><b class="okc">Sir has your ${label}</b><div class="muted">Sent ${fmt(sub.at,{weekday:undefined})} · ${sub.links.length} file${sub.links.length>1?'s':''}</div></div></div>
+    <div class="files">${sub.links.map((l,i)=>`<div class="file"><span>📄</span><span class="nm">File ${i+1}</span><a href="${esc(l)}" target="_blank" rel="noopener">Open ↗</a>${canEdit&&sub.links.length>1?`<button class="x" data-del="${k},${i}" title="Remove this file">✕</button>`:''}</div>`).join('')}</div>`:'';
+  FRESH[k]=false;
+  box.innerHTML=`<div class="slot-h"><span class="slot-i">${ICON[k]}</span><b>${label}</b>${sub?'<span class="pill o">Sent</span>':''}</div>
+    ${got}${!sub&&st==='closed'?'<p class="err">Nothing was sent for this.</p>':''}
+    ${canEdit?(UPURL?`<div id="ul${k}"></div>
+        <div class="upbtns"><button class="btn b2" data-scan="${k}">📷 ${sub?'Scan more pages':'Scan with camera'}</button>
+          <button class="btn" data-pick="${k}">📁 ${sub?'Add a file':'Choose a PDF or photos'}</button></div>
+        <input type="file" class="hide" id="fi${k}" accept="application/pdf,image/*" multiple>
+        <details><summary>Upload not working? Send a Google Drive link instead</summary>${linkEditor(k,sub)}</details>`
+      :`<p class="muted">Scan every page in order with CamScanner → save as <b>one PDF</b> → Google Drive → Share → <b>Anyone with the link</b> → Copy link → paste below.</p>${linkEditor(k,sub)}`)
+    :st==='soon'?'<p class="muted">You can send it when this part starts.</p>':''}`;
 }
 function linkEditor(p,sub){
   return `<div id="lk${p}">${LINKS[p].map((l,i)=>`<div class="link"><span class="i">${i+1}.</span><input data-l="${p}" data-i="${i}" value="${esc(l)}" placeholder="https://drive.google.com/…" inputmode="url">
@@ -293,17 +337,17 @@ function drawLive(){
   const a=A,t=now(),two=twoParts(CUR),ev=[[a.openA,CUR.secA.title+' starts'],[a.endA,CUR.secA.title+' ends'],[a.dueA,'Upload closes'],
     ...(two?[[a.openB,CUR.secB.title+' starts'],[a.endB,CUR.secB.title+' ends'],[a.dueB,'Upload closes']]:[])].find(x=>ms(x[0])>t);
   $('#cd').innerHTML=ev?`<div class="muted">${esc(ev[1])} in</div><div class="big">${left(ev[0])}</div>`:'<div class="okc">This exam is over. Your marks appear here as soon as sir sends them.</div>';
-  PARTS().forEach(([p])=>{if(partState(p)!==lastState[p]&&!BUSY[p]) drawPart(p);const el=document.querySelector(`[data-left="${p}"]`);if(!el)return;
+  PARTS().forEach(([p])=>{if(partState(p)!==lastState[p]&&!slotsOf(p).some(k=>BUSY[k])&&!SCAN) drawPart(p);const el=document.querySelector(`[data-left="${p}"]`);if(!el)return;
     const st=partState(p),k=p==='A'?{soon:'openA',writing:'endA',upload:'dueA'}:{soon:'openB',writing:'endB',upload:'dueB'};el.textContent=k[st]?left(a[k[st]])+' left':'';});
 }
 
-/* ---------- sending the answer sheet ---------- */
-async function saveSub(p,links){
-  const v={uid:U.uid,code:ME.code||'',part:p,session:A.session,links,at:FB.serverTimestamp()};
-  for(let k=0;k<3;k++){
-    try{await FB.setDoc(D('cp',CUR.id,'subs',U.uid+'_'+p),v);S[p]={...v,at:FB.Timestamp.now()};LINKS[p]=links.slice();return;}
+/* ---------- sending ---------- */
+async function saveSub(k,links){
+  const v={uid:U.uid,code:ME.code||'',part:k,session:A.session,links,at:FB.serverTimestamp()};
+  for(let i=0;i<3;i++){
+    try{await FB.setDoc(D('cp',CUR.id,'subs',U.uid+'_'+k),v);S[k]={...v,at:FB.Timestamp.now()};LINKS[k]=links.slice();return;}
     catch(x){if(/permission/.test(x.code||'')) stop('The upload time for this part has closed. If something went wrong, tell sir now.');
-      await new Promise(r=>setTimeout(r,1500*(k+1)));}}
+      await new Promise(r=>setTimeout(r,1500*(i+1)));}}
   stop('Could not send — check your internet and try again.');
 }
 /* big phone photos are shrunk before they go, so they upload fast on mobile data */
@@ -316,49 +360,165 @@ async function shrink(f){
 }
 const UPERR={closed:'The upload time for this part has closed. Tell sir now.',assign:'You are not on the list for this paper. Contact sir.',type:'Only PDF files or photos can be uploaded.',
   big:'That file is too big (over 20 MB). Save it from CamScanner as a smaller PDF.',signin:'Please sign in again and retry.',empty:'That file is empty.',checkpoint:'This paper is not open. Reload the page.'};
-async function uploadFiles(p,files){
-  const box=$('#ul'+p),pickBtn=document.querySelector(`[data-pick="${p}"]`);
-  files=[...files];if(!files.length) return;
-  const have=(S[p]&&S[p].links)||[];
-  if(have.length+files.length>20) return toast('At most 20 files — put the pages into one PDF.','bad');
-  for(const f of files) if(!/^(application\/pdf|image\/)/.test(f.type||'')) return toast(f.name+' is not a PDF or a photo.','bad');
-  BUSY[p]=true;pickBtn.disabled=true;
-  box.innerHTML=files.map((f,i)=>`<div class="file" id="u${p}${i}"><span>⏫</span><div class="nm">${esc(f.name)}<div class="muted">${(f.size/1048576).toFixed(1)} MB · uploading…</div><div class="prog"><i></i></div></div></div>`).join('');
+async function uploadFiles(k,files){
+  const box=$('#ul'+k),btns=document.querySelectorAll(`[data-pick="${k}"],[data-scan="${k}"]`);
+  files=[...files];if(!files.length) return false;
+  const have=(S[k]&&S[k].links)||[];
+  if(have.length+files.length>20){toast('At most 20 files — put the pages into one PDF.','bad');return false;}
+  for(const f of files) if(!/^(application\/pdf|image\/)/.test(f.type||'')){toast(f.name+' is not a PDF or a photo.','bad');return false;}
+  BUSY[k]=true;btns.forEach(b=>b.disabled=true);
+  if(box) box.innerHTML=files.map((f,i)=>`<div class="file" id="u${k}${i}"><span>⏫</span><div class="nm">${esc(f.name)}<div class="muted">${(f.size/1048576).toFixed(1)} MB · uploading…</div><div class="prog"><i></i></div></div></div>`).join('');
   const urls=[];let fail='';
   for(let i=0;i<files.length;i++){
-    const row=$(`#u${p}${i}`);
+    const row=$(`#u${k}${i}`);
     try{
       const f=await shrink(files[i]);
       if(f.size>20*1048576) stop(UPERR.big);
       const data=await new Promise((ok,no)=>{const r=new FileReader();r.onload=()=>ok(String(r.result).split(',')[1]);r.onerror=no;r.readAsDataURL(f);});
       const token=await U.getIdToken();
       let j=null;
-      for(let k=0;k<2&&!j;k++){try{j=await (await fetch(UPURL,{method:'POST',body:JSON.stringify({token,cp:CUR.id,part:p,mime:f.type,data})})).json();}catch(x){if(k) stop('The upload did not get through. Check your internet and try again.');}}
+      /* the essay goes in with part B: same times, same folder */
+      for(let n=0;n<2&&!j;n++){try{j=await (await fetch(UPURL,{method:'POST',body:JSON.stringify({token,cp:CUR.id,part:partOf(k),mime:f.type,data})})).json();}catch(x){if(n) stop('The upload did not get through. Check your internet and try again.');}}
       if(!j.ok) stop(UPERR[j.error]||'Upload refused: '+j.error);
-      urls.push(j.url);row.innerHTML=`<span>✅</span><span class="nm">${esc(files[i].name)}</span><span class="okc">Uploaded</span>`;
-    }catch(e){fail=e.user?e.message:'The upload did not get through. Check your internet and try again.';row.innerHTML=`<span>⚠️</span><span class="nm">${esc(files[i].name)}</span><span class="err">Failed</span>`;break;}
+      urls.push(j.url);if(row) row.innerHTML=`<span>✅</span><span class="nm">${esc(files[i].name)}</span><span class="okc">Uploaded</span>`;
+    }catch(e){fail=e.user?e.message:'The upload did not get through. Check your internet and try again.';if(row) row.innerHTML=`<span>⚠️</span><span class="nm">${esc(files[i].name)}</span><span class="err">Failed</span>`;break;}
   }
   let saved=false;
-  try{if(urls.length){await saveSub(p,[...have,...urls]);FRESH[p]=true;saved=true;}}catch(e){fail=e.message;}
-  BUSY[p]=false;
-  if(saved) toast(fail?'Some files went through. '+fail:'✓ Sent! Sir has your answer sheet.',fail?'bad':'ok');
+  try{if(urls.length){await saveSub(k,[...have,...urls]);FRESH[k]=true;saved=true;}}catch(e){fail=e.message;}
+  BUSY[k]=false;
+  if(saved) toast(fail?'Some files went through. '+fail:'✓ Sent! Sir has your '+upl(k)+'.',fail?'bad':'ok');
   else toast(fail,'bad');
-  if(saved||!fail) drawPart(p);else pickBtn.disabled=false;
+  if(saved||!fail) drawSlot(k);else btns.forEach(b=>b.disabled=false);
+  return saved&&!fail;
 }
+
+/* ---------- the camera scanner: photograph each page, sent as one PDF ---------- */
+let SCAN=null;
+const scanEl=()=>$('#scan');
+function openScanner(k){
+  SCAN={k,pages:[],stream:null,native:false};
+  const ov=document.createElement('div');ov.id='scan';ov.className='scan';
+  ov.innerHTML=`<div class="scan-top"><div><b>${ICON[k]} ${esc(upl(k))}</b><div class="muted" id="scanN">No pages yet</div></div><button class="x" data-scanx aria-label="Close">✕</button></div>
+    <div class="scan-view"><video playsinline muted autoplay></video>
+      <div class="scan-frame"><i></i><i></i><i></i><i></i></div><div class="scan-flash"></div>
+      <p class="scan-hint" id="scanHint">Starting the camera…</p></div>
+    <div class="scan-strip" id="scanStrip"></div>
+    <div class="scan-bar"><label class="scan-sw"><input type="checkbox" id="scanEnh" checked> ✨ Clean scan</label>
+      <button class="shutter" data-shoot aria-label="Take a photo of this page"></button>
+      <button class="btn b2" data-scandone disabled>Send ✓</button></div>
+    <input type="file" class="hide" id="scanCam" accept="image/*" capture="environment">`;
+  document.body.appendChild(ov);document.body.style.overflow='hidden';
+  const v=ov.querySelector('video');
+  (async()=>{
+    try{
+      if(!navigator.mediaDevices||!navigator.mediaDevices.getUserMedia) throw new Error('no camera api');
+      SCAN.stream=await navigator.mediaDevices.getUserMedia({video:{facingMode:{ideal:'environment'},width:{ideal:2560},height:{ideal:1920}},audio:false});
+      v.srcObject=SCAN.stream;await v.play().catch(()=>{});
+      $('#scanHint').textContent='Fit one page inside the frame, hold still, then tap the button';
+    }catch(e){
+      /* no live camera (or permission refused): the phone's own camera app takes each page */
+      SCAN.native=true;ov.classList.add('native');
+      $('#scanHint').innerHTML='Tap the button to take a photo of each page with your camera.';
+    }
+  })();
+}
+function closeScanner(){
+  if(!SCAN) return;if(SCAN.stream) SCAN.stream.getTracks().forEach(t=>t.stop());
+  const ov=scanEl();if(ov) ov.remove();document.body.style.overflow='';SCAN=null;
+}
+/* the part of the picture inside the frame, as a page */
+function grab(){
+  const ov=scanEl(),v=ov.querySelector('video'),fr=ov.querySelector('.scan-frame').getBoundingClientRect(),vr=v.getBoundingClientRect();
+  const vw=v.videoWidth,vh=v.videoHeight;if(!vw) return null;
+  const sc=Math.max(vr.width/vw,vr.height/vh),ox=vr.left+(vr.width-vw*sc)/2,oy=vr.top+(vr.height-vh*sc)/2;   /* object-fit: cover */
+  let sx=(fr.left-ox)/sc,sy=(fr.top-oy)/sc,sw=fr.width/sc,sh=fr.height/sc;
+  sx=Math.max(0,sx);sy=Math.max(0,sy);sw=Math.min(vw-sx,sw);sh=Math.min(vh-sy,sh);
+  const k=Math.min(1,1800/Math.max(sw,sh)),c=document.createElement('canvas');c.width=Math.round(sw*k);c.height=Math.round(sh*k);
+  c.getContext('2d').drawImage(v,sx,sy,sw,sh,0,0,c.width,c.height);return c;
+}
+function fromImage(img){
+  const k=Math.min(1,1800/Math.max(img.width,img.height)),c=document.createElement('canvas');c.width=Math.round(img.width*k);c.height=Math.round(img.height*k);
+  c.getContext('2d').drawImage(img,0,0,c.width,c.height);return c;
+}
+/* a cleaner, scanner-like page: grey, with the paper pushed to white and the ink darker */
+function clean(c){
+  const x=c.getContext('2d'),im=x.getImageData(0,0,c.width,c.height),d=im.data,n=d.length/4,h=new Uint32Array(256);
+  for(let i=0;i<d.length;i+=4){const g=(d[i]*299+d[i+1]*587+d[i+2]*114)/1000|0;d[i]=g;h[g]++;}
+  let lo=0,hi=255,acc=0;for(let i=0;i<256;i++){acc+=h[i];if(acc>n*.02){lo=i;break;}}
+  acc=0;for(let i=255;i>=0;i--){acc+=h[i];if(acc>n*.25){hi=i;break;}}
+  const r=Math.max(40,hi-lo);
+  for(let i=0;i<d.length;i+=4){let v=(d[i]-lo)*255/r;v=v>255?255:v<0?0:v;v=255*Math.pow(v/255,1.35);d[i]=d[i+1]=d[i+2]=v;}
+  x.putImageData(im,0,0);return c;
+}
+function addPage(c){
+  if(!SCAN) return;if(SCAN.pages.length>=30) return toast('30 pages at most.','bad');
+  if($('#scanEnh').checked) clean(c);
+  SCAN.pages.push(c.toDataURL('image/jpeg',.8));
+  const ov=scanEl();ov.querySelector('.scan-flash').classList.remove('go');void ov.offsetWidth;ov.querySelector('.scan-flash').classList.add('go');
+  drawStrip();
+}
+function drawStrip(){
+  const n=SCAN.pages.length;
+  $('#scanStrip').innerHTML=SCAN.pages.map((p,i)=>`<div class="pg"><img src="${p}" alt="Page ${i+1}"><span>${i+1}</span><button data-pgdel="${i}" aria-label="Remove page ${i+1}">✕</button></div>`).join('');
+  $('#scanStrip').scrollLeft=1e6;
+  $('#scanN').textContent=n?n+' page'+(n>1?'s':'')+' — next page, or Send':'No pages yet';
+  const b=scanEl().querySelector('[data-scandone]');b.disabled=!n;b.textContent=n?'Send '+n+' page'+(n>1?'s':'')+' ✓':'Send ✓';
+}
+let JSPDF=null;
+function loadPdfMaker(){
+  if(window.jspdf) return Promise.resolve(window.jspdf.jsPDF);
+  if(!JSPDF) JSPDF=new Promise((ok,no)=>{const s=document.createElement('script');s.src='https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js';
+    s.onload=()=>ok(window.jspdf.jsPDF);s.onerror=()=>{JSPDF=null;no(new Error('pdf'));};document.head.appendChild(s);});
+  return JSPDF;
+}
+async function finishScan(btn){
+  const {k,pages}=SCAN;if(!pages.length) return;
+  btn.disabled=true;btn.innerHTML='<span class="spin"></span> Making the PDF…';
+  let files;
+  try{
+    const jsPDF=await loadPdfMaker(),doc=new jsPDF({unit:'mm',format:'a4',compress:true});
+    for(let i=0;i<pages.length;i++){
+      const img=await new Promise(r=>{const m=new Image();m.onload=()=>r(m);m.src=pages[i];});
+      if(i) doc.addPage();const W=210,H=297,M=6,s=Math.min((W-2*M)/img.width,(H-2*M)/img.height),w=img.width*s,h=img.height*s;
+      doc.addImage(pages[i],'JPEG',(W-w)/2,(H-h)/2,w,h,undefined,'FAST');}
+    files=[new File([doc.output('blob')],(ME.code||'answers')+' '+upl(k).split(' (')[0]+'.pdf',{type:'application/pdf'})];
+  }catch(e){
+    /* no PDF maker (offline CDN): send the pages as photos, in order */
+    files=pages.map((p,i)=>{const b=atob(p.split(',')[1]),a=new Uint8Array(b.length);for(let j=0;j<b.length;j++)a[j]=b.charCodeAt(j);return new File([a],'page '+(i+1)+'.jpg',{type:'image/jpeg'});});
+  }
+  btn.innerHTML='<span class="spin"></span> Sending to sir…';
+  const kk=k;closeScanner();
+  await uploadFiles(kk,files);
+}
+document.addEventListener('click',e=>{
+  if(!SCAN) return;const t=e.target;
+  if(t.closest('[data-scanx]')){if(!SCAN.pages.length||confirm('Close the scanner? The pages you took are not sent.')) closeScanner();return;}
+  if(t.closest('[data-shoot]')){if(SCAN.native) return $('#scanCam').click();const c=grab();if(c) addPage(c);return;}
+  const d=t.closest('[data-pgdel]');if(d){SCAN.pages.splice(+d.dataset.pgdel,1);drawStrip();return;}
+  const s=t.closest('[data-scandone]');if(s) return finishScan(s);
+});
+document.addEventListener('change',async e=>{
+  if(!SCAN||e.target.id!=='scanCam'||!e.target.files[0]) return;
+  const f=e.target.files[0];e.target.value='';
+  try{const bm=await createImageBitmap(f);addPage(fromImage(bm));}
+  catch(x){const img=await new Promise(r=>{const m=new Image();m.onload=()=>r(m);m.onerror=()=>r(null);m.src=URL.createObjectURL(f);});if(img) addPage(fromImage(img));else toast('Could not read that photo.','bad');}
+});
+
 const tidy=v=>String(v||'').replace(/[​-‍﻿]/g,'').trim();
 $('#app').addEventListener('input',e=>{const i=e.target;if(i.dataset.l) LINKS[i.dataset.l][+i.dataset.i]=i.value;});
-$('#app').addEventListener('change',e=>{const i=e.target;if(/^fi[AB]$/.test(i.id||'')){const fs=[...i.files];i.value='';uploadFiles(i.id[2],fs);}});
+$('#app').addEventListener('change',e=>{const i=e.target;if(/^fi[ABC]$/.test(i.id||'')){const fs=[...i.files];i.value='';uploadFiles(i.id[2],fs);}});
 $('#app').addEventListener('click',async e=>{
   const b=e.target.closest('button');if(!b||!A) return;
   const sp=k=>b.dataset[k].split(','),pl=(p,i)=>[p,+i];
-  if(b.dataset.pick){$('#fi'+b.dataset.pick).click();}
-  else if(b.dataset.add){LINKS[b.dataset.add].push('');drawPart(b.dataset.add);}
-  else if(b.dataset.rm){const [p,i]=pl(...sp('rm'));LINKS[p].splice(i,1);if(!LINKS[p].length)LINKS[p]=[''];drawPart(p);}
-  else if(b.dataset.up){const [p,i]=pl(...sp('up'));[LINKS[p][i-1],LINKS[p][i]]=[LINKS[p][i],LINKS[p][i-1]];drawPart(p);}
-  else if(b.dataset.dn){const [p,i]=pl(...sp('dn'));[LINKS[p][i+1],LINKS[p][i]]=[LINKS[p][i],LINKS[p][i+1]];drawPart(p);}
+  if(b.dataset.scan){openScanner(b.dataset.scan);}
+  else if(b.dataset.pick){$('#fi'+b.dataset.pick).click();}
+  else if(b.dataset.add){LINKS[b.dataset.add].push('');drawSlot(b.dataset.add);}
+  else if(b.dataset.rm){const [p,i]=pl(...sp('rm'));LINKS[p].splice(i,1);if(!LINKS[p].length)LINKS[p]=[''];drawSlot(p);}
+  else if(b.dataset.up){const [p,i]=pl(...sp('up'));[LINKS[p][i-1],LINKS[p][i]]=[LINKS[p][i],LINKS[p][i-1]];drawSlot(p);}
+  else if(b.dataset.dn){const [p,i]=pl(...sp('dn'));[LINKS[p][i+1],LINKS[p][i]]=[LINKS[p][i],LINKS[p][i+1]];drawSlot(p);}
   else if(b.dataset.del){const [p,i]=pl(...sp('del'));
     if(!confirm('Remove file '+(i+1)+' from what sir receives?')) return;
-    act(b,async()=>{await saveSub(p,S[p].links.filter((_,k)=>k!==i));drawPart(p);},'File removed.');}
+    act(b,async()=>{await saveSub(p,S[p].links.filter((_,k)=>k!==i));drawSlot(p);},'File removed.');}
   else if(b.dataset.paper){
     const p=b.dataset.paper;
     act(b,async()=>{let d;
@@ -373,7 +533,7 @@ $('#app').addEventListener('click',async e=>{
       if(!links.length) stop('Paste the link to your answer file first.');
       const bad=links.find(l=>!/^https?:\/\/\S+$/i.test(l));if(bad) stop('This is not a link: '+bad.slice(0,60));
       if(links.length>20) stop('At most 20 links — put the pages into one PDF.');
-      await saveSub(p,links);FRESH[p]=true;drawPart(p);},'✓ Sent! Sir has your answer sheet.');
+      await saveSub(p,links);FRESH[p]=true;drawSlot(p);},'✓ Sent! Sir has your '+upl(p)+'.');
   }
 });
 
