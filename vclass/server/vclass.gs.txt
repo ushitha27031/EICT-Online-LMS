@@ -1,0 +1,204 @@
+/* ============================================================
+   EICT Virtual Academy — the class server (Google Apps Script)
+
+   It keeps everything secret off the website:
+     • your Zoom Meeting SDK Client ID + Client Secret
+     • the meeting number and passcode
+     • the tute PDFs (in your Google Drive)
+   and hands them out only to a signed-in EICT student whom you
+   invited to today's virtual class, while the class is open.
+
+   ----------------------------------------------------------------
+   SET UP ONCE (about 15 minutes)
+   ----------------------------------------------------------------
+   1. https://script.google.com → New project → name it
+      "EICT Virtual Class". Delete what is there, paste this whole
+      file, press Save.
+
+   2. Project Settings (⚙ on the left) → Script properties →
+      Add these (names exactly as written):
+        ZOOM_SDK_KEY      Client ID of your Zoom "General app" with
+                          the Meeting SDK turned on
+        ZOOM_SDK_SECRET   Client Secret of that app
+        MEETING_NUMBER    8651803410          (you can change it later
+        MEETING_PASSCODE  the meeting passcode  from the dashboard)
+      Optional, only if Zoom asks for an "OBF token" (see README):
+        ZOOM_OAUTH        yes
+
+   3. Deploy → New deployment → ⚙ → Web app
+        Execute as:      Me
+        Who has access:  Anyone
+      Deploy → Authorize access → your Google account →
+      Advanced → Go to (unsafe) → Allow.
+
+   4. Copy the Web app URL (…/exec) → Virtual class dashboard →
+      Zoom → "Class server URL" → Save → Test.
+
+   Nothing here is ever sent to a student except: a 2-hour Zoom
+   join ticket for that one meeting, and the tute files you put in
+   the "EICT Virtual Class Tutes" folder.
+   ============================================================ */
+var OWNER   = 'ushithasamudaya@gmail.com';
+var API_KEY = 'AIzaSyBi5RuRaKiiu5vjF-12WZwgx5rBWJkvanM';      // the website's public Firebase key
+var DB_URL  = 'https://eict-60955-default-rtdb.asia-southeast1.firebasedatabase.app';
+var FOLDER  = 'EICT Virtual Class Tutes';
+var MAX_MB  = 40;
+
+function P() { return PropertiesService.getScriptProperties(); }
+function dbUrl() { return P().getProperty('DB_URL') || DB_URL; }
+
+function doGet(e) {
+  var q = (e && e.parameter) || {};
+  if (q.code && q.state) return zoomCallback(q);
+  return out({ ok: true, app: 'eict-vclass', v: 1,
+               sdk: !!(P().getProperty('ZOOM_SDK_KEY') && P().getProperty('ZOOM_SDK_SECRET')),
+               meeting: !!P().getProperty('MEETING_NUMBER'),
+               obf: !!P().getProperty('ZOOM_REFRESH') });
+}
+
+function doPost(e) {
+  try {
+    var q = JSON.parse(e.postData.contents);
+    var me = whoIs(q.token);
+    if (!me) return out({ ok: false, error: 'signin' });
+    var room = /^[a-z0-9-]{1,24}$/.test(String(q.room || '')) ? q.room : 'main';
+    var owner = me.email === OWNER;
+
+    if (q.action === 'ticket') {
+      if (!owner) {
+        if (!fetchDb('vc/' + room + '/allow/' + me.uid, q.token)) return out({ ok: false, error: 'invite' });
+        var st = fetchDb('vc/' + room + '/state', q.token) || {};
+        if (!st.open || !st.live) return out({ ok: false, error: 'closed' });
+      }
+      var key = P().getProperty('ZOOM_SDK_KEY'), secret = P().getProperty('ZOOM_SDK_SECRET');
+      var mn = String(P().getProperty('MEETING_NUMBER') || '').replace(/\D/g, '');
+      if (!key || !secret || !mn) return out({ ok: false, error: 'notset' });
+      var t = {
+        ok: true,
+        signature: sdkSignature(key, secret, mn, 0),
+        meetingNumber: mn,
+        password: P().getProperty('MEETING_PASSCODE') || ''
+      };
+      var obf = obfToken(mn);
+      if (obf) t.obfToken = obf;
+      return out(t);
+    }
+
+    if (q.action === 'tute') {
+      if (!owner && !fetchDb('vc/' + room + '/allow/' + me.uid, q.token)) return out({ ok: false, error: 'invite' });
+      var f;
+      try { f = DriveApp.getFileById(String(q.id || '')); } catch (x) { return out({ ok: false, error: 'missing' }); }
+      if (!inFolder(f)) return out({ ok: false, error: 'missing' });      // only files in the tutes folder, nothing else in your Drive
+      return out({ ok: true, name: f.getName(), mime: f.getMimeType(), data: Utilities.base64Encode(f.getBlob().getBytes()) });
+    }
+
+    /* ---------- you only ---------- */
+    if (!owner) return out({ ok: false, error: 'owner' });
+
+    if (q.action === 'upload') {
+      var bytes = Utilities.base64Decode(String(q.data || ''));
+      if (!bytes.length) return out({ ok: false, error: 'empty' });
+      if (bytes.length > MAX_MB * 1048576) return out({ ok: false, error: 'big' });
+      var mime = q.kind === 'cover' ? (String(q.mime || '').indexOf('png') > 0 ? 'image/png' : 'image/jpeg') : 'application/pdf';
+      var file = folder().createFile(Utilities.newBlob(bytes, mime, clean(q.name || 'Tute') + (mime === 'application/pdf' ? '.pdf' : mime === 'image/png' ? '.png' : '.jpg')));
+      return out({ ok: true, id: file.getId(), name: file.getName() });
+    }
+    if (q.action === 'meeting') {
+      var num = String(q.number || '').replace(/\D/g, '');
+      if (num.length < 9 || num.length > 12) return out({ ok: false, error: 'number' });
+      P().setProperty('MEETING_NUMBER', num);
+      P().setProperty('MEETING_PASSCODE', String(q.passcode || '').slice(0, 32));
+      return out({ ok: true });
+    }
+    if (q.action === 'status') {
+      return out({ ok: true, sdk: !!(P().getProperty('ZOOM_SDK_KEY') && P().getProperty('ZOOM_SDK_SECRET')),
+                   meeting: P().getProperty('MEETING_NUMBER') || '', hasPasscode: !!P().getProperty('MEETING_PASSCODE'),
+                   obf: !!P().getProperty('ZOOM_REFRESH'), oauth: P().getProperty('ZOOM_OAUTH') === 'yes',
+                   folder: folder().getUrl() });
+    }
+    if (q.action === 'zoomconnect') {
+      if (P().getProperty('ZOOM_OAUTH') !== 'yes') return out({ ok: false, error: 'oauth-off' });
+      var stt = Utilities.getUuid();
+      P().setProperty('OAUTH_STATE', stt);
+      var url = 'https://zoom.us/oauth/authorize?response_type=code&client_id=' + encodeURIComponent(P().getProperty('ZOOM_SDK_KEY')) +
+                '&redirect_uri=' + encodeURIComponent(ScriptApp.getService().getUrl()) + '&state=' + stt;
+      return out({ ok: true, url: url });
+    }
+    return out({ ok: false, error: 'action' });
+  } catch (err) {
+    return out({ ok: false, error: String(err && err.message || err) });
+  }
+}
+
+/* ---------- who is asking: Google checks the website's sign-in token for us ---------- */
+function whoIs(token) {
+  if (!token || String(token).length < 100) return null;
+  var r = UrlFetchApp.fetch('https://identitytoolkit.googleapis.com/v1/accounts:lookup?key=' + API_KEY, {
+    method: 'post', contentType: 'application/json', payload: JSON.stringify({ idToken: token }), muteHttpExceptions: true });
+  if (r.getResponseCode() !== 200) return null;
+  var u = (JSON.parse(r.getContentText()).users || [])[0];
+  return u ? { uid: u.localId, email: (u.email || '').toLowerCase() } : null;
+}
+/* read the Realtime Database AS the student: their own invitation and the class state */
+function fetchDb(path, token) {
+  var r = UrlFetchApp.fetch(dbUrl() + '/' + path + '.json?auth=' + encodeURIComponent(token), { muteHttpExceptions: true });
+  if (r.getResponseCode() !== 200) return null;
+  return JSON.parse(r.getContentText());
+}
+
+/* ---------- Zoom Meeting SDK join signature (HS256 JWT) ---------- */
+function sdkSignature(key, secret, mn, role) {
+  var iat = Math.floor(Date.now() / 1000) - 30, exp = iat + 2 * 3600;
+  var head = { alg: 'HS256', typ: 'JWT' };
+  var body = { appKey: key, sdkKey: key, mn: mn, role: role, iat: iat, exp: exp, tokenExp: exp };
+  var data = b64(JSON.stringify(head)) + '.' + b64(JSON.stringify(body));
+  var sig = Utilities.computeHmacSha256Signature(Utilities.newBlob(data).getBytes(), Utilities.newBlob(secret).getBytes());
+  return data + '.' + Utilities.base64EncodeWebSafe(sig).replace(/=+$/, '');
+}
+function b64(s) { return Utilities.base64EncodeWebSafe(Utilities.newBlob(s).getBytes()).replace(/=+$/, ''); }
+
+/* ---------- optional: OBF token (needed when the meeting belongs to a different Zoom account than the SDK app) ---------- */
+function obfToken(mn) {
+  var refresh = P().getProperty('ZOOM_REFRESH');
+  if (!refresh) return '';
+  try {
+    var at = zoomAccess();
+    if (!at) return '';
+    var r = UrlFetchApp.fetch('https://api.zoom.us/v2/users/me/token?type=onbehalf&meeting_id=' + mn,
+      { headers: { Authorization: 'Bearer ' + at }, muteHttpExceptions: true });
+    if (r.getResponseCode() !== 200) return '';
+    return JSON.parse(r.getContentText()).token || '';
+  } catch (e) { return ''; }
+}
+function zoomAccess() {
+  var c = CacheService.getScriptCache(), hit = c.get('zat');
+  if (hit) return hit;
+  var r = UrlFetchApp.fetch('https://zoom.us/oauth/token', {
+    method: 'post', muteHttpExceptions: true,
+    headers: { Authorization: 'Basic ' + Utilities.base64Encode(P().getProperty('ZOOM_SDK_KEY') + ':' + P().getProperty('ZOOM_SDK_SECRET')) },
+    payload: { grant_type: 'refresh_token', refresh_token: P().getProperty('ZOOM_REFRESH') } });
+  if (r.getResponseCode() !== 200) return '';
+  var j = JSON.parse(r.getContentText());
+  if (j.refresh_token) P().setProperty('ZOOM_REFRESH', j.refresh_token);
+  c.put('zat', j.access_token, Math.max(60, (j.expires_in || 3600) - 120));
+  return j.access_token;
+}
+function zoomCallback(q) {
+  if (!P().getProperty('OAUTH_STATE') || q.state !== P().getProperty('OAUTH_STATE'))
+    return HtmlService.createHtmlOutput('<p>This link has expired. Start again from the dashboard.</p>');
+  P().deleteProperty('OAUTH_STATE');
+  var r = UrlFetchApp.fetch('https://zoom.us/oauth/token', {
+    method: 'post', muteHttpExceptions: true,
+    headers: { Authorization: 'Basic ' + Utilities.base64Encode(P().getProperty('ZOOM_SDK_KEY') + ':' + P().getProperty('ZOOM_SDK_SECRET')) },
+    payload: { grant_type: 'authorization_code', code: q.code, redirect_uri: ScriptApp.getService().getUrl() } });
+  if (r.getResponseCode() !== 200) return HtmlService.createHtmlOutput('<p>Zoom said no: ' + r.getContentText().slice(0, 300) + '</p>');
+  var j = JSON.parse(r.getContentText());
+  P().setProperty('ZOOM_REFRESH', j.refresh_token);
+  return HtmlService.createHtmlOutput('<p style="font:16px sans-serif">Zoom is connected. You can close this tab.</p>');
+}
+
+/* ---------- helpers ---------- */
+function out(o) { return ContentService.createTextOutput(JSON.stringify(o)).setMimeType(ContentService.MimeType.JSON); }
+function folder() { var it = DriveApp.getFoldersByName(FOLDER); return it.hasNext() ? it.next() : DriveApp.createFolder(FOLDER); }
+function inFolder(f) { var id = folder().getId(), it = f.getParents(); while (it.hasNext()) if (it.next().getId() === id) return true; return false; }
+function clean(s) { return String(s).replace(/[\\\/:*?"<>|\u0000-\u001f]/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 80) || 'Tute'; }

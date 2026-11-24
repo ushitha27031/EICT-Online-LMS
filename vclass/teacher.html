@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Virtual Class Desk</title>
+<meta name="robots" content="noindex,nofollow">
+<meta name="theme-color" content="#0B1020">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@600;700&family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="vclass.css">
+<style>
+body{overflow:auto}
+.t-top{position:sticky;top:0;z-index:10;display:flex;align-items:center;gap:10px;padding:calc(10px + env(safe-area-inset-top)) 16px 10px;background:rgba(11,16,32,.95);border-bottom:1px solid var(--wire);backdrop-filter:blur(10px);flex-wrap:wrap}
+.t-top h1{font-size:18px;margin:0}
+.t-top .sp{flex:1}
+.tabs{display:flex;gap:4px;overflow-x:auto;padding:10px 16px 0;max-width:1200px;margin:0 auto;scrollbar-width:none}
+.tabs button{padding:9px 14px;border-radius:10px 10px 0 0;color:var(--dim);white-space:nowrap;position:relative;font-weight:600;font-size:14.5px}
+.tabs button[aria-selected="true"]{background:var(--panel);color:var(--paper)}
+.tabs .badge{top:-4px;right:-2px}
+.wrap{max-width:1200px;margin:0 auto;padding:0 16px 60px}
+.pane{background:var(--panel);border:1px solid var(--wire);border-radius:0 14px 14px 14px;padding:16px}
+.grid2{display:grid;gap:14px}@media(min-width:880px){.grid2{grid-template-columns:1fr 1fr}}
+.box{background:var(--sunk);border:1px solid var(--wire);border-radius:14px;padding:14px}
+.box h3{margin-top:0}
+.btns{display:flex;gap:8px;flex-wrap:wrap;margin-top:8px}
+.checks{display:flex;flex-wrap:wrap;gap:8px}
+.checks label{display:flex;align-items:center;gap:8px;background:var(--panel-2);padding:8px 12px;border-radius:10px;margin:0;color:var(--paper);cursor:pointer}
+.checks input{width:18px;height:18px;margin:0;accent-color:#0ea5e9}
+.bigstat{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:12px}
+.bigstat div{background:var(--sunk);border:1px solid var(--wire);border-radius:12px;padding:10px 14px;min-width:120px}
+.bigstat b{display:block;font-family:var(--d);font-size:24px}
+.bigstat small{color:var(--dim)}
+table{width:100%;border-collapse:collapse;font-size:14px}
+th,td{text-align:left;padding:8px 6px;border-bottom:1px solid var(--wire);vertical-align:top}
+th{color:var(--dim);font-weight:600;font-size:12.5px;text-transform:uppercase;letter-spacing:.06em}
+.tbl{overflow-x:auto}
+.seatmap{display:grid;grid-template-columns:repeat(6,1fr);gap:6px;max-width:720px}
+.seatmap .s{background:var(--panel-2);border:1px solid var(--wire);border-radius:10px;min-height:64px;padding:6px;font-size:12.5px;display:flex;flex-direction:column;justify-content:space-between;text-align:left}
+.seatmap .s.full{border-color:#0ea5e988;background:#11294a}
+.seatmap .s:nth-child(6n+2),.seatmap .s:nth-child(6n+4){margin-right:14px}
+.seatmap .board{grid-column:1/-1;text-align:center;background:#0a1630;border-radius:10px;padding:6px;color:var(--sky);font-family:var(--d)}
+.inbox .chit{display:grid;gap:6px;margin-bottom:10px}
+.inbox .chit.new{border-color:var(--gold)}
+.inbox .who{display:flex;justify-content:space-between;gap:8px;font-size:13px;color:var(--dim)}
+.inbox textarea{min-height:64px}
+.tute-row{display:flex;gap:10px;align-items:center;background:var(--sunk);border-radius:12px;padding:8px;margin-bottom:8px}
+.tute-row img{width:48px;border-radius:4px}
+.tute-row div{flex:1}
+.ok{color:var(--live)}.bad{color:#ff8a98}
+.mono{font-family:var(--m);font-size:13px}
+</style>
+</head>
+<body>
+<section id="gate" class="screen center" hidden>
+  <div class="card narrow">
+    <div class="brand"><span class="logo">EICT</span><span>Virtual Class Desk</span></div>
+    <h1>Sir's sign in</h1>
+    <form id="gform">
+      <label>Email<input id="em" type="email" autocomplete="username" required></label>
+      <label>Password<input id="pw" type="password" autocomplete="current-password" required></label>
+      <button class="btn primary wide" type="submit">Sign in</button>
+      <p class="err" id="gerr" role="alert"></p>
+    </form>
+  </div>
+</section>
+<section id="no" class="screen center" hidden><div class="card narrow"><h1>Teacher only</h1><p class="muted">This desk is only for sir's account.</p><button class="btn" id="so2">Sign out</button></div></section>
+
+<section id="app" hidden>
+  <header class="t-top">
+    <span class="logo">EICT</span><h1>Virtual Class Desk</h1>
+    <span class="pill dim" id="stOpen">closed</span><span class="pill" id="stLive" hidden>LIVE</span>
+    <span class="sp"></span>
+    <a class="btn sm" href="./" target="_blank" rel="noopener">Open the classroom</a>
+    <button class="btn sm ghost" id="so">Sign out</button>
+  </header>
+  <nav class="tabs" role="tablist">
+    <button role="tab" data-tab="class" aria-selected="true">Class</button>
+    <button role="tab" data-tab="live">Students &amp; seats</button>
+    <button role="tab" data-tab="chits">Chits<i class="badge" id="chitBadge" hidden></i></button>
+    <button role="tab" data-tab="att">Attendance</button>
+    <button role="tab" data-tab="tutes">Lesson materials</button>
+    <button role="tab" data-tab="zoom">Zoom</button>
+  </nav>
+  <main class="wrap">
+
+    <div class="pane" data-pane="class">
+      <div class="grid2">
+        <div class="box">
+          <h3>Today's class</h3>
+          <label>Title on the board<input id="cTitle" maxlength="60" placeholder="A/L ICT — Theory"></label>
+          <label>Lesson<input id="cTopic" maxlength="80" placeholder="Logic Gates & Boolean Expressions"></label>
+          <p class="small muted">Who may come in</p>
+          <div class="checks" id="cBatches"></div>
+          <label style="margin-top:12px">Also let in (student numbers, comma separated)<input id="cExtra" placeholder="E27-014, E28-003"></label>
+          <p class="small muted" id="cCount"></p>
+          <div class="btns">
+            <button class="btn primary" id="bOpen">Open classroom</button>
+            <button class="btn" id="bLive">Start lecture</button>
+            <button class="btn" id="bPause" hidden>Pause lecture</button>
+            <button class="btn danger" id="bEnd">End class</button>
+          </div>
+          <p class="tiny muted">Open: invited students can walk in and sit. Start lecture: the "Join lecture" button works. End class: everyone is sent out, chairs are freed. Chits and attendance are kept.</p>
+        </div>
+        <div class="box">
+          <h3>Announcement</h3>
+          <label>Shown on the board and to everyone in class<textarea id="aText" maxlength="200" rows="3"></textarea></label>
+          <div class="btns"><button class="btn primary" id="aSend">Send</button><button class="btn" id="aClear">Clear</button></div>
+          <h3>Attendance check</h3>
+          <p class="small muted">Everyone in class gets "Sir is marking attendance — tap I'm here".</p>
+          <button class="btn" id="bCheck">Ask everyone now</button>
+          <h3>Not allowed in</h3>
+          <div id="blocked" class="small muted">Nobody.</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="pane" data-pane="live" hidden>
+      <div class="bigstat"><div><b id="nIn">0</b><small>in class</small></div><div><b id="nSeat">0</b><small>seated</small></div><div><b id="nHand">0</b><small>hands up</small></div><div><b id="nPhone">0</b><small>on phones</small></div></div>
+      <div class="grid2">
+        <div class="box"><h3>Seats</h3><div class="seatmap" id="seatmap"></div><p class="tiny muted">Click a taken seat to free it.</p></div>
+        <div class="box"><h3>Students</h3><div class="tbl"><table><thead><tr><th>Student</th><th>Seat</th><th>Device</th><th></th></tr></thead><tbody id="liveRows"></tbody></table></div></div>
+      </div>
+    </div>
+
+    <div class="pane" data-pane="chits" hidden>
+      <div class="row-end" style="margin:0 0 10px"><div class="seg sm"><button data-cf="open" aria-selected="true">Waiting</button><button data-cf="done" aria-selected="false">Answered</button><button data-cf="all" aria-selected="false">All</button></div>
+        <button class="btn sm" id="notifyBtn">Turn on alerts</button></div>
+      <div class="inbox" id="inbox"><p class="muted">No chits yet.</p></div>
+    </div>
+
+    <div class="pane" data-pane="att" hidden>
+      <div class="row-end" style="margin:0 0 10px"><label style="margin:0;min-width:240px">Class<select id="attSess"></select></label><button class="btn" id="attCsv">Download CSV</button></div>
+      <div class="tbl"><table><thead><tr><th>No.</th><th>Name</th><th>Batch</th><th>First in</th><th>Last out</th><th>Minutes</th><th>"I'm here"</th></tr></thead><tbody id="attRows"></tbody></table></div>
+      <p class="tiny muted">Minutes add up every time a student was in the room, even if their internet dropped and they came back.</p>
+    </div>
+
+    <div class="pane" data-pane="tutes" hidden>
+      <div class="grid2">
+        <div class="box"><h3>Tutes in class</h3><div id="tuteRows"></div><p class="tiny muted">The tute marked "On the desk" is the one that opens when students click the book on their desk.</p></div>
+        <div class="box">
+          <h3>Add a tute</h3>
+          <label>Title<input id="tTitle" maxlength="80" placeholder="Logic Gates — Complete Theory + Practice"></label>
+          <label>PDF (goes to your Drive folder "EICT Virtual Class Tutes")<input id="tFile" type="file" accept="application/pdf"></label>
+          <label>…or a PDF web address that allows downloads<input id="tUrl" placeholder="https://…/tute.pdf"></label>
+          <label>Cover picture address (optional)<input id="tCover" placeholder="assets/logic-gate-cover.png"></label>
+          <button class="btn primary" id="tAdd">Add tute</button>
+          <p class="tiny" id="tMsg"></p>
+        </div>
+      </div>
+    </div>
+
+    <div class="pane" data-pane="zoom" hidden>
+      <div class="grid2">
+        <div class="box">
+          <h3>Zoom meeting</h3>
+          <label>Meeting link (the "Open in Zoom app" button)<input id="zUrl" placeholder="https://cuny.zoom.us/j/8651803410"></label>
+          <div class="checks"><label><input type="checkbox" id="zEmbed"> Show the lecture inside the classroom board</label></div>
+          <label style="margin-top:12px">Class server URL (Apps Script …/exec)<input id="zServer" placeholder="https://script.google.com/macros/s/…/exec"></label>
+          <div class="btns"><button class="btn primary" id="zSave">Save</button><button class="btn" id="zTest">Test the server</button></div>
+          <p class="small" id="zMsg"></p>
+        </div>
+        <div class="box">
+          <h3>Meeting number &amp; passcode</h3>
+          <p class="small muted">Kept on the class server only — never on the website.</p>
+          <label>Meeting number<input id="zNum" inputmode="numeric" placeholder="865 180 3410"></label>
+          <label>Passcode<input id="zPass" type="password" autocomplete="off"></label>
+          <button class="btn" id="zMeet">Save to the server</button>
+          <div id="zObf" hidden><h3>Zoom account permission</h3><p class="small muted">Needed only if Zoom refuses students with "app not authorized" (meeting in another Zoom account than the SDK app).</p><button class="btn" id="zConnect">Connect Zoom</button></div>
+          <p class="small" id="zMsg2"></p>
+        </div>
+      </div>
+    </div>
+  </main>
+</section>
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+<div class="screen center" id="boot"><div class="spinner" aria-label="Loading"></div></div>
+<script src="../firebase-config.js"></script>
+<script type="module" src="teacher.js"></script>
+</body>
+</html>

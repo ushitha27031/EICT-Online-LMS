@@ -1,0 +1,156 @@
+{
+  "rules": {
+    "vc": {
+      "$room": {
+        "state": {
+          ".read": "auth != null && (auth.token.email == 'ushithasamudaya@gmail.com' || root.child('vc/' + $room + '/allow/' + auth.uid).exists())",
+          ".write": "auth != null && auth.token.email == 'ushithasamudaya@gmail.com'"
+        },
+
+        "allow": {
+          ".read": "auth != null && auth.token.email == 'ushithasamudaya@gmail.com'",
+          ".write": "auth != null && auth.token.email == 'ushithasamudaya@gmail.com'",
+          "$uid": {
+            ".read": "auth != null && auth.uid == $uid"
+          }
+        },
+
+        "block": {
+          ".read": "auth != null && auth.token.email == 'ushithasamudaya@gmail.com'",
+          ".write": "auth != null && auth.token.email == 'ushithasamudaya@gmail.com'"
+        },
+
+        "players": {
+          ".write": "auth != null && auth.token.email == 'ushithasamudaya@gmail.com'",
+          ".read": "auth != null && (auth.token.email == 'ushithasamudaya@gmail.com' || (root.child('vc/' + $room + '/allow/' + auth.uid).exists() && root.child('vc/' + $room + '/state/open').val() == true))",
+          "$uid": {
+            ".write": "auth != null && (auth.token.email == 'ushithasamudaya@gmail.com' || (auth.uid == $uid && (!newData.exists() || (root.child('vc/' + $room + '/allow/' + auth.uid).exists() && root.child('vc/' + $room + '/state/open').val() == true))))",
+            ".validate": "newData.hasChildren(['n', 'av', 't'])",
+            "n":    { ".validate": "newData.isString() && newData.val().length >= 1 && newData.val().length <= 24" },
+            "av":   { ".validate": "newData.isString() && newData.val().length <= 8" },
+            "dev":  { ".validate": "newData.isString() && newData.val().length <= 2" },
+            "seat": { ".validate": "newData.isString() && (auth.token.email == 'ushithasamudaya@gmail.com' || newData.parent().parent().parent().child('seats/' + newData.val() + '/u').val() == auth.uid)" },
+            "x":    { ".validate": "newData.isNumber() && newData.val() > -20 && newData.val() < 20" },
+            "z":    { ".validate": "newData.isNumber() && newData.val() > -20 && newData.val() < 20" },
+            "ry":   { ".validate": "newData.isNumber()" },
+            "a":    { ".validate": "newData.isString() && newData.val().length <= 8" },
+            "hand": { ".validate": "newData.isBoolean()" },
+            "t":    { ".validate": "newData.isNumber()" },
+            "$other": { ".validate": false }
+          }
+        },
+
+        "seats": {
+          ".write": "auth != null && auth.token.email == 'ushithasamudaya@gmail.com'",
+          ".read": "auth != null && (auth.token.email == 'ushithasamudaya@gmail.com' || (root.child('vc/' + $room + '/allow/' + auth.uid).exists() && root.child('vc/' + $room + '/state/open').val() == true))",
+          "$seat": {
+            ".write": "auth != null && (auth.token.email == 'ushithasamudaya@gmail.com' || (data.child('u').val() == auth.uid && !newData.exists()) || (root.child('vc/' + $room + '/allow/' + auth.uid).exists() && root.child('vc/' + $room + '/state/open').val() == true && (!data.exists() || data.child('u').val() == auth.uid || root.child('vc/' + $room + '/players/' + data.child('u').val() + '/seat').val() != $seat) && newData.child('u').val() == auth.uid && newData.parent().parent().child('players/' + auth.uid + '/seat').val() == $seat))",
+            ".validate": "$seat.matches(/^r[0-9]c[0-9]$/) && newData.hasChildren(['u', 'at'])",
+            "u":  { ".validate": "newData.isString()" },
+            "at": { ".validate": "newData.isNumber()" },
+            "$other": { ".validate": false }
+          }
+        },
+
+        "fx": {
+          ".indexOn": ["at"],
+          ".read": "auth != null && (auth.token.email == 'ushithasamudaya@gmail.com' || (root.child('vc/' + $room + '/allow/' + auth.uid).exists() && root.child('vc/' + $room + '/state/open').val() == true))",
+          ".write": "auth != null && auth.token.email == 'ushithasamudaya@gmail.com'",
+          "$id": {
+            ".write": "auth != null && ((!data.exists() && root.child('vc/' + $room + '/allow/' + auth.uid).exists() && root.child('vc/' + $room + '/state/open').val() == true) || (data.child('by').val() == auth.uid && !newData.exists()))",
+            ".validate": "newData.hasChildren(['k', 'by', 'at']) && newData.child('by').val() == auth.uid",
+            "k":    { ".validate": "newData.isString() && newData.val().matches(/^(chit|lend|back|no|reply)$/)" },
+            "by":   { ".validate": "newData.isString()" },
+            "at":   { ".validate": "newData.isNumber()" },
+            "path": { "$i": { ".validate": "newData.isString() && newData.val().length <= 8" } },
+            "from": { ".validate": "newData.isString() && newData.val().length <= 8" },
+            "to":   { ".validate": "newData.isString() && newData.val().length <= 64" },
+            "item": { ".validate": "newData.isString() && newData.val().length <= 10" },
+            "$other": { ".validate": false }
+          }
+        },
+
+        "chits": {
+          ".read": "auth != null && auth.token.email == 'ushithasamudaya@gmail.com'",
+          "$uid": {
+            ".read": "auth != null && auth.uid == $uid",
+            "$id": {
+              ".write": "auth != null && (auth.token.email == 'ushithasamudaya@gmail.com' || (auth.uid == $uid && !data.exists() && root.child('vc/' + $room + '/allow/' + auth.uid).exists() && root.child('vc/' + $room + '/state/open').val() == true))",
+              ".validate": "newData.hasChildren(['q', 'at'])",
+              "q":     { ".validate": "newData.isString() && newData.val().length >= 1 && newData.val().length <= 600" },
+              "at":    { ".validate": "newData.isNumber()" },
+              "n":     { ".validate": "newData.isString() && newData.val().length <= 24" },
+              "seat":  { ".validate": "newData.isString() && newData.val().length <= 8" },
+              "sess":  { ".validate": "newData.isString() && newData.val().length <= 32" },
+              "reply": { ".validate": "auth.token.email == 'ushithasamudaya@gmail.com' && newData.isString() && newData.val().length <= 1000" },
+              "rAt":   { ".validate": "auth.token.email == 'ushithasamudaya@gmail.com' && newData.isNumber()" },
+              "done":  { ".validate": "auth.token.email == 'ushithasamudaya@gmail.com' && newData.isBoolean()" },
+              "$other": { ".validate": false }
+            }
+          }
+        },
+
+        "items": {
+          ".indexOn": ["o"],
+          ".write": "auth != null && auth.token.email == 'ushithasamudaya@gmail.com'",
+          ".read": "auth != null && (auth.token.email == 'ushithasamudaya@gmail.com' || (root.child('vc/' + $room + '/allow/' + auth.uid).exists() && root.child('vc/' + $room + '/state/open').val() == true))",
+          "$id": {
+            ".write": "auth != null && (auth.token.email == 'ushithasamudaya@gmail.com' || (root.child('vc/' + $room + '/allow/' + auth.uid).exists() && root.child('vc/' + $room + '/state/open').val() == true && ($id.beginsWith(auth.uid + '_') || (data.child('h').val() == auth.uid && newData.child('h').val() == data.child('o').val()))))",
+            ".validate": "newData.hasChildren(['o', 'h', 'k'])",
+            "o": { ".validate": "newData.isString() && (data.val() == newData.val() || ($id.beginsWith(newData.val() + '_') && newData.val() == auth.uid) || auth.token.email == 'ushithasamudaya@gmail.com')" },
+            "k": { ".validate": "newData.isString() && newData.val().matches(/^(pen|pencil|eraser|ruler|marker)$/) && (!data.exists() || data.val() == newData.val())" },
+            "h": { ".validate": "newData.isString() && (newData.val() == newData.parent().child('o').val() || root.child('vc/' + $room + '/allow/' + newData.val()).exists())" },
+            "$other": { ".validate": false }
+          }
+        },
+
+        "asks": {
+          ".read": "auth != null && auth.token.email == 'ushithasamudaya@gmail.com'",
+          ".write": "auth != null && auth.token.email == 'ushithasamudaya@gmail.com'",
+          "$to": {
+            ".read": "auth != null && (auth.uid == $to || auth.token.email == 'ushithasamudaya@gmail.com')",
+            "$id": {
+              ".write": "auth != null && (auth.token.email == 'ushithasamudaya@gmail.com' || (!newData.exists() && (auth.uid == $to || data.child('f').val() == auth.uid)) || (!data.exists() && newData.child('f').val() == auth.uid && root.child('vc/' + $room + '/allow/' + auth.uid).exists() && root.child('vc/' + $room + '/state/open').val() == true))",
+              ".validate": "newData.hasChildren(['f', 'k', 'n', 'at'])",
+              "f":  { ".validate": "newData.isString()" },
+              "k":  { ".validate": "newData.isString() && newData.val().matches(/^(pen|pencil|eraser|ruler|marker)$/)" },
+              "n":  { ".validate": "newData.isString() && newData.val().length <= 24" },
+              "at": { ".validate": "newData.isNumber()" },
+              "$other": { ".validate": false }
+            }
+          }
+        },
+
+        "log": {
+          ".read": "auth != null && auth.token.email == 'ushithasamudaya@gmail.com'",
+          ".write": "auth != null && auth.token.email == 'ushithasamudaya@gmail.com'",
+          "$sess": {
+            "$uid": {
+              "$k": {
+                ".write": "auth != null && auth.uid == $uid && (data.exists() || (root.child('vc/' + $room + '/allow/' + auth.uid).exists() && root.child('vc/' + $room + '/state/open').val() == true))",
+                ".validate": "newData.hasChildren(['in'])",
+                "in":  { ".validate": "newData.isNumber()" },
+                "out": { ".validate": "newData.isNumber()" },
+                "dev": { ".validate": "newData.isString() && newData.val().length <= 2" },
+                "$other": { ".validate": false }
+              }
+            }
+          }
+        },
+
+        "att": {
+          ".read": "auth != null && auth.token.email == 'ushithasamudaya@gmail.com'",
+          ".write": "auth != null && auth.token.email == 'ushithasamudaya@gmail.com'",
+          "$sess": {
+            "$uid": {
+              "$check": {
+                ".write": "auth != null && auth.uid == $uid && !data.exists() && root.child('vc/' + $room + '/allow/' + auth.uid).exists() && root.child('vc/' + $room + '/state/open').val() == true",
+                ".validate": "newData.isNumber()"
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}
