@@ -20,7 +20,9 @@ export const AVATARS = [
   { id: 'g5', g: 'girl', label: 'Mint cardigan',   skin: '#e0a880', hair: 'bun',    hc: '#2b211b', top: '#3f8f80', kind: 'hoodie', legs: '#33302d' },
   { id: 'g6', g: 'girl', label: 'Lavender, waves', skin: '#6e4632', hair: 'wavy',   hc: '#1a1411', top: '#7b6bb0', kind: 'shirt',  legs: '#2b2f36' },
 ];
-export const byId = id => AVATARS.find(a => a.id === id) || AVATARS[0];
+/* sir's own character: only sir's account can be him */
+export const TEACHER = { id: 't1', g: 'teacher', label: 'Sir', skin: '#c68a62', hair: 'side', hc: '#1f1a17', top: '#f3f5f8', kind: 'shirt', legs: '#2b2f36', glasses: 1, tie: '#12355b' };
+export const byId = id => (id === 't1' ? TEACHER : AVATARS.find(a => a.id === id) || AVATARS[0]);
 
 /* ---------------- portraits (SVG) ---------------- */
 const FRONT = 'M51 53Q42 12 80 13Q115 12 111 49Q93 34 75 35Q64 47 51 53';
@@ -44,9 +46,10 @@ export function portrait(a) {
   const collar = a.kind === 'polo' || a.kind === 'shirt'
     ? `<path d="M68 86L80 98L92 86" stroke="#ffffff88" stroke-width="3" fill="none"/>`
     : a.kind === 'hoodie' ? `<path d="M62 86Q80 104 98 86" stroke="#00000030" stroke-width="5" fill="none"/><path d="M74 96v12M86 96v12" stroke="#ffffffaa" stroke-width="2"/>` : '';
+  const tie = a.tie ? `<path d="M77 88h6l2 6-5 22-5-22z" fill="${a.tie}"/>` : '';
   const specs = a.glasses ? `<g fill="none" stroke="#29333d" stroke-width="2"><rect x="59" y="46" width="18" height="13" rx="5"/><rect x="83" y="46" width="18" height="13" rx="5"/><path d="M77 51h6"/></g>` : '';
   const lash = a.g === 'girl' ? `<path d="M64 48l3 2M96 48l-3 2" stroke="#25282b" stroke-width="1.5"/>` : '';
-  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 160 120" role="img" aria-label="${a.label}"><rect width="160" height="120" rx="10" fill="#dce6eb"/><circle cx="80" cy="52" r="45" fill="#c4d6dd"/>${back}<path d="M25 120Q28 87 66 85H94Q132 87 135 120" fill="${a.top}"/>${collar}<rect x="69" y="71" width="22" height="23" rx="8" fill="${a.skin}"/><ellipse cx="80" cy="52" rx="28" ry="34" fill="${a.skin}"/>${front}<ellipse cx="69" cy="53" rx="3" ry="4" fill="#25282b"/><ellipse cx="91" cy="53" rx="3" ry="4" fill="#25282b"/>${lash}<path d="M75 69Q80 73 86 69" stroke="#7e4d43" stroke-width="2" fill="none"/>${specs}</svg>`;
+  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 160 120" role="img" aria-label="${a.label}"><rect width="160" height="120" rx="10" fill="#dce6eb"/><circle cx="80" cy="52" r="45" fill="#c4d6dd"/>${back}<path d="M25 120Q28 87 66 85H94Q132 87 135 120" fill="${a.top}"/>${collar}${tie}<rect x="69" y="71" width="22" height="23" rx="8" fill="${a.skin}"/><ellipse cx="80" cy="52" rx="28" ry="34" fill="${a.skin}"/>${front}<ellipse cx="69" cy="53" rx="3" ry="4" fill="#25282b"/><ellipse cx="91" cy="53" rx="3" ry="4" fill="#25282b"/>${lash}<path d="M75 69Q80 73 86 69" stroke="#7e4d43" stroke-width="2" fill="none"/>${specs}</svg>`;
 }
 
 /* ---------------- 3D characters ---------------- */
@@ -81,6 +84,12 @@ export function buildCharacter(THREE, a) {
     const col = mesh(geo(THREE, 'collar', () => new THREE.TorusGeometry(0.075, 0.018, 6, 16, Math.PI * 1.4)), M(a.kind === 'shirt' ? '#f1f1f1' : shade(a.top, 1.25), 0.8), 0, 0.555, 0.01);
     col.rotation.set(Math.PI / 2, 0, Math.PI * 0.8); chest.add(col);
   }
+
+  if (a.tie) {
+    const t = mesh(geo(THREE, 'tie', () => new THREE.BoxGeometry(0.05, 0.3, 0.012)), M(a.tie, 0.5), 0, 0.36, 0.118); t.rotation.x = -0.08; chest.add(t);
+    const k = mesh(geo(THREE, 'knot', () => new THREE.BoxGeometry(0.045, 0.04, 0.02)), M(a.tie, 0.5), 0, 0.53, 0.11); chest.add(k);
+  }
+  if (a.g === 'teacher') root.scale.setScalar(1.07);
 
   /* neck + head */
   chest.add(mesh(geo(THREE, 'neck', () => new THREE.CylinderGeometry(0.05, 0.058, 0.12, 12)), skin, 0, 0.58, 0));

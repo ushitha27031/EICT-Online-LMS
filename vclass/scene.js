@@ -183,7 +183,8 @@ function wrap(ctx, text, x, y, mw, lh, max) {
    ===================================================================== */
 export async function createClassroom(host, opt = {}) {
   const hi = opt.quality !== 'low';
-  const renderer = new THREE.WebGLRenderer({ antialias: hi, powerPreference: 'high-performance' });
+  const renderer = new THREE.WebGLRenderer({ antialias: hi, alpha: true, powerPreference: 'high-performance' });
+  renderer.setClearColor('#d9e4ec', 1);
   renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, hi ? 2 : 1.25));
   renderer.outputColorSpace = THREE.SRGBColorSpace;
   renderer.toneMapping = THREE.ACESFilmicToneMapping; renderer.toneMappingExposure = 1.05;
@@ -192,7 +193,6 @@ export async function createClassroom(host, opt = {}) {
   const labels = new CSS2DRenderer(); labels.domElement.className = 'labels'; host.appendChild(labels.domElement);
 
   const scene = new THREE.Scene();
-  scene.background = new THREE.Color('#d9e4ec');
   const pmrem = new THREE.PMREMGenerator(renderer);
   scene.environment = pmrem.fromScene(new RoomEnvironment(), 0.04).texture;
   scene.environmentIntensity = 0.42;
@@ -287,10 +287,15 @@ export async function createClassroom(host, opt = {}) {
   /* ---------- the smartboard ---------- */
   const boardTex = canvasTex(1600, 900, (c, w, h) => drawBoard(c, w, h, {}), { aniso: 8 });
   const boardMat = new THREE.MeshBasicMaterial({ map: boardTex, toneMapped: false });
+  /* When the lecture is playing, the screen is drawn fully transparent (and still hides what is behind it).
+     The video sits under the canvas in exactly that spot, so anyone sitting or standing in front of the
+     board is drawn over it — just like a real classroom. */
+  const holeMat = new THREE.MeshBasicMaterial({ color: 0x000000, opacity: 0, transparent: false, blending: THREE.NoBlending, toneMapped: false });
+  let boardScreen = null;
   {
     const g = new THREE.Group(); g.position.set(BOARD.x, BOARD.y, BOARD.z);
     const bz = new THREE.Mesh(new RoundedBoxGeometry(BOARD.w + 0.22, BOARD.h + 0.22, 0.09, 4, 0.04), MAT.bezel); bz.castShadow = true; g.add(bz);
-    const scr = new THREE.Mesh(new THREE.PlaneGeometry(BOARD.w, BOARD.h), boardMat); scr.position.z = 0.047; g.add(scr);
+    const scr = new THREE.Mesh(new THREE.PlaneGeometry(BOARD.w, BOARD.h), boardMat); scr.position.z = 0.047; g.add(scr); boardScreen = scr;
     const tray = new THREE.Mesh(new RoundedBoxGeometry(BOARD.w * 0.6, 0.05, 0.12, 2, 0.02), MAT.metal); tray.position.set(0, -BOARD.h / 2 - 0.17, 0.06); g.add(tray);
     for (const [x, c] of [[-0.4, '#1e88e5'], [-0.25, '#e53935'], [-0.1, '#43a047']]) { const pen = new THREE.Mesh(new THREE.CylinderGeometry(0.012, 0.012, 0.14, 10), new THREE.MeshStandardMaterial({ color: c, roughness: 0.4 })); pen.rotation.z = Math.PI / 2; pen.position.set(x, -BOARD.h / 2 - 0.135, 0.07); g.add(pen); }
     const cam = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.03, 0.04, 16), MAT.bezel); cam.rotation.x = Math.PI / 2; cam.position.set(0, BOARD.h / 2 + 0.07, 0.06); g.add(cam);
@@ -480,8 +485,8 @@ export async function createClassroom(host, opt = {}) {
   let me = null;
   const tmpV = new THREE.Vector3();
 
-  function makeLabel(name, mine) {
-    const d = document.createElement('div'); d.className = 'tag' + (mine ? ' me' : '');
+  function makeLabel(name, mine, sir) {
+    const d = document.createElement('div'); d.className = 'tag' + (mine ? ' me' : '') + (sir ? ' sir' : '');
     d.innerHTML = `<span class="hand" hidden><svg viewBox="0 0 24 24"><path d="M12 2a1.5 1.5 0 0 1 1.5 1.5V11h.5V4.5a1.5 1.5 0 0 1 3 0V12h.5V7.5a1.5 1.5 0 0 1 3 0V15a7 7 0 0 1-7 7h-1a7 7 0 0 1-6.2-3.8L3.3 13a1.5 1.5 0 0 1 2.6-1.5L8 14V4.5a1.5 1.5 0 0 1 3 0V11h.5V3.5A1.5 1.5 0 0 1 12 2z"/></svg></span><b></b>`;
     d.querySelector('b').textContent = name;
     const o = new CSS2DObject(d); o.position.set(0, 0.32, 0);
@@ -492,7 +497,7 @@ export async function createClassroom(host, opt = {}) {
     const a = byId(p.av), obj = buildCharacter(THREE, a);
     obj.position.set(p.x || DOOR.x, 0, p.z || DOOR.z); obj.rotation.y = p.ry != null ? p.ry : Math.PI;
     scene.add(obj);
-    const label = makeLabel(p.n || 'Student', mine);
+    const label = makeLabel(p.n || 'Student', mine, p.av === 't1');
     obj.userData.head.add(label);
     const P = { uid, obj, anim: obj.userData.anim, label, av: p.av, target: new THREE.Vector3(obj.position.x, 0, obj.position.z), ry: obj.rotation.y, seat: null, path: [], mine: !!mine, speed: 0, data: p };
     people.set(uid, P);
@@ -538,9 +543,11 @@ export async function createClassroom(host, opt = {}) {
   /* the student at this computer */
   function setMe(uid, p, seat) {
     if (people.has(uid) && !people.get(uid).mine) removePerson(uid);
-    me = addPerson(uid, { ...p, x: SPAWN.x, z: SPAWN.z, ry: Math.PI }, true);
-    me.uid = uid;
+    const sp = p.spawn || { x: SPAWN.x, z: SPAWN.z, ry: Math.PI };
+    me = addPerson(uid, { ...p, x: sp.x, z: sp.z, ry: sp.ry }, true);
+    me.uid = uid; me.ry = sp.ry;
     if (seat) { placeSeated(me, seat); view('first', true); }
+    else if (p.spawn) { view('third', true); emit(); }          // sir: already at the front, facing the class
     else { view('third', true); walkTo([new THREE.Vector3(SPAWN.x, 0, BACKLANE + 0.4)]); }
     return me;
   }
@@ -655,7 +662,11 @@ export async function createClassroom(host, opt = {}) {
     if (down) {
       const dx = e.clientX - down.x, dy = e.clientY - down.y;
       if (Math.abs(dx) + Math.abs(dy) > 6) down.moved = true;
-      if (down.moved) { yaw = down.yaw - dx * 0.005; pitch = Math.max(-0.7, Math.min(camMode === 'first' ? 0.7 : 1.1, down.pitch + dy * (camMode === 'first' ? -0.004 : 0.004))); }
+      if (down.moved) {
+        yaw = down.yaw - dx * 0.005; pitch = Math.max(-0.7, Math.min(camMode === 'first' ? 0.7 : 1.1, down.pitch + dy * (camMode === 'first' ? -0.004 : 0.004)));
+        /* sitting at a desk you can glance left and right, not spin round — the board stays in front of you */
+        if (me && me.seat && camMode === 'first') { yaw = Math.max(Math.PI - 0.65, Math.min(Math.PI + 0.65, yaw)); pitch = Math.max(-0.45, Math.min(0.35, pitch)); }
+      }
       return;
     }
     if (e.pointerType !== 'mouse') return;
@@ -740,6 +751,16 @@ export async function createClassroom(host, opt = {}) {
   function setBoard(s) { boardState = Object.assign({}, boardState, s); const c = boardTex.userData.canvas; drawBoard(c.getContext('2d'), c.width, c.height, boardState); boardTex.needsUpdate = true; }
   setBoard({});
   /* where the board is on screen, for laying the live Zoom picture exactly over it */
+  function boardQuad() {
+    const r = el.getBoundingClientRect(), pts = [];
+    for (const i of [3, 2, 1, 0]) {                               // top-left, top-right, bottom-right, bottom-left
+      const v = boardCorners[i].clone().project(camera);
+      if (v.z > 1 || v.z < -1) return null;                       // part of the board is behind you
+      pts.push([(v.x + 1) / 2 * r.width + r.left, (1 - v.y) / 2 * r.height + r.top]);
+    }
+    return pts;
+  }
+  function setHole(on) { if (boardScreen) boardScreen.material = on ? holeMat : boardMat; }
   function boardRect() {
     const r = el.getBoundingClientRect(); let x0 = 1e9, y0 = 1e9, x1 = -1e9, y1 = -1e9, ok = true;
     for (const c of boardCorners) { const v = c.clone().project(camera); if (v.z > 1 || v.z < -1) ok = false; const x = (v.x + 1) / 2 * r.width + r.left, y = (1 - v.y) / 2 * r.height + r.top; x0 = Math.min(x0, x); x1 = Math.max(x1, x); y0 = Math.min(y0, y); y1 = Math.max(y1, y); }
@@ -817,7 +838,7 @@ export async function createClassroom(host, opt = {}) {
     screenOf(sid) { const s = seatById(sid); if (!s) return null; const v = new THREE.Vector3(s.x, 0.5, s.z).project(camera), r = el.getBoundingClientRect(); const x = (v.x + 1) / 2 * r.width + r.left, y = (1 - v.y) / 2 * r.height + r.top, h = v.z < 1 && pick(x, y); return { x, y, on: v.z < 1, clear: !!(h && h.seat === sid) }; },
     setMyHand(on) { if (me) setHand(me, on); },
     setOccupied(fn) { occupied = fn; refreshMarks(); },
-    setBoard, boardRect, playChit, playPass, setDeskItems, view,
+    setBoard, boardRect, boardQuad, setHole, playChit, playPass, setDeskItems, view,
     get viewMode() { return camMode; },
     pause() { running = false; renderer.setAnimationLoop(null); },
     resume() { if (!running) { running = true; clock.getDelta(); renderer.setAnimationLoop(loop); } },

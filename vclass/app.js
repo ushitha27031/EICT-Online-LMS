@@ -37,6 +37,10 @@ function deviceKind() {
 let FB, auth, net, U = null, ALLOW = null, ST = {}, inRoom = false, DEV = 'desk', LAYOUT = 'board';
 let room = null, roomLoading = null, preview = null, AV = store.get('av', 'b1'), NAME = '';
 const PLAYERS = {}, SEATS = {}, ITEMSV = {}, CHITS = {};
+const OWNER = 'ushithasamudaya@gmail.com';
+let IS_T = false;                                   // sir's own account: walks in as the teacher, no seat, no invitation needed
+const SIR_SPOT = { x: 2.3, z: -6.1, ry: 0 };        // beside the board, facing the class
+const meProfile = () => ({ n: NAME, av: AV, ...(IS_T ? { spawn: SIR_SPOT } : {}) });
 let mySeat = null, claiming = 0, ASKS = {}, handled = new Set(), hand = false, hereDone = {}, askSeen = store.get('askSeen', 0), reader = null;
 
 /* =========================================================
@@ -75,6 +79,17 @@ $('#signout').onclick = () => FB.signOut(auth).then(() => location.reload());
    ========================================================= */
 function startLobby() {
   show('#lobby'); DEV = deviceKind();
+  IS_T = (U.email || '').toLowerCase() === OWNER;
+  document.body.dataset.role = IS_T ? 'teacher' : 'student';
+  if (IS_T) {
+    AV = 't1'; ALLOW = { n: 'Sir', c: 'Sir' };
+    NAME = store.get('tname', '') || 'Sir'; $('#dname').value = NAME;
+    $('.pick').hidden = true; $('#enter').textContent = 'Go into the classroom';
+    net.on('state', v => { ST = v || {}; lobbyStatus(); if (inRoom) applyState(); }, () => { ST = {}; lobbyStatus(); });
+    if (DEV !== 'phone') import('./scene.js').then(m => { $('#pv').hidden = false; $('#pvImg').hidden = true; preview = m.createPreview($('#pv')); preview.show(byId(AV)); }).catch(() => {});
+    pickAv(AV); lobbyStatus();
+    return;
+  }
   drawAvatars('all');
   net.on('allow/' + U.uid, v => {
     ALLOW = v;
@@ -94,6 +109,13 @@ function startLobby() {
 }
 function lobbyStatus() {
   const s = $('#lStatus'), ok = !!ALLOW, open = !!ST.open;
+  if (IS_T) {
+    s.className = 'status ' + (open ? (ST.live ? 'live' : 'open') : 'closed');
+    s.lastElementChild.textContent = 'Teacher · ' + (open ? (ST.live ? 'class is live' : 'classroom open') : 'classroom closed — you can still go in');
+    $('#lTitle').textContent = ST.title || 'Your classroom'; $('#lTopic').textContent = ST.topic || '';
+    $('#enter').disabled = !$('#dname').value.trim(); $('#lHint').textContent = 'You stand at the front, beside the board. Students see you as "' + ($('#dname').value.trim() || 'Sir') + '".';
+    return;
+  }
   s.className = 'status ' + (ok && open ? (ST.live ? 'live' : 'open') : 'closed');
   s.lastElementChild.textContent = !ok ? 'You are not on today\'s class list' : !open ? 'The classroom is closed right now' : ST.live ? 'Class is live now' : 'The classroom is open';
   $('#lTitle').textContent = ST.title ? ST.title : 'Choose your character';
@@ -109,7 +131,7 @@ function drawAvatars(g) {
     `<button class="av${a.id === AV ? ' on' : ''}" role="radio" aria-checked="${a.id === AV}" data-av="${a.id}" title="${esc(a.label)}">${portrait(a)}<span>${esc(a.label)}</span></button>`).join('');
 }
 function pickAv(id) {
-  AV = id; store.set('av', id);
+  AV = id; if (!IS_T) store.set('av', id);
   $$('.av').forEach(b => { b.classList.toggle('on', b.dataset.av === id); b.setAttribute('aria-checked', String(b.dataset.av === id)); });
   $('#pvImg').innerHTML = portrait(byId(id));
   if (preview) preview.show(byId(id));
@@ -126,7 +148,7 @@ $('#enter').onclick = () => enterRoom();
    ========================================================= */
 async function enterRoom() {
   NAME = $('#dname').value.trim().replace(/\s+/g, ' ').slice(0, 24); if (!NAME) return;
-  store.set('name', NAME);
+  store.set(IS_T ? 'tname' : 'name', NAME);
   $('#enter').disabled = true; $('#enter').textContent = 'Walking in…';
   DEV = deviceKind();
   LAYOUT = DEV === 'desk' ? 'room' : 'board';
@@ -151,6 +173,13 @@ async function enterRoom() {
 let presentBusy = false;
 async function present(first) {
   if (presentBusy || !inRoom) return; presentBusy = true;
+  if (IS_T) {
+    try {
+      await net.enter(U.uid, { n: NAME, av: AV, dev: DEV === 'phone' ? 'm' : DEV === 'tablet' ? 't' : 'd', x: SIR_SPOT.x, z: SIR_SPOT.z, ry: SIR_SPOT.ry, teacher: true }, ST.session || '');
+      if (room && !room.hasMe) room.setMe(U.uid, meProfile());
+    } finally { presentBusy = false; }
+    return;
+  }
   try {
     const keep = mySeat || sessionStorage.getItem('vc.seat:' + ROOM_ID + ':' + (ST.session || ''));
     const pos = keep ? seatXZ(keep) : { x: 6.0, z: 6.6 };
@@ -164,7 +193,7 @@ async function present(first) {
     if (got) setMySeat(got, true);
     else if (keep) { setMySeat(null); if (room && room.mySeat) room.standUp(); toast('Someone took your chair while you were away — pick another.'); }
     if (room && !room.hasMe) {
-      room.setMe(U.uid, { n: NAME, av: AV }, got || undefined);
+      room.setMe(U.uid, meProfile(), got || undefined);
       if (!got) hint('Click a free chair to sit down. Walk with W A S D or click the floor; drag to look around.', 9000);
     }
     if (got) net.move({ ...seatXZ(got), ry: Math.PI, a: 'sit' });
@@ -207,6 +236,7 @@ async function loadRoom() {
   return roomLoading;
 }
 async function chooseSeat(sid) {
+  if (IS_T) { toast('The chairs are for students — walk anywhere with W A S D or by clicking the floor.'); return; }
   if (mySeat === sid) return;
   if (taken(sid)) { toast('Someone is already sitting there.'); return; }
   claiming++;
@@ -263,7 +293,7 @@ function boardData() { return { title: ST.title, topic: ST.topic, live: !!ST.liv
 let lastAnn = 0, lastCheck = '';
 function applyState() {
   if (!inRoom) return;
-  if (!ST.open) { leaveRoom('Sir has closed the classroom. See you next class!'); return; }
+  if (!ST.open && !IS_T) { leaveRoom('Sir has closed the classroom. See you next class!'); return; }
   $('#tTitle').textContent = ST.title || 'Virtual class'; $('#bTitle').textContent = ST.title || 'A/L ICT'; $('#bTopic').textContent = ST.topic || '';
   $('#tLive').hidden = !ST.live; $('#liveDot').classList.toggle('on', !!ST.live);
   $('#wTitle').textContent = ST.live ? 'The lecture is live' : 'Class starts soon';
@@ -294,7 +324,7 @@ async function setLayout(l) {
   if (l === 'room') {
     hint('Loading the classroom…', 3000);
     await loadRoom();
-    if (!room.hasMe) room.setMe(U.uid, { n: NAME, av: AV }, mySeat || undefined);
+    if (!room.hasMe) room.setMe(U.uid, meProfile(), mySeat || undefined);
     room.resume();
   } else if (room) room.pause();
   $('#standBtn').hidden = !(mySeat && l === 'room');
@@ -333,17 +363,42 @@ function boardUi() {
   placeZoom(true);
 }
 
+/* A 1280×720 picture mapped onto the board's four corners on screen (a perspective transform),
+   recomputed every frame after the camera moves — so it is glued to the board, not floating over it.
+   It sits *under* the 3D canvas, which is see-through only where the board is, so students sitting
+   in front of the board are drawn in front of it. */
+const PW = 1280, PH = 720;
+function quadMatrix(q) {
+  const [[x0, y0], [x1, y1], [x2, y2], [x3, y3]] = q;      // top-left, top-right, bottom-right, bottom-left
+  const dx1 = x1 - x2, dx2 = x3 - x2, dx3 = x0 - x1 + x2 - x3, dy1 = y1 - y2, dy2 = y3 - y2, dy3 = y0 - y1 + y2 - y3;
+  let a, b, c, d, e, f, g, h;
+  if (Math.abs(dx3) < 1e-9 && Math.abs(dy3) < 1e-9) { a = x1 - x0; b = x3 - x0; c = x0; d = y1 - y0; e = y3 - y0; f = y0; g = 0; h = 0; }
+  else {
+    const det = dx1 * dy2 - dx2 * dy1;
+    g = (dx3 * dy2 - dx2 * dy3) / det; h = (dx1 * dy3 - dx3 * dy1) / det;
+    a = x1 - x0 + g * x1; b = x3 - x0 + h * x3; c = x0; d = y1 - y0 + g * y1; e = y3 - y0 + h * y3; f = y0;
+  }
+  const m = [a / PW, d / PW, 0, g / PW, b / PH, e / PH, 0, h / PH, 0, 0, 1, 0, c, f, 0, 1];
+  return 'matrix3d(' + m.map(v => +v.toFixed(8)).join(',') + ')';
+}
 function placeZoom(force) {
-  const host = $('#zoomHost');
-  if (!boardOn()) { host.hidden = true; return; }
+  const host = $('#zoomHost'), on = boardOn(), pinned = LAYOUT === 'room' && !!room && !document.body.classList.contains('fs');
+  if (room) room.setHole(on && pinned);
+  if (!on) { host.hidden = true; return; }
   host.hidden = false;
-  let r;
-  if (LAYOUT === 'room' && room && !document.body.classList.contains('fs')) {
-    const b = room.boardRect();
-    if (b.visible && b.w > 260) r = b;
-    else { const w = Math.min(340, innerWidth * 0.4); r = { x: innerWidth - w - 16, y: innerHeight - w * 9 / 16 - 96, w, h: w * 9 / 16 }; host.classList.add('pip'); }
-    if (r === b) host.classList.remove('pip');
-  } else { r = $('#boardSlot').getBoundingClientRect(); r = { x: r.left, y: r.top, w: r.width, h: r.height }; host.classList.remove('pip'); }
+  if (pinned) {
+    host.classList.add('pinned');
+    const q = room.boardQuad();
+    if (!q) { host.style.visibility = 'hidden'; return; }              // the board is behind you: keep playing, show nothing
+    host.style.visibility = '';
+    const m = quadMatrix(q);
+    if (m === zr && !force) return; zr = m;
+    Object.assign(host.style, { left: '0px', top: '0px', width: PW + 'px', height: PH + 'px', transform: m });
+    if (!YT && force) { clearTimeout(zt); zt = setTimeout(() => sizeZoom(PW, PH), 250); }
+    return;
+  }
+  host.classList.remove('pinned'); host.style.transform = ''; host.style.visibility = '';
+  let r = $('#boardSlot').getBoundingClientRect(); r = { x: r.left, y: r.top, w: r.width, h: r.height };
   const f = fit(r.w, r.h), x = Math.round(r.x + (r.w - f.w) / 2), y = Math.round(r.y + (r.h - f.h) / 2);
   const key = `${x},${y},${f.w},${f.h}`;
   if (key === zr && !force) return; zr = key;
