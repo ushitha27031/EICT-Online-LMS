@@ -50,6 +50,8 @@ th{color:var(--dim);font-weight:600;font-size:12.5px;text-transform:uppercase;le
 .tute-row div{flex:1}
 .ok{color:var(--live)}.bad{color:#ff8a98}
 .mono{font-family:var(--m);font-size:13px}
+.conn{max-width:1200px;margin:12px auto 0;padding:12px 16px;border-radius:12px;background:#3a1420;border:1px solid #ff4a5e88;color:#ffd6dc;font-size:14.5px;line-height:1.5}
+.conn code{background:rgba(0,0,0,.3);padding:1px 5px;border-radius:5px}
 </style>
 </head>
 <body>
@@ -75,6 +77,7 @@ th{color:var(--dim);font-weight:600;font-size:12.5px;text-transform:uppercase;le
     <a class="btn sm" href="./" target="_blank" rel="noopener">Open the classroom</a>
     <button class="btn sm ghost" id="so">Sign out</button>
   </header>
+  <div id="conn" class="conn" role="alert" hidden></div>
   <nav class="tabs" role="tablist">
     <button role="tab" data-tab="class" aria-selected="true">Class</button>
     <button role="tab" data-tab="live">Students &amp; seats</button>
@@ -102,6 +105,17 @@ th{color:var(--dim);font-weight:600;font-size:12.5px;text-transform:uppercase;le
             <button class="btn danger" id="bEnd">End class</button>
           </div>
           <p class="tiny muted">Open: invited students can walk in and sit. Start lecture: the "Join lecture" button works. End class: everyone is sent out, chairs are freed. Chits and attendance are kept.</p>
+        </div>
+        <div class="box">
+          <h3>On the board</h3>
+          <div class="checks" role="radiogroup" aria-label="What the board shows">
+            <label><input type="radio" name="bsrc" value="youtube"> YouTube live stream</label>
+            <label><input type="radio" name="bsrc" value="zoom"> Zoom (needs the class server + Zoom SDK keys)</label>
+          </div>
+          <label style="margin-top:12px">Today's YouTube live link (or your channel ID, UC…)<input id="ytLink" placeholder="https://youtube.com/live/AbCdEfGhIjK"></label>
+          <button class="btn primary" id="bSrcSave">Save board</button>
+          <p class="tiny muted">YouTube: in Zoom press <b>More → Live on YouTube</b> (or go live from YouTube Studio), set the stream to <b>Unlisted</b> with <b>embedding allowed</b>, and paste its link here. Students see it on the board after "Start lecture" — only invited students ever see this link.</p>
+          <p class="small" id="bSrcMsg"></p>
         </div>
         <div class="box">
           <h3>Announcement</h3>

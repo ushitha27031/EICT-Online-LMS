@@ -83,6 +83,11 @@ function startLobby() {
     lobbyStatus();
   }, () => { ALLOW = null; lobbyStatus(); });
   net.on('state', v => { ST = v || {}; lobbyStatus(); if (inRoom) applyState(); }, () => { ST = {}; lobbyStatus(); });
+  /* the live classroom can't be reached at all: say so instead of "Checking…" for ever */
+  let seen = false;
+  net.onConnected(c => { if (c) seen = true; });
+  setTimeout(() => { if (!seen && !inRoom) { $('#lStatus').className = 'status closed'; $('#lStatus').lastElementChild.textContent = 'The virtual classroom is not ready yet';
+    $('#lHint').textContent = 'Sir is still setting up the virtual classroom. Please use the normal Zoom link for today\'s class.'; } }, 10000);
   /* a little 3D turntable on laptops and tablets; just the portrait on phones */
   if (DEV !== 'phone') import('./scene.js').then(m => { $('#pv').hidden = false; $('#pvImg').hidden = true; preview = m.createPreview($('#pv')); preview.show(byId(AV)); }).catch(() => {});
   pickAv(AV);
@@ -254,7 +259,7 @@ function setupRoomListeners() {
 let wasDown = false;
 
 /* ---------- the class state from sir ---------- */
-function boardData() { return { title: ST.title, topic: ST.topic, live: !!ST.live, announce: ST.announce && ST.announce.text, zoomOn: zoomState() === 'joined' }; }
+function boardData() { return { title: ST.title, topic: ST.topic, live: !!ST.live, announce: ST.announce && ST.announce.text, zoomOn: !!YT || zoomState() === 'joined' }; }
 let lastAnn = 0, lastCheck = '';
 function applyState() {
   if (!inRoom) return;
@@ -262,7 +267,10 @@ function applyState() {
   $('#tTitle').textContent = ST.title || 'Virtual class'; $('#bTitle').textContent = ST.title || 'A/L ICT'; $('#bTopic').textContent = ST.topic || '';
   $('#tLive').hidden = !ST.live; $('#liveDot').classList.toggle('on', !!ST.live);
   $('#wTitle').textContent = ST.live ? 'The lecture is live' : 'Class starts soon';
-  $('#wSub').textContent = ST.live ? (canEmbed() && ST.server && ST.embed !== false ? 'Press "Join lecture" to watch it right here on the board.' : 'Press "Join lecture" to open it in Zoom.') : 'Take your seat. The lecture will appear on this board.';
+  $('#wSub').textContent = ST.live ? (ytMode() || (canEmbed() && ST.server && ST.embed !== false) ? 'Press "Join lecture" to watch it right here on the board.' : 'Press "Join lecture" to open it in Zoom.') : 'Take your seat. The lecture will appear on this board.';
+  /* sir changed the stream, switched to Zoom, or paused the lecture */
+  if (YT && (!ST.live || !ytMode())) stopYT();
+  else if (YT && ytSrc(ST.yt) !== YT) showYT();
   const zo = $('#zoomOut'); zo.hidden = !ST.zoomUrl; if (ST.zoomUrl) zo.href = ST.zoomUrl;
   const an = ST.announce;
   $('#announce').hidden = !(an && an.text); if (an && an.text) $('#announce').textContent = an.text;
@@ -299,9 +307,35 @@ addEventListener('orientationchange', () => setTimeout(() => placeZoom(true), 30
 
 /* the Zoom picture sits exactly on the board — in the 3D room, on the board view, or in a small corner window */
 let zr = '', zt;
+/* YouTube live on the board: no Zoom keys needed. One player only, in the same place the Zoom picture would be. */
+let YT = '';
+const ytSrc = y => !y ? '' : y.v ? `https://www.youtube-nocookie.com/embed/${encodeURIComponent(y.v)}?autoplay=1&playsinline=1&rel=0&modestbranding=1`
+  : y.ch ? `https://www.youtube.com/embed/live_stream?channel=${encodeURIComponent(y.ch)}&autoplay=1&playsinline=1` : '';
+const ytMode = () => (ST.boardSrc || 'youtube') === 'youtube' && !!ST.yt;
+function showYT() {
+  const src = ytSrc(ST.yt); if (!src) return;
+  if (YT !== src) {
+    const f = document.createElement('iframe');
+    f.src = src; f.title = 'Live lecture'; f.allow = 'autoplay; encrypted-media; picture-in-picture; fullscreen'; f.allowFullscreen = true;
+    f.referrerPolicy = 'strict-origin-when-cross-origin';
+    $('#ytRoot').replaceChildren(f); YT = src;
+  }
+  $('#ytRoot').hidden = false; $('#zoomRoot').hidden = true;
+  boardUi();
+}
+function stopYT() { if (!YT) return; YT = ''; $('#ytRoot').replaceChildren(); $('#ytRoot').hidden = true; $('#zoomRoot').hidden = false; boardUi(); }
+const boardOn = () => !!YT || zoomState() === 'joined' || zoomState() === 'joining';
+function boardUi() {
+  const s = zoomState();
+  $('.d-join span').textContent = YT || s === 'joined' ? 'On board' : s === 'joining' || s === 'loading' ? 'Joining…' : 'Lecture';
+  $('#waiting').classList.toggle('behind', !!YT || s === 'joined');
+  if (room) room.setBoard(boardData());
+  placeZoom(true);
+}
+
 function placeZoom(force) {
   const host = $('#zoomHost');
-  if (zoomState() !== 'joined' && zoomState() !== 'joining') { host.hidden = true; return; }
+  if (!boardOn()) { host.hidden = true; return; }
   host.hidden = false;
   let r;
   if (LAYOUT === 'room' && room && !document.body.classList.contains('fs')) {
@@ -314,7 +348,7 @@ function placeZoom(force) {
   const key = `${x},${y},${f.w},${f.h}`;
   if (key === zr && !force) return; zr = key;
   Object.assign(host.style, { left: x + 'px', top: y + 'px', width: f.w + 'px', height: f.h + 'px' });
-  clearTimeout(zt); zt = setTimeout(() => sizeZoom(f.w, f.h), 250);
+  if (!YT) { clearTimeout(zt); zt = setTimeout(() => sizeZoom(f.w, f.h), 250); }
 }
 onZoom((s, why) => {
   $('#micBtn').hidden = s !== 'joined';
@@ -353,6 +387,7 @@ addEventListener('keydown', e => { if (e.key === 'Escape') closeDrawers(); });
 
 async function joinLecture(btn) {
   if (!ST.live) { toast('The lecture hasn\'t started yet. Sir will start it soon.'); return; }
+  if (ytMode()) { showYT(); if (LAYOUT === 'room' && room) { const br = room.boardRect(); if (!br.visible) room.view('first'); } return; }
   if (zoomState() === 'joined' || zoomState() === 'joining' || zoomState() === 'loading') { placeZoom(true); return; }
   const embed = ST.embed !== false && !!ST.server && canEmbed();
   if (!embed) { if (ST.zoomUrl) window.open(ST.zoomUrl, '_blank', 'noopener'); else toast('Sir hasn\'t added the Zoom link yet.'); return; }

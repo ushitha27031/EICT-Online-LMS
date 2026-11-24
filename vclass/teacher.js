@@ -20,11 +20,21 @@ let STUD = {}, ST = {}, ALLOW = {}, BLOCK = {}, PLAYERS = {}, SEATS = {}, CHITS 
 const ref = p => R.ref(db, `vc/${ROOM}/${p}`);
 const TS = () => R.serverTimestamp();
 
+/* The live database never says "no" when it can't be reached — it just waits.
+   So every action gets 15 seconds, then a plain answer about what is wrong. */
+let CONNECTED = false, DENIED = false;
+const NO_DB = 'The live database is not answering. Has the Realtime Database been created (Firebase console → Realtime Database, Singapore)? See the red note at the top.';
+const NO_RULES = 'The live database refused. Publish vclass/database.rules.json in Firebase console → Realtime Database → Rules.';
+function why(e) { return /permission|denied/i.test((e && (e.code || e.message)) || '') ? NO_RULES : null; }
 async function act(btn, fn, ok) {
   if (btn) { btn.disabled = true; btn.dataset.t = btn.textContent; btn.textContent = 'Please wait…'; }
-  try { const r = await fn(); if (ok) toast(ok, 'ok'); return r; }
-  catch (e) { console.error(e); toast(e.user ? e.message : 'That did not work: ' + (e.code || e.message), 'bad'); }
-  finally { if (btn) { btn.disabled = false; btn.textContent = btn.dataset.t; } }
+  let timer;
+  try {
+    const r = await Promise.race([fn(), new Promise((_, no) => { timer = setTimeout(() => no(Object.assign(new Error(NO_DB), { user: 1 })), 15000); })]);
+    if (ok) toast(ok, 'ok'); return r;
+  }
+  catch (e) { console.error(e); const w = why(e); if (w) { DENIED = true; drawConn(); } toast(w || (e.user ? e.message : 'That did not work: ' + (e.code || e.message)), 'bad'); }
+  finally { clearTimeout(timer); if (btn) { btn.disabled = false; btn.textContent = btn.dataset.t; } }
 }
 const stop = m => { const e = new Error(m); e.user = 1; throw e; };
 
@@ -53,6 +63,17 @@ $$('[data-tab]').forEach(b => b.onclick = () => {
   if (b.dataset.tab === 'att') drawAtt();
 });
 
+let everConnected = false, waited = false;
+/* the note under the header: is the live database there, and are its rules published? */
+function drawConn() {
+  const el = $('#conn'); if (!el) return;
+  let msg = '';
+  if (DENIED) msg = '<b>Rules not published.</b> Firebase console → Realtime Database → <b>Rules</b> → paste the whole <code>vclass/database.rules.json</code> → Publish. (These are separate from the Firestore rules.)';
+  else if (!CONNECTED && waited) msg = everConnected ? '<b>Connection lost.</b> Check your internet — changes will be saved when it comes back.'
+    : '<b>Cannot reach the live database.</b> Create it once: Firebase console → <b>Realtime Database</b> → Create database → location <b>Singapore (asia-southeast1)</b> → locked mode → Enable. Then publish the rules. If you created it in another location, its URL must be put in <code>firebase-config.js</code>.';
+  el.innerHTML = msg; el.hidden = !msg;
+}
+
 let started = false;
 async function start() {
   if (started) return; started = true;
@@ -61,7 +82,9 @@ async function start() {
     s.forEach(d => { const v = d.data(); STUD[d.id] = { name: v.name || '', code: v.code || '', batch: v.batch || '' }; });
   } catch (e) { toast('Could not load the student list: ' + (e.code || e.message), 'bad'); }
   drawBatches();
-  R.onValue(ref('state'), s => { ST = s.val() || {}; drawState(); });
+  R.onValue(R.ref(db, '.info/connected'), s => { CONNECTED = !!s.val(); if (CONNECTED) everConnected = true; drawConn(); });
+  setTimeout(() => { waited = true; drawConn(); }, 8000);
+  R.onValue(ref('state'), s => { DENIED = false; ST = s.val() || {}; drawState(); drawConn(); }, e => { if (why(e)) { DENIED = true; drawConn(); } });
   R.onValue(ref('allow'), s => { ALLOW = s.val() || {}; drawCount(); drawLive(); });
   R.onValue(ref('block'), s => { BLOCK = s.val() || {}; drawBlocked(); });
   R.onValue(ref('players'), s => { PLAYERS = s.val() || {}; drawLive(); });
@@ -98,6 +121,8 @@ function drawState() {
   if (!formFilled) {
     formFilled = true;
     $('#cTitle').value = ST.title || ''; $('#cTopic').value = ST.topic || ''; $('#cExtra').value = (ST.extra || []).join(', ');
+    const src = ST.boardSrc || 'youtube'; $$('[name="bsrc"]').forEach(r => (r.checked = r.value === src));
+    $('#ytLink').value = ST.ytLink || '';
     $('#zUrl').value = ST.zoomUrl || DEFAULT_ZOOM; $('#zEmbed').checked = ST.embed !== false; $('#zServer').value = ST.server || '';
     drawBatches();
   }
@@ -280,6 +305,21 @@ $('#zSave').onclick = e => act(e.target, async () => {
   if (server && !/^https:\/\/script\.google(usercontent)?\.com\//.test(server)) stop('The class server URL should start with https://script.google.com/');
   await R.update(ref('state'), { zoomUrl: url || null, server: server || null, embed: $('#zEmbed').checked });
 }, 'Saved.');
+/* a YouTube link → the video id (or a channel's "whatever is live now") */
+function parseYT(t) {
+  t = String(t || '').trim(); let m;
+  if ((m = /(?:youtu\.be\/|[?&]v=|\/live\/|\/embed\/|\/shorts\/)([A-Za-z0-9_-]{11})/.exec(t))) return { v: m[1] };
+  if ((m = /(UC[A-Za-z0-9_-]{22})/.exec(t))) return { ch: m[1] };
+  if (/^[A-Za-z0-9_-]{11}$/.test(t)) return { v: t };
+  return null;
+}
+$('#bSrcSave').onclick = e => act(e.target, async () => {
+  const src = ($$('[name="bsrc"]').find(r => r.checked) || {}).value || 'youtube';
+  const link = $('#ytLink').value.trim(), yt = link ? parseYT(link) : null;
+  if (src === 'youtube' && !yt) stop('Paste the YouTube live link (youtube.com/live/…, youtu.be/… or a watch link).');
+  await R.update(ref('state'), { boardSrc: src, ytLink: link || null, yt: yt || null });
+  $('#bSrcMsg').innerHTML = src === 'youtube' ? `<span class="ok">✓ Board shows YouTube ${yt.v ? 'video ' + esc(yt.v) : 'channel live'}</span>` : '<span class="ok">✓ Board shows Zoom</span>';
+}, 'Board saved.');
 async function post(action, extra) {
   if (!ST.server) stop('Save the class server URL first.');
   const r = await fetch(ST.server, { method: 'POST', body: JSON.stringify({ action, token: await U.getIdToken(), room: ROOM, ...(extra || {}) }) });
