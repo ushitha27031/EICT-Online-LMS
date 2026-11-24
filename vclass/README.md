@@ -94,6 +94,14 @@ Once it is deployed, paste the `/exec` URL into **Sir's desk → Zoom → Class 
    - Zoom also requires the host (that OBF user) to be **in the meeting** before students can join through the SDK.
    - A university account's admins may block third-party apps. In that case, the "Open in Zoom app" button still works.
 
+### 3.4b The board without Zoom keys: YouTube live (works today)
+1. In the Zoom meeting, press **More → Live on YouTube**. You can also go live from YouTube Studio with OBS sharing the Zoom window.
+   - The Zoom account must allow live streaming: zoom.us → Settings → *Allow livestreaming of meetings → YouTube*.
+2. In YouTube, set the stream to **Unlisted** and leave **Allow embedding** on. Copy its link.
+3. On **Sir's desk → Class → On the board**, choose **YouTube live stream**, paste the link, then press **Save board** and **Start lecture**.
+
+Students press **Join lecture** and the stream plays on the board: the 3D smartboard, the phone board, or full screen. Only invited students ever receive the link. The stream runs about 5–15 s behind; students ask with chits or the hand button. To use the embedded Zoom instead, choose **Zoom** on the same card (needs 3.3 and 3.4).
+
 ### 3.5 Tutes
 Go to **Sir's desk → Lesson materials → Add a tute**. Choose the PDF, which is uploaded to your Drive folder "EICT Virtual Class Tutes", or paste a PDF web address. Press **Put on desk**.
 

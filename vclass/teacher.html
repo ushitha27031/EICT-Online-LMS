@@ -107,6 +107,17 @@ th{color:var(--dim);font-weight:600;font-size:12.5px;text-transform:uppercase;le
           <p class="tiny muted">Open: invited students can walk in and sit. Start lecture: the "Join lecture" button works. End class: everyone is sent out, chairs are freed. Chits and attendance are kept.</p>
         </div>
         <div class="box">
+          <h3>On the board</h3>
+          <div class="checks" role="radiogroup" aria-label="What the board shows">
+            <label><input type="radio" name="bsrc" value="youtube"> YouTube live stream</label>
+            <label><input type="radio" name="bsrc" value="zoom"> Zoom (needs the class server + Zoom SDK keys)</label>
+          </div>
+          <label style="margin-top:12px">Today's YouTube live link (or your channel ID, UC…)<input id="ytLink" placeholder="https://youtube.com/live/AbCdEfGhIjK"></label>
+          <button class="btn primary" id="bSrcSave">Save board</button>
+          <p class="tiny muted">YouTube: in Zoom press <b>More → Live on YouTube</b> (or go live from YouTube Studio), set the stream to <b>Unlisted</b> with <b>embedding allowed</b>, and paste its link here. Students see it on the board after "Start lecture" — only invited students ever see this link.</p>
+          <p class="small" id="bSrcMsg"></p>
+        </div>
+        <div class="box">
           <h3>Announcement</h3>
           <label>Shown on the board and to everyone in class<textarea id="aText" maxlength="200" rows="3"></textarea></label>
           <div class="btns"><button class="btn primary" id="aSend">Send</button><button class="btn" id="aClear">Clear</button></div>

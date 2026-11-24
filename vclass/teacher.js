@@ -121,6 +121,8 @@ function drawState() {
   if (!formFilled) {
     formFilled = true;
     $('#cTitle').value = ST.title || ''; $('#cTopic').value = ST.topic || ''; $('#cExtra').value = (ST.extra || []).join(', ');
+    const src = ST.boardSrc || 'youtube'; $$('[name="bsrc"]').forEach(r => (r.checked = r.value === src));
+    $('#ytLink').value = ST.ytLink || '';
     $('#zUrl').value = ST.zoomUrl || DEFAULT_ZOOM; $('#zEmbed').checked = ST.embed !== false; $('#zServer').value = ST.server || '';
     drawBatches();
   }
@@ -303,6 +305,21 @@ $('#zSave').onclick = e => act(e.target, async () => {
   if (server && !/^https:\/\/script\.google(usercontent)?\.com\//.test(server)) stop('The class server URL should start with https://script.google.com/');
   await R.update(ref('state'), { zoomUrl: url || null, server: server || null, embed: $('#zEmbed').checked });
 }, 'Saved.');
+/* a YouTube link → the video id (or a channel's "whatever is live now") */
+function parseYT(t) {
+  t = String(t || '').trim(); let m;
+  if ((m = /(?:youtu\.be\/|[?&]v=|\/live\/|\/embed\/|\/shorts\/)([A-Za-z0-9_-]{11})/.exec(t))) return { v: m[1] };
+  if ((m = /(UC[A-Za-z0-9_-]{22})/.exec(t))) return { ch: m[1] };
+  if (/^[A-Za-z0-9_-]{11}$/.test(t)) return { v: t };
+  return null;
+}
+$('#bSrcSave').onclick = e => act(e.target, async () => {
+  const src = ($$('[name="bsrc"]').find(r => r.checked) || {}).value || 'youtube';
+  const link = $('#ytLink').value.trim(), yt = link ? parseYT(link) : null;
+  if (src === 'youtube' && !yt) stop('Paste the YouTube live link (youtube.com/live/…, youtu.be/… or a watch link).');
+  await R.update(ref('state'), { boardSrc: src, ytLink: link || null, yt: yt || null });
+  $('#bSrcMsg').innerHTML = src === 'youtube' ? `<span class="ok">✓ Board shows YouTube ${yt.v ? 'video ' + esc(yt.v) : 'channel live'}</span>` : '<span class="ok">✓ Board shows Zoom</span>';
+}, 'Board saved.');
 async function post(action, extra) {
   if (!ST.server) stop('Save the class server URL first.');
   const r = await fetch(ST.server, { method: 'POST', body: JSON.stringify({ action, token: await U.getIdToken(), room: ROOM, ...(extra || {}) }) });
