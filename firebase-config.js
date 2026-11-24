@@ -13,7 +13,11 @@ window.FIREBASE_CONFIG = {
   projectId:         "eict-60955",
   storageBucket:     "eict-60955.firebasestorage.app",
   messagingSenderId: "418172511743",
-  appId:             "1:418172511743:web:7cb9807ee881f68eb6b3ca"
+  appId:             "1:418172511743:web:7cb9807ee881f68eb6b3ca",
+  /* the virtual classroom's live database (Realtime Database, Singapore).
+     If you created it in another region, copy its URL from the Firebase
+     console → Realtime Database and paste it here. */
+  databaseURL:       "https://eict-60955-default-rtdb.asia-southeast1.firebasedatabase.app"
 };
 
 /* Where a student's browser sends you an alert when they book an hour,
