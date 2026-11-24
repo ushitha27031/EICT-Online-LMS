@@ -50,6 +50,8 @@ th{color:var(--dim);font-weight:600;font-size:12.5px;text-transform:uppercase;le
 .tute-row div{flex:1}
 .ok{color:var(--live)}.bad{color:#ff8a98}
 .mono{font-family:var(--m);font-size:13px}
+.conn{max-width:1200px;margin:12px auto 0;padding:12px 16px;border-radius:12px;background:#3a1420;border:1px solid #ff4a5e88;color:#ffd6dc;font-size:14.5px;line-height:1.5}
+.conn code{background:rgba(0,0,0,.3);padding:1px 5px;border-radius:5px}
 </style>
 </head>
 <body>
@@ -75,6 +77,7 @@ th{color:var(--dim);font-weight:600;font-size:12.5px;text-transform:uppercase;le
     <a class="btn sm" href="./" target="_blank" rel="noopener">Open the classroom</a>
     <button class="btn sm ghost" id="so">Sign out</button>
   </header>
+  <div id="conn" class="conn" role="alert" hidden></div>
   <nav class="tabs" role="tablist">
     <button role="tab" data-tab="class" aria-selected="true">Class</button>
     <button role="tab" data-tab="live">Students &amp; seats</button>

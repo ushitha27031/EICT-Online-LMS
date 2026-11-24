@@ -83,6 +83,11 @@ function startLobby() {
     lobbyStatus();
   }, () => { ALLOW = null; lobbyStatus(); });
   net.on('state', v => { ST = v || {}; lobbyStatus(); if (inRoom) applyState(); }, () => { ST = {}; lobbyStatus(); });
+  /* the live classroom can't be reached at all: say so instead of "Checking…" for ever */
+  let seen = false;
+  net.onConnected(c => { if (c) seen = true; });
+  setTimeout(() => { if (!seen && !inRoom) { $('#lStatus').className = 'status closed'; $('#lStatus').lastElementChild.textContent = 'The virtual classroom is not ready yet';
+    $('#lHint').textContent = 'Sir is still setting up the virtual classroom. Please use the normal Zoom link for today\'s class.'; } }, 10000);
   /* a little 3D turntable on laptops and tablets; just the portrait on phones */
   if (DEV !== 'phone') import('./scene.js').then(m => { $('#pv').hidden = false; $('#pvImg').hidden = true; preview = m.createPreview($('#pv')); preview.show(byId(AV)); }).catch(() => {});
   pickAv(AV);
