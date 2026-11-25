@@ -420,6 +420,7 @@ function drawSittings(){
       <div class="grid"><label class="f">Starts at (Sri Lanka time)<input type="datetime-local" id="sitAt" value="${esc(SITED.at)}"></label></div>
       <div class="tl" id="sitTl"></div>
       <h3 style="font-size:14.5px">Who writes on this day <span class="muted">· <span class="count" id="sitCount">0</span> ticked</span></h3>
+      <p class="muted" style="margin:-4px 0 8px">Tick <b>only</b> the students who write on this day. The others keep their own day (or wait for the next sitting you add).</p>
       <div class="row" style="margin-bottom:8px"><input id="sitFind" placeholder="🔍 Search name or number" style="flex:1;min-width:200px">
         <button class="small" data-a="sitRest" type="button">Tick everyone not in a sitting</button><button class="small ghost" data-a="sitNone" type="button">Untick all</button></div>
       <div class="picks" id="sitPicks" style="max-height:320px;overflow:auto"></div>
@@ -605,7 +606,7 @@ $('#view').addEventListener('click',e=>{
     more:()=>act(b,async()=>{await extend(u);}),
     upmk:()=>cd.querySelector('.mF').click(),
     sitAdd:()=>{const d=new Date(Date.now()+5.5*3600e3+864e5).toISOString().slice(0,10);
-      SITED={id:'',at:d+'T'+(CUR.startTime||'18:00'),uids:new Set(eligible(CUR).filter(s=>!sitOf(CUR,s.uid)).map(s=>s.uid)),q:''};drawSittings();
+      SITED={id:'',at:d+'T'+(CUR.startTime||'18:00'),uids:new Set(),q:''};drawSittings();   /* starts empty: tick only who writes on this day */
       $('#sits .sit-ed').scrollIntoView({behavior:'smooth',block:'start'});},
     sitEdit:()=>{const x=sittingsOf(CUR).find(y=>y.id===b.dataset.s);
       SITED={id:x.id,at:toInput(x.at),uids:new Set(eligible(CUR).filter(s=>sitOf(CUR,s.uid)===x.id).map(s=>s.uid)),q:''};drawSittings();
@@ -709,7 +710,7 @@ function blank(){
   return {n,title:n>=5?'Final Assessment':'Checkpoint Paper '+String(n).padStart(2,'0'),afterWeek:wk,coverage:n===1?'Weeks 01–08: Number Systems and Logic Gates':wk?'Weeks 01–'+String(wk).padStart(2,'0'):'',
     instructions:'Write your answers on paper. Keep your camera on during the Zoom session. When each part ends, scan every page in order with CamScanner, save it as one PDF and upload it on this page before the upload time closes.',
     materials:'Pens and pencils. No calculators, phones or notes.',batches:['AL-27','AL-27-SI'],extra:[],at:null,startTime:'18:00',printed:true,essay:true,upl:{...UPL},
-    secA:{title:'MCQ Paper',min:120,marks:50},secB:{title:'Structured & Essay Papers',min:180,marks:100,on:true},breakMin:30,graceMin:30,
+    secA:{title:'MCQ Paper',min:120,marks:100},secB:{title:'Structured & Essay Papers',min:180,marks:100,on:true},breakMin:30,graceMin:30,
     badges:{gold:90,silver:75,bronze:60},coins:{part:20,gold:100,silver:60,bronze:30,r1:100,r2:60,r3:40},stage:'draft'};
 }
 async function showForm(){
