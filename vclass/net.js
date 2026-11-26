@@ -94,12 +94,12 @@ class Net {
     const data = { n: profile.n, av: profile.av, dev: profile.dev, a: 'idle', t: this.TS,
                    x: +(profile.x || 0).toFixed(2), z: +(profile.z || 0).toFixed(2), ry: +(profile.ry || 0).toFixed(3) };
     await R.set(pRef, data);
-    if (this.sess) {
+    if (this.sess && !profile.teacher) {
       this._logRef = R.push(this.ref(`log/${this.sess}/${uid}`));
       await R.set(this._logRef, { in: this.TS, dev: profile.dev });
       await R.onDisconnect(this._logRef).update({ out: R.serverTimestamp() });   // after the line exists, so the rules accept it
     }
-    await this.ensureKit();
+    if (!profile.teacher) await this.ensureKit();
   }
   async ensureKit() {
     const R = this.R, up = {};

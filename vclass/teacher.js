@@ -164,7 +164,7 @@ function drawBlocked() {
 /* =========================================================
    students & seats
    ========================================================= */
-const who = uid => STUD[uid] || ALLOW[uid] && { name: ALLOW[uid].n, code: ALLOW[uid].c, batch: ALLOW[uid].b } || { name: '?', code: '' };
+const who = uid => (U && uid === U.uid ? { name: 'You (Sir)', code: '', batch: '' } : null) || STUD[uid] || ALLOW[uid] && { name: ALLOW[uid].n, code: ALLOW[uid].c, batch: ALLOW[uid].b } || { name: '?', code: '' };
 function drawLive() {
   const ps = Object.entries(PLAYERS);
   $('#nIn').textContent = ps.length; $('#nSeat').textContent = ps.filter(([, p]) => p.seat).length;
@@ -179,7 +179,7 @@ function drawLive() {
   $('#liveRows').innerHTML = ps.sort((a, b) => String(a[1].seat || 'z').localeCompare(String(b[1].seat || 'z'))).map(([uid, p]) => {
     const w = who(uid);
     return `<tr><td><b>${esc(w.name)}</b><br><small class="muted">${esc(w.code)} · shows as "${esc(p.n)}"</small>${p.hand ? '<br><span class="hand-on">Hand up</span>' : ''}</td><td>${seatName(p.seat)}</td><td>${{ m: 'Phone', t: 'Tablet', d: 'Computer' }[p.dev] || '—'}</td>
-      <td><div class="btns" style="margin:0">${p.hand ? `<button class="btn sm" data-lower="${esc(uid)}">Lower hand</button>` : ''}<button class="btn sm danger" data-kick="${esc(uid)}">Remove</button></div></td></tr>`;
+      <td><div class="btns" style="margin:0">${p.hand ? `<button class="btn sm" data-lower="${esc(uid)}">Lower hand</button>` : ''}${U && uid === U.uid ? '' : `<button class="btn sm danger" data-kick="${esc(uid)}">Remove</button>`}</div></td></tr>`;
   }).join('') || '<tr><td colspan="4" class="muted">Nobody in the room yet.</td></tr>';
 }
 document.addEventListener('click', e => {

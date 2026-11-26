@@ -417,9 +417,10 @@ function drawSittings(){
       ||'<p class="warn">No sittings yet — students see “date coming soon”.</p>'}
     ${none.length&&S.length?`<p class="warn" style="margin-top:10px">⏳ Not in a sitting yet (${none.length}): ${none.map(s=>esc(s.name)).join(', ')}</p>`:''}
     ${SITED?`<div class="sit-ed"><h3 style="margin-top:0">${SITED.id?'✏️ Change this sitting':'➕ New sitting'}</h3>
-      <div class="grid"><label class="f">Starts at (Sri Lanka time)<input type="datetime-local" id="sitAt" value="${esc(SITED.at)}"></label></div>
+      <div class="grid"><label class="f">Date<input type="date" id="sitD" value="${esc((SITED.at||'').slice(0,10))}"></label><label class="f">Starts at (Sri Lanka time)<input type="time" id="sitT" value="${esc((SITED.at||'').slice(11,16)||CUR.startTime||'18:00')}"></label></div>
       <div class="tl" id="sitTl"></div>
       <h3 style="font-size:14.5px">Who writes on this day <span class="muted">· <span class="count" id="sitCount">0</span> ticked</span></h3>
+      <p class="muted" style="margin:-4px 0 8px">Tick <b>only</b> the students who write on this day. The others keep their own day (or wait for the next sitting you add).</p>
       <div class="row" style="margin-bottom:8px"><input id="sitFind" placeholder="🔍 Search name or number" style="flex:1;min-width:200px">
         <button class="small" data-a="sitRest" type="button">Tick everyone not in a sitting</button><button class="small ghost" data-a="sitNone" type="button">Untick all</button></div>
       <div class="picks" id="sitPicks" style="max-height:320px;overflow:auto"></div>
@@ -436,8 +437,9 @@ function drawSitPicks(){
     ||'<p class="muted">Nobody matches.</p>';
   const k=$('#sitCount');k.textContent=SITED.uids.size;k.classList.remove('bump');void k.offsetWidth;k.classList.add('bump');
 }
+const sitVal=()=>{const d=($('#sitD')||{}).value,t=($('#sitT')||{}).value||CUR.startTime||'18:00';return d?d+'T'+t:'';};
 function sitTl(){
-  const at=fromInput(($('#sitAt')||{}).value),box=$('#sitTl');if(!box) return;
+  const at=fromInput(sitVal()),box=$('#sitTl');if(!box) return;
   if(!at){box.innerHTML='<span class="muted">Pick the date and start time.</span>';return;}
   const t=times({...CUR,sittings:[{id:'X',at}]},'X'),two=twoParts(CUR);
   box.innerHTML=`📅 <b>${fmt(at,{weekday:'long',month:'long'})}</b><br>${esc(CUR.secA.title)} ${fmtT(t.openA)}–${fmtT(t.endA)} · upload until ${fmtT(t.dueA)}`+
@@ -448,7 +450,7 @@ $('#view').addEventListener('change',e=>{const t=e.target;if(!t.matches('.sitX')
   const k=$('#sitCount');k.textContent=SITED.uids.size;k.classList.remove('bump');void k.offsetWidth;k.classList.add('bump');});
 $('#view').addEventListener('input',e=>{const t=e.target;if(!SITED) return;
   if(t.id==='sitFind'){SITED.q=t.value;drawSitPicks();}
-  if(t.id==='sitAt'){SITED.at=t.value;sitTl();}});
+  if(t.id==='sitD'||t.id==='sitT'){SITED.at=sitVal();sitTl();}});
 /* an older paper's single date becomes a real sitting the first time sittings change */
 function realSittings(c){
   const S=sittingsOf(c).map(x=>({id:x.id,at:x.at}));
@@ -465,8 +467,8 @@ async function saveSittings(S,what){
   logIt(what);SITED=null;showPaper();drawList();
 }
 async function saveSitting(){
-  const c=CUR,at=fromInput($('#sitAt').value);
-  if(!at) stop('Pick the date and start time.',$('#sitAt'));
+  const c=CUR,at=fromInput(sitVal());
+  if(!at) stop('Pick the date and start time.',$('#sitD'));
   if(!SITED.uids.size) stop('Tick the students who write on this day.');
   let S=realSittings(c);
   const id=SITED.id||('S'+(Math.max(0,...S.map(x=>+String(x.id).slice(1)||0))+1)),T=FB.Timestamp.fromMillis(at);
@@ -605,7 +607,7 @@ $('#view').addEventListener('click',e=>{
     more:()=>act(b,async()=>{await extend(u);}),
     upmk:()=>cd.querySelector('.mF').click(),
     sitAdd:()=>{const d=new Date(Date.now()+5.5*3600e3+864e5).toISOString().slice(0,10);
-      SITED={id:'',at:d+'T'+(CUR.startTime||'18:00'),uids:new Set(eligible(CUR).filter(s=>!sitOf(CUR,s.uid)).map(s=>s.uid)),q:''};drawSittings();
+      SITED={id:'',at:d+'T'+(CUR.startTime||'18:00'),uids:new Set(),q:''};drawSittings();   /* starts empty: tick only who writes on this day */
       $('#sits .sit-ed').scrollIntoView({behavior:'smooth',block:'start'});},
     sitEdit:()=>{const x=sittingsOf(CUR).find(y=>y.id===b.dataset.s);
       SITED={id:x.id,at:toInput(x.at),uids:new Set(eligible(CUR).filter(s=>sitOf(CUR,s.uid)===x.id).map(s=>s.uid)),q:''};drawSittings();
@@ -709,7 +711,7 @@ function blank(){
   return {n,title:n>=5?'Final Assessment':'Checkpoint Paper '+String(n).padStart(2,'0'),afterWeek:wk,coverage:n===1?'Weeks 01–08: Number Systems and Logic Gates':wk?'Weeks 01–'+String(wk).padStart(2,'0'):'',
     instructions:'Write your answers on paper. Keep your camera on during the Zoom session. When each part ends, scan every page in order with CamScanner, save it as one PDF and upload it on this page before the upload time closes.',
     materials:'Pens and pencils. No calculators, phones or notes.',batches:['AL-27','AL-27-SI'],extra:[],at:null,startTime:'18:00',printed:true,essay:true,upl:{...UPL},
-    secA:{title:'MCQ Paper',min:120,marks:50},secB:{title:'Structured & Essay Papers',min:180,marks:100,on:true},breakMin:30,graceMin:30,
+    secA:{title:'MCQ Paper',min:120,marks:100},secB:{title:'Structured & Essay Papers',min:180,marks:100,on:true},breakMin:30,graceMin:30,
     badges:{gold:90,silver:75,bronze:60},coins:{part:20,gold:100,silver:60,bronze:30,r1:100,r2:60,r3:40},stage:'draft'};
 }
 async function showForm(){
@@ -728,7 +730,10 @@ async function showForm(){
       <label class="f">Lessons it covers<input id="fCov" value="${esc(c.coverage||'')}" placeholder="e.g. Weeks 01–08: Number Systems"></label>
     </div>
 
-    <h3><span class="step">2</span>Timetable <span class="muted">(the days come from Sittings, after saving)</span></h3>
+    <h3><span class="step">2</span>Exam days and timetable</h3>
+    <p class="muted" style="margin:-4px 0 8px">Add every day the paper is written. After saving, the <b>📅 Sittings</b> card lets you tick which students write on which day.</p>
+    <div id="fDays"></div>
+    <button class="small" type="button" id="fDayAdd" style="margin:6px 0 14px">➕ Add another day</button>
     <div class="grid">
       <label class="f">Usual start time<input id="fStart" type="time" value="${esc(c.startTime||(startOf(c)?toInput(startOf(c)).slice(11):'18:00'))}"></label>
       <label class="f">First part — name<input id="fAt1" value="${esc(c.secA.title)}"></label>
@@ -802,6 +807,15 @@ async function showForm(){
     const t=times({at,secA:{min:n('#fAm')},secB:{min:n('#fBm'),on:two},breakMin:n('#fBrk'),graceMin:n('#fGr')});
     $('#fTl').innerHTML=`🕕 <b>Every sitting</b><br>${esc($('#fAt1').value)} ${fmtT(t.openA)}–${fmtT(t.endA)} · upload until ${fmtT(t.dueA)}`+
       (two?`<br>Break ${fmtT(t.endA)}–${fmtT(t.openB)}<br>${esc($('#fBt').value)} ${fmtT(t.openB)}–${fmtT(t.endB)} · upload until ${fmtT(t.dueB)}`:'');};
+  /* exam days: one row per sitting — a date box and a time box (works on phones too) */
+  const dayRow=(sid,d,t)=>`<div class="row fday" data-sid="${esc(sid||'')}" style="gap:8px;margin-bottom:8px;align-items:flex-end">
+      <label class="f" style="margin:0">Date<input type="date" class="fdD" value="${esc(d||'')}"></label>
+      <label class="f" style="margin:0">Starts at<input type="time" class="fdT" value="${esc(t||$('#fStart').value||'18:00')}"></label>
+      <button class="small ghost fdX" type="button" title="Remove this day">✕</button></div>`;
+  const S0=sittingsOf(c).slice().sort((a,b)=>ms(a.at)-ms(b.at));
+  $('#fDays').innerHTML=S0.length?S0.map(x=>{const iv=toInput(x.at);return dayRow(x.id,iv.slice(0,10),iv.slice(11,16));}).join(''):dayRow('','','');
+  $('#fDayAdd').onclick=()=>{$('#fDays').insertAdjacentHTML('beforeend',dayRow('','',''));$('#fDays').lastElementChild.querySelector('.fdD').focus();};
+  $('#fDays').onclick=e=>{const x=e.target.closest('.fdX');if(!x) return;if($$('#fDays .fday').length>1) x.closest('.fday').remove();else{x.closest('.fday').querySelector('.fdD').value='';}};
   drawPapers();drawInd();drawMed();count();tl();
   const v=$('#view');
   v.onchange=e=>{const t=e.target;
@@ -838,6 +852,18 @@ async function saveForm(publish){
     breakMin:n('#fBrk'),graceMin:Math.max(5,n('#fGr')),batches:[...FORMB],extra:[...EXTRA].filter(u=>STU[u]&&!FORMB.has(STU[u].batch)),
     instructions:v('#fIns'),materials:v('#fMat'),badges,coins:{part:n('#cnP'),gold:n('#cnG'),silver:n('#cnS'),bronze:n('#cnB'),r1:n('#cn1'),r2:n('#cn2'),r3:n('#cn3')},
     updatedAt:FB.serverTimestamp()};
+  /* exam days → sittings (a day you keep keeps its students; a new day starts with nobody) */
+  const old=CUR?sittingsOf(CUR):[],legacy=CUR&&!(CUR.sittings&&CUR.sittings.length)&&old.length;
+  let nx=Math.max(0,...old.map(x=>+String(x.id).slice(1)||0));
+  const days=[];
+  for(const r of $$('#fDays .fday')){const d=r.querySelector('.fdD').value,t=r.querySelector('.fdT').value||startTime;
+    if(!d) continue;
+    const at=fromInput(d+'T'+t);if(!at) stop('That date does not look right.',r.querySelector('.fdD'));
+    if(days.some(x=>x.ms===at)) stop('Two days have the same date and time.',r.querySelector('.fdD'));
+    days.push({id:r.dataset.sid&&old.some(x=>x.id===r.dataset.sid)?r.dataset.sid:'S'+(++nx),ms:at});}
+  days.sort((a,b)=>a.ms-b.ms);
+  doc.sittings=days.map(x=>({id:x.id,at:FB.Timestamp.fromMillis(x.ms)}));
+  doc.at=days.length?FB.Timestamp.fromMillis(days[0].ms):null;
   const isNew=!CUR,id=isNew?'cp'+Date.now().toString(36):CUR.id,c={...(CUR||blank()),...doc,id};
   const el=eligible(c);
   if(publish&&!el.length) stop('Tick at least one class or student (step 5).');
@@ -848,13 +874,18 @@ async function saveForm(publish){
   await FB.setDoc(D('cp',id),doc,{merge:true});
   CUR={...c,stage:doc.stage||c.stage};
   /* each student keeps their sitting; only those outside the two fixed-medium classes carry a medium */
-  const plan={};for(const s of el){const o=(PRIV.plan||{})[s.uid]||{};plan[s.uid]={s:o.s||'',...(FIXED[s.batch]?{}:{m:MED[s.uid]||o.m||'si'})};}
+  const ids=new Set(days.map(x=>x.id));
+  const plan={};for(const s of el){const o=(PRIV.plan||{})[s.uid]||{};
+    let sid=o.s||(legacy?'S1':'');if(!ids.has(sid)) sid='';
+    if(!sid&&days.length===1) sid=days[0].id;               /* only one day: everybody writes on it */
+    plan[s.uid]={s:sid,...(FIXED[s.batch]?{}:{m:MED[s.uid]||o.m||'si'})};}
   PRIV={...PRIV,zoom:{...PRIV.zoom,S1:zoom},plan,links:papers};
   await FB.setDoc(D('cp',id,'grade','_private'),PRIV);
   await writePapers(CUR);
   if(CUR.stage!=='draft') await syncAssign(CUR);
   if(Object.values(GRADE).some(g=>g.sent||g.absent)) await pushResults();   /* new name or badge levels reach the students too */
   logIt(isNew?'Added the paper':publish?'Published to '+el.length+' students':'Saved changes');
+  if(days.length>1&&el.some(s=>!plan[s.uid].s)) setTimeout(()=>toast('Now tick who writes on each day in 📅 Sittings below.','ok'),1600);
   $('#view').onchange=$('#view').oninput=$('#view').onclick=null;
   await loadList();await openPaper(id);
 }
