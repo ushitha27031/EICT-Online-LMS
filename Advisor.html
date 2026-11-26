@@ -810,4 +810,5 @@ $('restart').addEventListener('click',()=>{ paintStatic(); start(); });
 const quick=fn=>()=>{ if(!medium){ medium=lang; } say(document.activeElement.textContent,'user'); fn(); };
 $('qTrial').addEventListener('click',quick(trial)); $('qSample').addEventListener('click',quick(sample)); $('qTimes').addEventListener('click',quick(times)); $('qReg').addEventListener('click',quick(register)); $('qProof').addEventListener('click',quick(proof));
 paintStatic(); start();
-</script></body></html>
+</script><script src="version.js"></script>
+</body></html>

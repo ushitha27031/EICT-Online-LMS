@@ -1,21 +1,24 @@
 # Version history
 
-The number shows on all three pages — top bar of the class portal, beside the
-size counter in the admin, bottom right of the home page. If it does not match
-the file you just uploaded, you are looking at a cached copy: `Ctrl+Shift+R`.
+**One number for the whole website**, in `version.js` (`var V = '…'`). Every page
+shows it in a small tab on the **left edge, half-way down**: `v5.1.0 · 26 Nov`.
 
-To change it, edit one line near the top of each file:
+- After an update is merged, open any page. If the tab shows the new number, the
+  update is live.
+- If your browser still has the old page, the tab turns **gold**:
+  *New version v… — tap to refresh*. Tap it.
+- Tap the tab any time to see the version, what changed, and "Check again".
 
-```html
-<meta name="version" content="1.5.0">
-```
+Each update bumps `V`, `DATE` and `NOTE` in `version.js`.
 
-and the matching `v1.5.0` where it is displayed.
-
-**How to count:** `1.5.0` is major.minor.patch.
-Fixing a bug → `1.5.1`. Adding a feature → `1.6.0`. Rebuilding the whole thing → `2.0.0`.
+**How to count:** `5.1.0` is major.minor.patch. Fixing a bug → `5.1.1`. Adding a
+feature → `5.2.0`. Rebuilding the whole thing → `6.0.0`.
 
 ---
+
+**5.1.0** (26 Nov 2026) — Version tab on every page (one number for the whole site).
+Checkpoint: exam days typed straight into the form; Thursday/Saturday sittings fix;
+MCQ out of 100. Virtual classroom: lecture inside the 3D board, sir can walk in.
 
 **1.5.0** — Live class split into three tabs: Class, Payments, Recordings.
 Version number added to every page.
