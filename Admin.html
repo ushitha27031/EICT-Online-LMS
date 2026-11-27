@@ -1340,7 +1340,11 @@ function drawStudents(){
         ||[st.batch||'No batch','','#475467','#F2F4F7','#D0D5DD'];
         return `<span style="display:inline-block;padding:6px 12px;border-radius:8px;margin:0 8px 12px 0;
           font-size:12.5px;font-weight:600;color:${M[2]};background:${M[3]};border:1px solid ${M[4]}">
-          ${M[0]}${M[1]?' \u00b7 '+M[1]:''}</span>`;})()}
+          ${M[0]}${M[1]?' \u00b7 '+M[1]:''}</span><select data-batch-set="${st.id}" aria-label="Change class or medium" style="padding:6px 10px;border-radius:8px;font-size:13px;margin:0 8px 12px 0;
+            background:var(--sunk);border:1px solid var(--wire);color:var(--paper)">
+            <option value="">Change class / medium…</option>
+            ${allBatches().map(b=>`<option value="${esc(b.id)}" ${st.batch===b.id?'disabled':''}>${esc(BATCH_NAMES[b.id]||b.label||b.id)}${st.batch===b.id?' (now)':''}</option>`).join('')}
+          </select>`;})()}
       ${(()=>{const m=st.mode||'online';
         const lab={online:'Online on Zoom',colombo:'HOME VISIT · Colombo',gampaha:'HOME VISIT · Gampaha'}[m];
         const rate=((CO.solo&&CO.solo.rates)||{})[m]||0;
@@ -1434,6 +1438,22 @@ async function moveTrack(id,track){
     st.track=track; drawStudents();
     toast((st.name||'Student')+' moved to '+names[track]);
   }catch(e){ if(!guard('the student record',e)) alert(e.code||e.message); }
+}
+
+/* move a student to another class — e.g. English medium → Sinhala medium */
+async function moveBatch(id,batch){
+  const fb=await window.FB_READY; if(!fb) return;
+  const st=STU.find(x=>x.id===id); if(!st) return;
+  if(!batch||batch===st.batch){ drawStudents(); return; }
+  const to=BATCH_NAMES[batch]||batch, from=BATCH_NAMES[st.batch]||st.batch||'no class';
+  if(!confirm('Move '+(st.name||'this student')+' from '+from+' to '+to+'?\n\n'
+    +'From now on they get that class\'s page, study plan, quizzes and papers in its language. '
+    +'Their payments, marks and student number stay exactly as they are.')){ drawStudents(); return; }
+  try{
+    await fb.updateDoc(fb.doc(fb.db,'students',id),{batch});
+    st.batch=batch; drawStudents();
+    toast((st.name||'Student')+' is now in '+to);
+  }catch(e){ drawStudents(); if(!guard('the student record',e)) alert(e.code||e.message); }
 }
 
 async function toggleMonth(id,key){
@@ -3648,6 +3668,8 @@ document.addEventListener('input',e=>{
 document.addEventListener('change',async e=>{
   if(e.target.dataset.track!==undefined && e.target.tagName==='SELECT'){
     return moveTrack(e.target.dataset.track, e.target.value); }
+  if(e.target.dataset.batchSet!==undefined && e.target.tagName==='SELECT'){
+    return moveBatch(e.target.dataset.batchSet, e.target.value); }
   if(e.target.id==='stuBatch'){ STU_BATCH=e.target.value; drawStudents(); return; }
   if(e.target.id==='planPick'){ PLAN_BATCH=e.target.value;
     RM=null; JW=[]; draw();
