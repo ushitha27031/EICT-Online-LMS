@@ -16,6 +16,9 @@ feature → `5.2.0`. Rebuilding the whole thing → `6.0.0`.
 
 ---
 
+**5.2.0** (27 Nov 2026) — Admin → Students: "Change class / medium" for each student
+(e.g. English medium → Sinhala medium). Payments, marks and number stay.
+
 **5.1.0** (26 Nov 2026) — Version tab on every page (one number for the whole site).
 Checkpoint: exam days typed straight into the form; Thursday/Saturday sittings fix;
 MCQ out of 100. Virtual classroom: lecture inside the 3D board, sir can walk in.

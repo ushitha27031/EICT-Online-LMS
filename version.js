@@ -9,7 +9,7 @@
    Claude bumps V, DATE and NOTE with every update.
    ============================================================ */
 (function () {
-  var V = '5.1.0', DATE = '2026-11-26', NOTE = 'Version badge on every page; checkpoint exam days in the form; Thursday/Saturday sittings fix; virtual classroom board inside the 3D board, sir can walk in.';
+  var V = '5.2.0', DATE = '2026-11-27', NOTE = 'Admin → Students: change a student\u2019s class or medium (e.g. English → Sinhala medium) from a dropdown.';
   window.EICT_VERSION = V;
   var me = document.currentScript && document.currentScript.src;
   var day = new Date(DATE + 'T00:00:00').toLocaleDateString('en-GB', { day: 'numeric', month: 'short' });
